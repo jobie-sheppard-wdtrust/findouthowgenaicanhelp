@@ -152,6 +152,15 @@
       border-top-right-radius: 0.375rem;
     }
 
+    .message-list {
+      margin: 0.25rem 0 0.5rem 1.25rem;
+      padding: 0;
+    }
+
+    .message-list li {
+      margin: 0.25rem 0;
+    }
+
     .typing-indicator {
       display: flex;
       gap: 0.75rem;
@@ -358,46 +367,62 @@
       {
         label: "Research NICE recommendations",
         prompt: "Research the current NICE recommendations for initial management of Sepsis in adults",
-        response: `Sure thing! Based on this article, NICE recommends that initial management of suspected sepsis in adults focuses on rapid recognition, prompt assessment, and early escalation. This includes using a structured risk assessment to identify people at high risk, urgent clinical review, early measurement of vital signs, blood tests (including lactate where indicated), and prompt administration of appropriate antibiotics and intravenous fluids where sepsis is suspected. Ongoing monitoring and timely referral to senior clinicians or critical care are emphasised. Would you like me to suggest how this guidance applies to a specific patient or outline the most appropriate next clinical step for them?`
+        response: `Sure thing! Here are some NICE recommendations based on this webpage (https://www.example-source.com), **Summary — NICE initial management of suspected sepsis (adults)**  
+Rapid recognition, prompt assessment, and early escalation are emphasized to reduce time-to-treatment and deterioration.
+
+**Key steps**  
+• Structured risk assessment to identify high-risk patients  
+• Urgent clinical review and early vital signs  
+• Blood tests, including lactate when indicated  
+• Prompt antibiotics and IV fluids where sepsis is suspected  
+• Ongoing monitoring and timely escalation to senior/critical care
+
+**Next step**  
+Would you like me to suggest how this guidance applies to a specific patient or outline the most appropriate next clinical step for them?`
       },
       {
         label: "Draft a response to this complaint",
-        prompt: "Help me respond to this very sensitive complaint from a bereaved patient, regarding end-of-life care decisions. The response should acknowledge mistakes in communication, and apologise in a way that is polite and genuine",
-        response: `Sure thing I can help draft a calm, compassionate response that acknowledges the communication issues without being defensive.
+        prompt: "Help me respond to this very sensitive complaint from a bereaved patient, regarding end-of-life care decisions. The response should acknowledge mistakes in communication, and apologise in a way that is polite and genuine. I have attached the complaint",
+        response: `Of course — I will draft a calm, compassionate response that acknowledges the communication issues without being defensive.
+        
+        **Draft response — compassionate and accountable**
 
 Dear Mrs Patel,
 
-Thank you for taking the time to write to us, and for sharing your concerns following your husband's care. I am very sorry for your loss, and I recognise how difficult it may have been to raise these issues.
+Thank you for taking the time to write to us and for sharing your concerns following your husband's care. I am very sorry for your loss — I recognise how difficult it may have been to raise these issues.
 
-I would like to sincerely apologise for the distress caused by how end-of-life care decisions were communicated to you and your family. On reflection, it is clear that we did not explain the situation as clearly or as sensitively as we should have, and I am sorry for the additional upset this caused at an already painful time.
+I would like to sincerely apologise for the distress caused by how end-of-life care decisions were communicated to you and your family. On reflection, we did not explain the situation as clearly or as sensitively as we should have, and I am sorry for the additional upset this caused at an already painful time.
 
+**What we are doing next**  
 Your feedback highlights the importance of clear, compassionate communication, particularly when discussing complex and emotionally challenging decisions. We are reviewing this aspect of our practice to ensure families feel better informed and supported in the future.
 
-Thank you again for bringing this to our attention. If you would like to discuss this further, or if there is anything else we can do to support you, please let us know.
+Thank you again for bringing this to our attention. If you would like to discuss this further — or if there is anything else we can do to support you — please let us know.
 
-With sincere condolences,
+With sincere condolences,  
 Your Name
 
-If you like, I can make this more formal or more conversational, or I could remove anything that sounds like an admission of liability?`
+**Refinements**  
+If you like, I can make this more formal or more conversational, or I could remove anything that sounds like an admission of liability ?`
       },
       {
         label: "What are arguments for and against this plan?",
         prompt: "I'm reviewing follow-up arrangements for a stable long-term condition patient. We're considering switching routine follow-ups from face-to-face to phone or video. Can you outline some practical arguments for and against this? Keep your answer concise.",
-        response: `Sure thing! Let's consider some reasons for and against it.
+        response: `**Pros vs. cons — remote follow-ups**
 
-Possible advantages
-• Easier access for patients who work, travel, or have mobility issues
-• Fewer missed appointments
-• Saves clinic space and time
-• Can feel more convenient and less stressful for some patients
+**Possible advantages**  
+• Easier access for patients who work, travel, or have mobility issues  
+• Fewer missed appointments  
+• Saves clinic space and time  
+• Can feel more convenient and less stressful
 
-Possible downsides
-• You lose non-verbal cues and in-room context
-• Some patients may struggle with technology or privacy
-• Harder to pick up subtle deterioration or safeguarding concerns
+**Possible downsides**  
+• You lose non-verbal cues and in-room context  
+• Some patients may struggle with technology or privacy  
+• Harder to pick up subtle deterioration or safeguarding concerns  
 • Continuity can suffer if different clinicians handle calls
 
-Would you like me to turn this into a suitability checklist for remote follow-ups, or tailor this to a patient's specific condition?`
+**Want this tailored?**  
+I can turn this into a suitability checklist or adapt it to a specific condition.`
       }
     ];
 
@@ -429,6 +454,49 @@ Would you like me to turn this into a suitability checklist for remote follow-up
         .replace(/'/g, '&#39;');
     }
 
+    function formatBotMessage(text = '') {
+      const escaped = escapeHTML(text);
+      const lines = escaped.split('\n');
+      const output = [];
+      let inList = false;
+
+      const applyBold = (line) => line.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+
+      lines.forEach((line, index) => {
+        const trimmed = line.trim();
+        if (!trimmed) {
+          if (inList) {
+            output.push('</ul>');
+            inList = false;
+          }
+          output.push('<br>');
+          return;
+        }
+
+        if (trimmed.startsWith('• ')) {
+          if (!inList) {
+            output.push('<ul class="message-list">');
+            inList = true;
+          }
+          output.push(`<li>${applyBold(trimmed.slice(2))}</li>`);
+          return;
+        }
+
+        if (inList) {
+          output.push('</ul>');
+          inList = false;
+        }
+
+        output.push(`${applyBold(trimmed)}${index < lines.length - 1 ? '<br>' : ''}`);
+      });
+
+      if (inList) {
+        output.push('</ul>');
+      }
+
+      return output.join('');
+    }
+
     function renderMessages(updateOnly = false) {
       if (updateOnly && messages.length > 0) {
         // Update only the last message's text node (avoid restarting animations)
@@ -439,7 +507,11 @@ Would you like me to turn this into a suitability checklist for remote follow-up
         if (lastWrap) {
           const lastMsgEl = lastWrap.querySelector('.content');
           if (lastMsgEl) {
-            lastMsgEl.textContent = lastMsg.displayContent || lastMsg.content;
+            if (lastMsg.role === 'bot') {
+              lastMsgEl.innerHTML = formatBotMessage(lastMsg.displayContent || lastMsg.content);
+            } else {
+              lastMsgEl.textContent = lastMsg.displayContent || lastMsg.content;
+            }
           }
 
           scrollToBottom();
@@ -451,12 +523,14 @@ Would you like me to turn this into a suitability checklist for remote follow-up
         .map((msg, i) => {
           const isBot = msg.role === 'bot';
           const showCursor = msg.isTyping;
-          const safeText = escapeHTML(msg.displayContent || msg.content);
+          const content = isBot
+            ? formatBotMessage(msg.displayContent || msg.content)
+            : escapeHTML(msg.displayContent || msg.content);
           return `
             <div class="message ${msg.role} ${msg.noAnimate || msg.hasRendered ? 'no-animate' : ''}" id="msg-${i}" data-msg-index="${i}">
               ${isBot ? `<div class="avatar">${botIconSVG}</div>` : ''}
               <div class="bubble">
-                <span class="content">${safeText}</span>
+                <span class="content">${content}</span>
               </div>
             </div>
           `;
@@ -603,7 +677,7 @@ Would you like me to turn this into a suitability checklist for remote follow-up
         e.preventDefault();
         if (inputEl.value.trim() && !isTyping) {
           const match = PRESET_PROMPTS.find(p => p.prompt.toLowerCase() === inputEl.value.toLowerCase());
-          const response = match ? match.response : "Because I am just a realistic simulation of a GenAI, I can only answer the preset prompts you see on screen. If you were speaking to a full GenAI chatbot, it would answer your specific question here";
+          const response = match ? match.response : "**Note — preset prompts only**  \nBecause I am just a realistic simulation of a GenAI, I can only answer the preset prompts you see on screen. If you were speaking to a full GenAI chatbot, it would answer your specific question here.";
           sendMessage(inputEl.value, response, false);
         }
       }
@@ -612,7 +686,7 @@ Would you like me to turn this into a suitability checklist for remote follow-up
     sendBtn.addEventListener('click', () => {
       if (inputEl.value.trim() && !isTyping) {
         const match = PRESET_PROMPTS.find(p => p.prompt.toLowerCase() === inputEl.value.toLowerCase());
-        const response = match ? match.response : "Because I am just a realistic simulation of a GenAI, I can only answer the preset prompts you see on screen. If you were speaking to a full GenAI chatbot, it would answer your specific question here";
+        const response = match ? match.response : "**Note — preset prompts only**  \nBecause I am just a realistic simulation of a GenAI, I can only answer the preset prompts you see on screen. If you were speaking to a full GenAI chatbot, it would answer your specific question here.";
         sendMessage(inputEl.value, response, false);
       }
     });
