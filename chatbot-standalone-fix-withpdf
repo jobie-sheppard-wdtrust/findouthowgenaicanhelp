@@ -462,7 +462,9 @@ If you like, I can make this more formal or more conversational, or I could remo
       {
         label: "What are arguments for and against this plan?",
         prompt: "I'm reviewing follow-up arrangements for a stable long-term condition patient. We're considering switching routine follow-ups from face-to-face to phone or video. Can you outline some practical arguments for and against this? Keep your answer concise.",
-        response: `**Pros vs. cons — remote follow-ups**
+        response: `Sure — here are some points to consider. I've kept the focus practical:
+
+**Pros vs. cons — remote follow-ups**
 
 **Possible advantages**  
 • Easier access for patients who work, travel, or have mobility issues  
@@ -476,8 +478,8 @@ If you like, I can make this more formal or more conversational, or I could remo
 • Harder to pick up subtle deterioration or safeguarding concerns  
 • Continuity can suffer if different clinicians handle calls
 
-**Want this tailored?**  
-I can turn this into a suitability checklist or adapt it to a specific condition.`
+**Adjustments**  
+If you like, I could turn this into a suitability checklist or adapt it to a specific condition?`
       }
     ];
 
