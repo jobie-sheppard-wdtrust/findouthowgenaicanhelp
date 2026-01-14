@@ -421,7 +421,10 @@
       {
         label: "Research NICE recommendations",
         prompt: "Research the current NICE recommendations for initial management of Sepsis in adults",
-        response: `Sure thing! Here are some NICE recommendations based on this webpage (https://www.example-source.com), **Summary — NICE initial management of suspected sepsis (adults)**  
+        response: `Sure thing! I found several NICE recommendations based on this webpage (https://www.example-source.com).
+        
+**Summary — NICE initial management of suspected sepsis (adults)** 
+
 Rapid recognition, prompt assessment, and early escalation are emphasized to reduce time-to-treatment and deterioration.
 
 **Key steps**  
