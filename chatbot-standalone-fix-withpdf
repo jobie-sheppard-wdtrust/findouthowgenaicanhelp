@@ -113,6 +113,14 @@
       justify-content: center;
     }
 
+    .message.bot .avatar {
+      background: #90278e;
+    }
+
+    .typing-indicator .avatar {
+      background: #90278e;
+    }
+
     .avatar svg {
       width: 1.25rem;
       height: 1.25rem;
