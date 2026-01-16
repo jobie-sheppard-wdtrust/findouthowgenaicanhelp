@@ -361,10 +361,11 @@
       position: absolute;
       width: min(22rem, 90vw);
       background: var(--card);
-      border: 2px solid rgba(249, 115, 22, 0.75);
+      border: 3px solid rgba(249, 115, 22, 0.75);
       border-radius: 1rem;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
       z-index: 20;
+      overflow: hidden;
     }
 
     .risk-popup.hidden {
@@ -375,6 +376,8 @@
       flex-direction: row;
       align-items: center;
       justify-content: space-between;
+      border-top-left-radius: 0.875rem;
+      border-top-right-radius: 0.875rem;
     }
 
     .risk-popup .window-titlebar h2 {
@@ -399,6 +402,9 @@
 
     .risk-popup .window-body {
       color: var(--foreground);
+      border-bottom-left-radius: 0.875rem;
+      border-bottom-right-radius: 0.875rem;
+      overflow: hidden;
     }
 
     .risk-popup .risk-title {
@@ -658,13 +664,17 @@
     const activeHighlights = new Set();
     let isRiskTyping = false;
     let currentRiskTarget = null;
+    let currentRiskKey = null;
+    const seenRiskKeys = new Set();
 
     const RISK_COPY = {
       'p1-confirmation': {
+        cacheKey: 'p1-hallucination',
         title: '<strong>Hallucination</strong> and Bias',
         text: "Notice that although the response sounds professional and confident, it contains inaccurate details. Sepsis care should not wait for “confirmation”. NICE guidance emphasises acting on clinical suspicion. Saying that action depends on confirmation first, risks dangerous delays in patient care. Also, NEWS2 is not a sepsis identification tool, it helps stratify risk level and detect deterioration. Remember that GenAI is always making predictions about the most helpful answer, so it might make up plausible-sounding details if it cannot find information, or mix up related concepts."
       },
       'p1-news2': {
+        cacheKey: 'p1-hallucination',
         title: '<strong>Hallucination</strong> and Bias',
         text: "Notice that although the response sounds professional and confident, it contains inaccurate details. Sepsis care should not wait for “confirmation”. NICE guidance emphasises acting on clinical suspicion. Saying that action depends on confirmation first, risks dangerous delays in patient care. Also, NEWS2 is not a sepsis identification tool, it helps stratify risk level and detect deterioration. Remember that GenAI is always making predictions about the most helpful answer, so it might make up plausible-sounding details if it cannot find information, or mix up related concepts."
       },
@@ -687,7 +697,7 @@
       renderMessages();
     }
 
-    function getTypingDuration(text, wordsPerSecond = 7) {
+    function getTypingDuration(text, wordsPerSecond = 8.4) {
       const words = String(text).trim().split(/\s+/).filter(Boolean).length;
       if (words === 0) return 0;
       return Math.max((words / wordsPerSecond) * 1000, 300);
@@ -708,7 +718,7 @@
         element.textContent = chars.slice(0, index).join('');
         if (index < chars.length) {
           const lastChar = chars[index - 1];
-          const pause = /[.!?]/.test(lastChar) ? 1000 : 0;
+          const pause = /[.!?]/.test(lastChar) ? 700 : 0;
           setTimeout(nextChar, interval + pause);
         } else if (callback) {
           callback();
@@ -717,7 +727,7 @@
       nextChar();
     }
 
-    function typeRiskContent(titleHTML, bodyText, onComplete) {
+    function typeRiskContent(titleHTML, bodyText, onComplete, bodyDelayMs = 0) {
       riskTitle.innerHTML = '';
       riskText.textContent = '';
       const temp = document.createElement('div');
@@ -727,9 +737,11 @@
       const bodyDuration = getTypingDuration(bodyText);
       typeCharacters(riskTitle, headingText, headingDuration, () => {
         riskTitle.innerHTML = titleHTML;
-        typeCharacters(riskText, bodyText, bodyDuration, () => {
-          if (onComplete) onComplete();
-        });
+        setTimeout(() => {
+          typeCharacters(riskText, bodyText, bodyDuration, () => {
+            if (onComplete) onComplete();
+          });
+        }, bodyDelayMs);
       });
     }
 
@@ -751,15 +763,17 @@
       riskMinimize.disabled = !enabled;
     }
 
-    function positionRiskPopup(targetEl) {
+    function positionRiskPopup(targetEl, popupRectOverride) {
       if (!targetEl) return;
       const rect = targetEl.getBoundingClientRect();
-      const popupRect = riskPopup.getBoundingClientRect();
+      const popupRect = popupRectOverride || riskPopup.getBoundingClientRect();
       const viewportHeight = window.innerHeight;
       const viewportWidth = window.innerWidth;
       const aboveSpace = rect.top;
       const belowSpace = viewportHeight - rect.bottom;
-      const prefersBelow = belowSpace >= popupRect.height + 16 || belowSpace >= aboveSpace;
+      const canFitBelow = belowSpace >= popupRect.height + 16;
+      const canFitAbove = aboveSpace >= popupRect.height + 16;
+      const prefersBelow = canFitBelow || (!canFitAbove && belowSpace >= aboveSpace);
       const desiredTop = prefersBelow
         ? rect.bottom + 16
         : rect.top - popupRect.height - 16;
@@ -771,26 +785,45 @@
       riskPopup.style.left = `${clampedLeft + window.scrollX}px`;
     }
 
-    function showRiskPopup(targetEl, riskData) {
+    function showRiskPopup(targetEl, riskData, riskKey) {
       if (!riskData || isRiskTyping) return;
       currentRiskTarget = targetEl;
-      isRiskTyping = true;
-      setMinimizeEnabled(false);
+      const cacheKey = riskData.cacheKey || riskKey;
+      currentRiskKey = cacheKey || null;
       lockScrolling();
       riskPopup.classList.remove('hidden');
       riskBody.style.display = '';
-      positionRiskPopup(targetEl);
-      typeRiskContent(riskData.title, riskData.text, () => {
+      riskBody.style.visibility = 'hidden';
+      riskTitle.innerHTML = riskData.title;
+      riskText.textContent = riskData.text;
+      const measuredPopupRect = riskPopup.getBoundingClientRect();
+      positionRiskPopup(targetEl, measuredPopupRect);
+      if (cacheKey && seenRiskKeys.has(cacheKey)) {
+        riskBody.style.visibility = '';
         isRiskTyping = false;
         setMinimizeEnabled(true);
         positionRiskPopup(targetEl);
-      });
+        return;
+      }
+      isRiskTyping = true;
+      setMinimizeEnabled(false);
+      riskTitle.innerHTML = '';
+      riskText.textContent = '';
+      riskBody.style.visibility = '';
+      const bodyDelayMs = cacheKey && !seenRiskKeys.has(cacheKey) ? 1500 : 0;
+      typeRiskContent(riskData.title, riskData.text, () => {
+        isRiskTyping = false;
+        if (cacheKey) seenRiskKeys.add(cacheKey);
+        setMinimizeEnabled(true);
+        positionRiskPopup(targetEl);
+      }, bodyDelayMs);
     }
 
     function dismissRiskPopup() {
       riskPopup.classList.add('hidden');
       isRiskTyping = false;
       currentRiskTarget = null;
+      currentRiskKey = null;
       riskTitle.innerHTML = '';
       riskText.textContent = '';
       setMinimizeEnabled(true);
@@ -888,7 +921,13 @@
       if (isRiskTyping) return;
       const id = target.getAttribute('data-highlight');
       const riskData = RISK_COPY[id];
-      showRiskPopup(target, riskData);
+      const cacheKey = riskData?.cacheKey || id;
+      const isPopupOpen = !riskPopup.classList.contains('hidden');
+      if (isPopupOpen && currentRiskKey && currentRiskKey === cacheKey) {
+        dismissRiskPopup();
+        return;
+      }
+      showRiskPopup(target, riskData, id);
     });
 
     riskMinimize.addEventListener('click', () => {
