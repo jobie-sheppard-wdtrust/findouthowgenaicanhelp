@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GenAI Chatbot</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --background: hsl(220 20% 97%);
+      --foreground: hsl(220 20% 10%);
+      --card: hsl(0 0% 100%);
+      --border: hsl(220 15% 90%);
+      --primary: hsl(221 83% 53%);
+      --primary-foreground: hsl(0 0% 100%);
+      --muted-foreground: hsl(220 10% 50%);
+      --chat-bot: hsl(220 15% 95%);
+      --chat-bot-foreground: hsl(220 20% 15%);
+      --chat-user: hsl(221 83% 53%);
+      --chat-user-foreground: hsl(0 0% 100%);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: var(--background);
+      color: var(--foreground);
+      line-height: 1.5;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    main {
+      flex: 1;
+      display: flex;
+      padding: 1.5rem 1rem;
+    }
+
+    .chat-column {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+    }
+
+    .window {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      overflow: hidden;
+    }
+
+    .window-titlebar {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.5);
+      backdrop-filter: blur(8px);
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .window-titlebar h1 {
+      font-size: 1.125rem;
+      font-weight: 600;
+    }
+
+    .window-titlebar p {
+      font-size: 0.875rem;
+      color: var(--muted-foreground);
+    }
+
+    .window-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1rem;
+    }
+
+    .messages {
+      width: 100%;
+      max-width: 48rem;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .message {
+      width: 100%;
+      min-width: 0;
+      display: flex;
+      gap: 0.75rem;
+      opacity: 0;
+      transform: translateY(10px);
+      animation: messageIn 0.5s ease-out forwards;
+    }
+
+    .message.no-animate {
+      opacity: 1;
+      transform: translateY(0);
+      animation: none;
+    }
+
+    .message.user {
+      justify-content: flex-end;
+    }
+
+    .message.bot {
+      justify-content: flex-start;
+    }
+
+    .message-content {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      align-items: flex-start;
+    }
+
+    .message.user .message-content {
+      align-items: flex-end;
+    }
+
+    .avatar {
+      flex-shrink: 0;
+      width: 2.25rem;
+      height: 2.25rem;
+      border-radius: 50%;
+      background: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .message.bot .avatar {
+      background: #90278e;
+    }
+
+    .avatar.bot {
+      background: #90278e;
+    }
+
+    .avatar svg {
+      width: 1.25rem;
+      height: 1.25rem;
+      fill: none;
+      stroke: var(--primary-foreground);
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .bubble {
+      flex: 0 1 auto;
+      max-width: 32rem;
+      min-width: 0;
+      padding: 0.75rem 1rem;
+      border-radius: 1rem;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      font-size: 0.9375rem;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      word-break: break-word;
+      overflow-wrap: break-word;
+    }
+
+    .message.bot .bubble {
+      background: var(--chat-bot);
+      color: var(--chat-bot-foreground);
+      border-top-left-radius: 0.375rem;
+    }
+
+    .message.user .bubble {
+      background: var(--chat-user);
+      color: var(--chat-user-foreground);
+      border-top-right-radius: 0.375rem;
+    }
+
+    .highlight {
+      background: rgba(248, 113, 113, 0.2);
+      cursor: pointer;
+    }
+
+    .pulse {
+      animation: fadeIn 2000ms ease-out infinite alternate;
+    }
+
+    .typing-indicator {
+      display: flex;
+      gap: 0.75rem;
+      align-items: flex-start;
+    }
+
+    .typing-dots {
+      display: flex;
+      gap: 0.25rem;
+      padding: 1rem;
+      background: var(--chat-bot);
+      border-radius: 1rem;
+      border-top-left-radius: 0.375rem;
+    }
+
+    .typing-dots span {
+      width: 0.5rem;
+      height: 0.5rem;
+      background: var(--muted-foreground);
+      border-radius: 50%;
+      animation: bounce 2000ms ease-in-out infinite;
+    }
+
+    .chat-footer {
+      flex-shrink: 0;
+      padding: 0.5rem 1rem 1.5rem;
+      background: linear-gradient(to top, var(--background), var(--background), transparent);
+    }
+
+    .chat-footer .inner {
+      max-width: 48rem;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .prompts {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      justify-content: center;
+      animation: fadeIn 0.5s ease-out;
+    }
+
+    .prompt-btn {
+      padding: 0.5rem 1rem;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 9999px;
+      font-size: 0.875rem;
+      color: var(--foreground);
+      cursor: pointer;
+      transition: all 200ms;
+    }
+
+    .prompt-btn:hover {
+      background: var(--primary);
+      color: var(--primary-foreground);
+      border-color: var(--primary);
+    }
+
+    .prompt-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .input-wrapper {
+      position: relative;
+      background: var(--card);
+      border-radius: 1rem;
+      border: 1px solid var(--border);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+
+    textarea {
+      width: 100%;
+      resize: none;
+      background: transparent;
+      border: none;
+      padding: 1rem 1.25rem;
+      padding-right: 3.5rem;
+      font-size: 0.9375rem;
+      font-family: inherit;
+      color: var(--foreground);
+      outline: none;
+      min-height: 56px;
+      max-height: 200px;
+    }
+
+    textarea::placeholder {
+      color: var(--muted-foreground);
+    }
+
+    textarea.text-fade-in {
+      animation: textFadeIn 400ms ease-out;
+    }
+
+    .send-btn {
+      position: absolute;
+      right: 0.75rem;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 2.5rem;
+      height: 2.5rem;
+      border-radius: 0.75rem;
+      background: var(--primary);
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 200ms;
+    }
+
+    .send-btn:hover {
+      opacity: 0.9;
+    }
+
+    .send-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .send-btn.bulge {
+      animation: buttonBulge 300ms ease-out;
+    }
+
+    .send-btn svg {
+      width: 1.25rem;
+      height: 1.25rem;
+      stroke: var(--primary-foreground);
+      stroke-width: 2;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .attachment-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 0.75rem;
+      border-radius: 0.75rem;
+      border: 1px solid rgba(59, 130, 246, 0.4);
+      background: rgba(59, 130, 246, 0.12);
+      box-shadow: 0 6px 16px rgba(37, 99, 235, 0.16);
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: var(--foreground);
+    }
+
+    .attachment-chip svg {
+      width: 1rem;
+      height: 1rem;
+      stroke: var(--primary);
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .risk-popup {
+      position: absolute;
+      width: min(22rem, 90vw);
+      background: var(--card);
+      border: 2px solid rgba(249, 115, 22, 0.75);
+      border-radius: 1rem;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      z-index: 20;
+    }
+
+    .risk-popup.hidden {
+      display: none;
+    }
+
+    .risk-popup .window-titlebar {
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .risk-popup .window-titlebar h2 {
+      font-size: 0.9375rem;
+      font-weight: 600;
+    }
+
+    .minimize-btn {
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--foreground);
+      width: 2rem;
+      height: 2rem;
+      border-radius: 0.75rem;
+      cursor: pointer;
+      transition: all 200ms;
+    }
+
+    .minimize-btn:hover {
+      background: var(--background);
+    }
+
+    .risk-popup .window-body {
+      color: var(--foreground);
+    }
+
+    .risk-popup .risk-title {
+      font-size: 0.9375rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+
+    .risk-popup .risk-text {
+      font-size: 0.875rem;
+      color: var(--foreground);
+    }
+
+    @keyframes messageIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes bounce {
+      0%, 80%, 100% { transform: scale(0); }
+      40% { transform: scale(1); }
+    }
+
+    @keyframes textFadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes buttonBulge {
+      0% { transform: translateY(-50%) scale(1); }
+      50% { transform: translateY(-50%) scale(1.15); }
+      100% { transform: translateY(-50%) scale(1); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <main>
+      <section class="chat-column">
+        <div class="window chat-window">
+          <div class="window-titlebar">
+            <h1>GenAI Chatbot</h1>
+            <p>See the risks when GenAI helps with these tasks</p>
+          </div>
+          <div class="window-body" id="chatScroll">
+            <div class="messages" id="messages"></div>
+          </div>
+          <div class="chat-footer">
+            <div class="inner">
+              <div class="prompts" id="prompts"></div>
+              <div class="input-wrapper">
+                <textarea id="input" placeholder="Type your message..." rows="1"></textarea>
+                <button class="send-btn" id="sendBtn" disabled>
+                  <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+  <div class="risk-popup hidden" id="riskPopup">
+    <div class="window-titlebar">
+      <h2>Spotting hidden risks</h2>
+      <button class="minimize-btn" id="riskMinimize" aria-label="Minimize">–</button>
+    </div>
+    <div class="window-body" id="riskBody">
+      <div class="risk-title" id="riskTitle"></div>
+      <div class="risk-text" id="riskText"></div>
+    </div>
+  </div>
+
+  <script>
+    const PRESET_PROMPTS = [
+      {
+        id: 'prompt1',
+        label: "Research NICE recommendations",
+        prompt: "Research the current NICE recommendations for initial management of Sepsis in adults",
+        responseSegments: [
+          { text: "Sure thing! I found several NICE recommendations based on this webpage (https://www.example-source.com).\n\nSummary — NICE initial management of suspected sepsis (adults)\n\nRapid recognition and prompt assessment are emphasized. " },
+          { text: "Initial management should be guided by confirmation of sepsis following further assessment and investigations.", highlight: true, highlightId: 'p1-confirmation' },
+          { text: "\n\nKey steps\n\n" },
+          { text: "Use of a sepsis identification tool, such as NEWS2 thresholds, to diagnose patients", highlight: true, highlightId: 'p1-news2' },
+          { text: "\n\nUrgent clinical review and early recording of full vital signs\n\nBlood tests, including lactate when indicated\n\nPrompt antibiotics and IV fluids where sepsis is suspected\n\nOngoing monitoring and timely escalation to senior or critical care services\n\n\n" },
+          { text: "Next step\nWould you like me to suggest how this guidance applies to a specific patient or outline the most appropriate next clinical step for them?", highlight: true, highlightId: 'p1-next-step' }
+        ]
+      },
+      {
+        id: 'prompt2',
+        label: "Draft a referral letter",
+        prompt: "“Can you draft a referral letter for a routine NHS cardiology outpatient referral, suitable for submission via eRS? Here are their medical details: Patient name: H. Khan \nAge: 58 Address: 14 Willow Crescent, Birmingham, B27 6RT History: hypertension and hyperlipidaemia Current medication: amlodipine 5 mg OD, atorvastatin 20 mg OD No known drug allergies. Recent ECG in primary care was normal”",
+        responseSegments: [
+          { text: "Okay, I'll write a referral letter for this patient, in an eRS-compatible format.\n" },
+          { text: "Patient details \nName: H. Khan \nAge: 58 \nAddress: 14 Willow Crescent, Birmingham, B27 6RT \n", highlight: true, highlightId: 'p2-details' },
+          { text: "Reason for referral\nRoutine cardiology assessment for cardiovascular risk review in the context of existing hypertension and hyperlipidaemia. \nRelevant background \nKnown history of hypertension and hyperlipidaemia. No documented history of ischaemic heart disease.\nCurrent management \nAmlodipine 5 mg once daily. Atorvastatin 20 mg once daily. \nAllergies \nNo known drug allergies. \nRelevant investigations\nRecent ECG performed in primary care showed sinus rhythm with no acute abnormalities. \nAdditional information \nThis is a routine referral for outpatient cardiology review, submitted via eRS.\nKind regards \n[Referring clinician name] [Practice name] [Contact details]"
+          }
+        ]
+      },
+      {
+        id: 'prompt3',
+        label: "Draft a response to this complaint",
+        prompt: "Help me respond to this very sensitive complaint from a bereaved patient, regarding end-of-life care decisions. The response should acknowledge mistakes in communication, and apologise in a way that is polite and genuine. I have attached the complaint",
+        attachment: "Patel email complaint.pdf",
+        responseSegments: [
+          { text: "Of course — I will draft a calm, compassionate response that acknowledges the communication issues without being defensive.\n\nDraft response — compassionate and accountable\n\nDear Mrs Patel,\n\nThank you for taking the time to write to us and for sharing your concerns following your husband's care. I am very sorry for your loss — I recognise how difficult it may have been to raise these issues.\n\nI would like to sincerely apologise for the distress caused by how end-of-life care decisions were communicated to you and your family. On reflection, we did not explain the situation as clearly or as sensitively as we should have, and I am sorry for the additional upset this caused at an already painful time.\n\nWhat we are doing next\nYour feedback highlights the importance of clear, compassionate communication, particularly when discussing complex and emotionally challenging decisions. We are reviewing this aspect of our practice to ensure families feel better informed and supported in the future.\n\nThank you again for bringing this to our attention. " },
+          { text: "If you would like to discuss this further — or if there is anything else we can do to support your family's grieving during this Christmas period — please let us know.", highlight: true, highlightId: 'p3-christmas' },
+          { text: "\n\nWith sincere condolences,\nYour Name\n\nRefinements\nIf you like, I can make this more formal or more conversational, or I could remove anything that sounds like an admission of liability?" }
+        ]
+      }
+    ];
+
+    const messages = [];
+    const usedPrompts = new Set();
+    let isTyping = false;
+
+    const messagesEl = document.getElementById('messages');
+    const promptsEl = document.getElementById('prompts');
+    const inputEl = document.getElementById('input');
+    const sendBtn = document.getElementById('sendBtn');
+    const chatScroll = document.getElementById('chatScroll');
+    const riskPopup = document.getElementById('riskPopup');
+    const riskBody = document.getElementById('riskBody');
+    const riskTitle = document.getElementById('riskTitle');
+    const riskText = document.getElementById('riskText');
+    const riskMinimize = document.getElementById('riskMinimize');
+
+    const botIconSVG = `<svg viewBox="0 0 24 24"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>`;
+
+    const attachmentIcon = `<svg viewBox="0 0 24 24"><path d="M21.44 11.05l-8.49 8.49a5 5 0 0 1-7.07-7.07l8.49-8.49a3.5 3.5 0 0 1 4.95 4.95l-8.49 8.49a2 2 0 0 1-2.83-2.83l7.78-7.78"/></svg>`;
+
+    function scrollToBottom() {
+      const scroller = document.getElementById('chatScroll');
+      if (!scroller) return;
+      scroller.scrollTop = scroller.scrollHeight;
+    }
+
+    function escapeHTML(str = '') {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function getTotalLength(segments) {
+      return segments.reduce((total, seg) => total + seg.text.length, 0);
+    }
+
+    function buildSegmentHTML(segments, count) {
+      let remaining = count;
+      return segments.map((seg) => {
+        const take = Math.max(0, Math.min(seg.text.length, remaining));
+        remaining -= take;
+        const safeText = escapeHTML(seg.text.slice(0, take));
+        if (seg.highlight) {
+          const classes = [];
+          if (activeHighlights.has(seg.highlightId)) classes.push('highlight');
+          const classAttr = classes.length ? ` class="${classes.join(' ')}"` : '';
+          return `<span${classAttr} data-highlight="${seg.highlightId}">${safeText}</span>`;
+        }
+        return safeText;
+      }).join('');
+    }
+
+    function renderMessages() {
+      messagesEl.innerHTML = messages
+        .map((msg, i) => {
+          const isBot = msg.role === 'bot';
+          const bubbleContent = msg.segments
+            ? buildSegmentHTML(msg.segments, msg.displayCount)
+            : escapeHTML(msg.content || '');
+          const attachment = msg.attachment
+            ? `<div class="attachment-chip">${attachmentIcon}${escapeHTML(msg.attachment)}</div>`
+            : '';
+          return `
+            <div class="message ${msg.role} ${msg.hasAnimated ? 'no-animate' : ''}" id="msg-${i}">
+              ${isBot ? `<div class="avatar">${botIconSVG}</div>` : ''}
+              <div class="message-content">
+                ${attachment}
+                <div class="bubble">${bubbleContent}</div>
+              </div>
+            </div>
+          `;
+        })
+        .join('');
+
+      if (isTyping) {
+        messagesEl.innerHTML += `
+          <div class="typing-indicator">
+            <div class="avatar bot">${botIconSVG}</div>
+            <div class="typing-dots">
+              <span></span><span></span><span></span>
+            </div>
+          </div>
+        `;
+      }
+
+      scrollToBottom();
+      messages.forEach((msg) => {
+        msg.hasAnimated = true;
+      });
+    }
+
+    function renderPrompts() {
+      const available = PRESET_PROMPTS.filter((_, i) => !usedPrompts.has(i));
+      if (available.length === 0 || isTyping) {
+        promptsEl.style.display = 'none';
+        return;
+      }
+      promptsEl.style.display = 'flex';
+      promptsEl.innerHTML = PRESET_PROMPTS.map((p, i) => {
+        if (usedPrompts.has(i)) return '';
+        return `<button class="prompt-btn" data-index="${i}" ${isTyping ? 'disabled' : ''}>${p.label}</button>`;
+      }).join('');
+    }
+
+    function addMessage({ role, content, segments, attachment, skipTyping, onComplete }) {
+      const msg = {
+        role,
+        content,
+        segments,
+        attachment,
+        displayCount: skipTyping && segments ? getTotalLength(segments) : 0,
+        hasAnimated: !!skipTyping
+      };
+      messages.push(msg);
+
+      if (skipTyping) {
+        msg.displayCount = segments ? getTotalLength(segments) : 0;
+        renderMessages();
+        if (onComplete) onComplete();
+        return;
+      }
+
+      msg.displayCount = segments ? getTotalLength(segments) : 0;
+      renderMessages();
+      if (onComplete) onComplete();
+    }
+
+    function updateSendBtn() {
+      sendBtn.disabled = !inputEl.value.trim() || isTyping;
+    }
+
+    const activeHighlights = new Set();
+    let isRiskTyping = false;
+    let currentRiskTarget = null;
+
+    const RISK_COPY = {
+      'p1-confirmation': {
+        title: '<strong>Hallucination</strong> and Bias',
+        text: "Notice that although the response sounds professional and confident, it contains inaccurate details. Sepsis care should not wait for “confirmation”. NICE guidance emphasises acting on clinical suspicion. Saying that action depends on confirmation first, risks dangerous delays in patient care. Also, NEWS2 is not a sepsis identification tool, it helps stratify risk level and detect deterioration. Remember that GenAI is always making predictions about the most helpful answer, so it might make up plausible-sounding details if it cannot find information, or mix up related concepts."
+      },
+      'p1-news2': {
+        title: '<strong>Hallucination</strong> and Bias',
+        text: "Notice that although the response sounds professional and confident, it contains inaccurate details. Sepsis care should not wait for “confirmation”. NICE guidance emphasises acting on clinical suspicion. Saying that action depends on confirmation first, risks dangerous delays in patient care. Also, NEWS2 is not a sepsis identification tool, it helps stratify risk level and detect deterioration. Remember that GenAI is always making predictions about the most helpful answer, so it might make up plausible-sounding details if it cannot find information, or mix up related concepts."
+      },
+      'p1-next-step': {
+        title: 'Inappropriate Volunteering',
+        text: 'These tasks would be inappropriate for GenAI, because they both involve some level of clinical decision-making support. Using GenAI for this requires complying with additional laws and regulations (many organisations do not allow it at all), but GenAI did not warn you about this! You need to stop and think about when it is appropriate to use GenAI for help. We will cover this more later in the module.'
+      },
+      'p2-details': {
+        title: 'GDPR – protecting personal data heading',
+        text: "Remember how GenAI works? We cannot control what AI companies do with data that you've entered. Since medical data is personal data, this means it needs to be completely anonymised before you send it to the chatbot. This means redacting all personal identifying information: exact age, address, name, initials, all of these would allow a third party to link the patient to the medical details you are entering, violating GDPR. So all of these details need to be redacted before submitting to GenAI. If you unsure about this, consult your IG lead or DPO."
+      },
+      'p3-christmas': {
+        title: 'Hallucination and <strong>Bias</strong>',
+        text: 'Notice that although the response sounds professional and confident, it contains subtle bias. Mrs Patel might not celebrate Christmas, but remember that GenAI might reproduce bias from its training data in the answer it gives. Although this is a small example, it could have larger consequences. Consider if GenAI supported a clinical decision about a skin-condition using reasoning which applies to people of white ethnicity, but the patient was of African ethnicity?'
+      }
+    };
+
+    function applyHighlights(ids) {
+      ids.forEach((id) => activeHighlights.add(id));
+      renderMessages();
+    }
+
+    function getTypingDuration(text, wordsPerSecond = 7) {
+      const words = String(text).trim().split(/\s+/).filter(Boolean).length;
+      if (words === 0) return 0;
+      return Math.max((words / wordsPerSecond) * 1000, 300);
+    }
+
+    function typeCharacters(element, text, durationMs, callback) {
+      const chars = Array.from(String(text));
+      if (chars.length === 0) {
+        element.textContent = '';
+        if (callback) callback();
+        return;
+      }
+      const interval = durationMs / chars.length;
+      let index = 0;
+
+      function nextChar() {
+        index += 1;
+        element.textContent = chars.slice(0, index).join('');
+        if (index < chars.length) {
+          const lastChar = chars[index - 1];
+          const pause = /[.!?]/.test(lastChar) ? 1000 : 0;
+          setTimeout(nextChar, interval + pause);
+        } else if (callback) {
+          callback();
+        }
+      }
+      nextChar();
+    }
+
+    function typeRiskContent(titleHTML, bodyText, onComplete) {
+      riskTitle.innerHTML = '';
+      riskText.textContent = '';
+      const temp = document.createElement('div');
+      temp.innerHTML = titleHTML;
+      const headingText = temp.textContent || '';
+      const headingDuration = getTypingDuration(headingText);
+      const bodyDuration = getTypingDuration(bodyText);
+      typeCharacters(riskTitle, headingText, headingDuration, () => {
+        riskTitle.innerHTML = titleHTML;
+        typeCharacters(riskText, bodyText, bodyDuration, () => {
+          if (onComplete) onComplete();
+        });
+      });
+    }
+
+    function lockScrolling() {
+      document.body.style.overflow = 'hidden';
+      if (chatScroll) {
+        chatScroll.style.overflow = 'hidden';
+      }
+    }
+
+    function unlockScrolling() {
+      document.body.style.overflow = '';
+      if (chatScroll) {
+        chatScroll.style.overflow = '';
+      }
+    }
+
+    function setMinimizeEnabled(enabled) {
+      riskMinimize.disabled = !enabled;
+    }
+
+    function positionRiskPopup(targetEl) {
+      if (!targetEl) return;
+      const rect = targetEl.getBoundingClientRect();
+      const popupRect = riskPopup.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+      const viewportWidth = window.innerWidth;
+      const aboveSpace = rect.top;
+      const belowSpace = viewportHeight - rect.bottom;
+      const prefersBelow = belowSpace >= popupRect.height + 16 || belowSpace >= aboveSpace;
+      const desiredTop = prefersBelow
+        ? rect.bottom + 16
+        : rect.top - popupRect.height - 16;
+      const maxTop = Math.max(16, viewportHeight - popupRect.height - 16);
+      const clampedTop = Math.min(Math.max(desiredTop, 16), maxTop);
+      const maxLeft = Math.max(16, viewportWidth - popupRect.width - 16);
+      const clampedLeft = Math.min(Math.max(rect.left, 16), maxLeft);
+      riskPopup.style.top = `${clampedTop + window.scrollY}px`;
+      riskPopup.style.left = `${clampedLeft + window.scrollX}px`;
+    }
+
+    function showRiskPopup(targetEl, riskData) {
+      if (!riskData || isRiskTyping) return;
+      currentRiskTarget = targetEl;
+      isRiskTyping = true;
+      setMinimizeEnabled(false);
+      lockScrolling();
+      riskPopup.classList.remove('hidden');
+      riskBody.style.display = '';
+      positionRiskPopup(targetEl);
+      typeRiskContent(riskData.title, riskData.text, () => {
+        isRiskTyping = false;
+        setMinimizeEnabled(true);
+        positionRiskPopup(targetEl);
+      });
+    }
+
+    function dismissRiskPopup() {
+      riskPopup.classList.add('hidden');
+      isRiskTyping = false;
+      currentRiskTarget = null;
+      riskTitle.innerHTML = '';
+      riskText.textContent = '';
+      setMinimizeEnabled(true);
+      unlockScrolling();
+    }
+
+    function handlePromptHighlights(promptId) {
+      if (promptId === 'prompt1') {
+        applyHighlights(['p1-confirmation', 'p1-news2', 'p1-next-step']);
+      }
+
+      if (promptId === 'prompt2') {
+        applyHighlights(['p2-details']);
+      }
+
+      if (promptId === 'prompt3') {
+        applyHighlights(['p3-christmas']);
+      }
+    }
+
+    function sendPreset(preset) {
+      addMessage({
+        role: 'user',
+        segments: [{ text: preset.prompt }],
+        attachment: preset.attachment,
+        skipTyping: false,
+        onComplete: () => {
+          isTyping = true;
+          renderPrompts();
+          renderMessages();
+
+          setTimeout(() => {
+            isTyping = false;
+            addMessage({
+              role: 'bot',
+              segments: preset.responseSegments,
+              skipTyping: false,
+              onComplete: () => handlePromptHighlights(preset.id)
+            });
+            renderPrompts();
+          }, 2000);
+        }
+      });
+      inputEl.value = '';
+      inputEl.style.height = 'auto';
+      updateSendBtn();
+    }
+
+    function handlePresetClick(index) {
+      const preset = PRESET_PROMPTS[index];
+      usedPrompts.add(index);
+      renderPrompts();
+
+      inputEl.value = preset.prompt;
+      inputEl.classList.add('text-fade-in');
+      inputEl.style.height = 'auto';
+      inputEl.style.height = Math.min(inputEl.scrollHeight, 200) + 'px';
+      updateSendBtn();
+
+      setTimeout(() => {
+        inputEl.classList.remove('text-fade-in');
+        sendBtn.classList.add('bulge');
+
+        setTimeout(() => {
+          sendBtn.classList.remove('bulge');
+          sendPreset(preset);
+        }, 300);
+      }, 1400);
+    }
+
+    inputEl.addEventListener('input', () => {
+      inputEl.style.height = 'auto';
+      inputEl.style.height = Math.min(inputEl.scrollHeight, 200) + 'px';
+      updateSendBtn();
+    });
+
+    sendBtn.addEventListener('click', () => {
+      if (inputEl.value.trim() && !isTyping) {
+        addMessage({ role: 'user', segments: [{ text: inputEl.value.trim() }], skipTyping: false });
+        inputEl.value = '';
+        updateSendBtn();
+      }
+    });
+
+    promptsEl.addEventListener('click', (e) => {
+      if (e.target.classList.contains('prompt-btn')) {
+        const index = parseInt(e.target.dataset.index, 10);
+        handlePresetClick(index);
+      }
+    });
+
+    messagesEl.addEventListener('click', (e) => {
+      const target = e.target.closest('[data-highlight]');
+      if (!target) return;
+      if (isRiskTyping) return;
+      const id = target.getAttribute('data-highlight');
+      const riskData = RISK_COPY[id];
+      showRiskPopup(target, riskData);
+    });
+
+    riskMinimize.addEventListener('click', () => {
+      if (isRiskTyping) return;
+      dismissRiskPopup();
+    });
+
+    messages.push({
+      role: 'bot',
+      segments: [{ text: 'How can I help?' }],
+      displayCount: 'How can I help?'.length,
+      hasAnimated: true
+    });
+
+    renderMessages();
+    renderPrompts();
+  </script>
+</body>
+</html>
