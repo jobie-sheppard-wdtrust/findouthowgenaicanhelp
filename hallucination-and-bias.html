@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HITL Training - Checking for Hallucinations and Bias</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --background: 220 14% 96%;
+      --foreground: 222 47% 11%;
+      --card: 0 0% 100%;
+      --card-foreground: 222 47% 11%;
+      --primary: 217 91% 60%;
+      --primary-foreground: 0 0% 100%;
+      --secondary: 220 14% 96%;
+      --muted: 220 14% 96%;
+      --muted-foreground: 220 9% 46%;
+      --border: 220 13% 91%;
+      --success: 142 71% 45%;
+      --warning: 38 92% 50%;
+      --destructive: 0 84% 60%;
+      --genai-bubble: 217 91% 97%;
+      --genai-border: 217 91% 90%;
+      --highlight-section: 217 91% 60% / 0.15;
+      --highlight-border: 217 91% 60%;
+      --overlay: 222 47% 11% / 0.6;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: hsl(var(--background));
+      color: hsl(var(--foreground));
+      margin: 0;
+      min-height: 100vh;
+    }
+
+    .tooltip-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: hsl(var(--overlay));
+      backdrop-filter: blur(4px);
+    }
+
+    .tooltip-overlay.right-aligned {
+      justify-content: flex-end;
+    }
+
+    .tooltip-overlay.right-aligned .tooltip-card {
+      margin-right: 5%;
+      max-width: 450px;
+    }
+
+    .tooltip-card {
+      background: hsl(var(--card));
+      border-radius: 0.75rem;
+      box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+      padding: 2rem;
+      max-width: 32rem;
+      margin: 1rem;
+      animation: scale-in 0.3s ease-out;
+    }
+
+    .genai-bubble {
+      border-radius: 0.75rem;
+      padding: 1.5rem;
+      background: hsl(var(--genai-bubble));
+      border: 1px solid hsl(var(--genai-border));
+    }
+
+    .email-section {
+      cursor: pointer;
+      transition: all 0.2s;
+      border-radius: 0.375rem;
+      padding: 0.5rem;
+      margin: -0.25rem -0.5rem;
+    }
+
+    .email-section:hover {
+      background: hsl(var(--highlight-section));
+    }
+
+    .email-section.highlighted {
+      background: hsl(var(--highlight-section));
+      box-shadow: inset 0 0 0 2px hsl(var(--highlight-border));
+    }
+
+    .email-section.checked {
+      opacity: 0.75;
+      background: hsl(142 71% 45% / 0.1);
+      box-shadow: inset 0 0 0 2px hsl(var(--success));
+    }
+
+    .typing-cursor {
+      display: inline-block;
+      width: 2px;
+      height: 1.25rem;
+      background: hsl(var(--foreground));
+      margin-left: 2px;
+      animation: blink 1s step-end infinite;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1.5rem;
+      border-radius: 0.5rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+    }
+
+    .btn-primary {
+      background: hsl(var(--primary));
+      color: hsl(var(--primary-foreground));
+    }
+
+    .btn-primary:hover {
+      opacity: 0.9;
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-secondary {
+      background: hsl(var(--secondary));
+      color: hsl(var(--foreground));
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: hsl(var(--muted-foreground));
+    }
+
+    .btn-ghost:disabled {
+      opacity: 0.5;
+    }
+
+    .answer-btn {
+      width: 100%;
+      text-align: left;
+      padding: 1rem;
+      border-radius: 0.5rem;
+      border: 1px solid hsl(var(--border));
+      background: hsl(var(--muted));
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 0.875rem;
+      color: hsl(var(--foreground) / 0.9);
+    }
+
+    .answer-btn:hover {
+      background: hsl(var(--muted));
+      border-color: hsl(var(--primary) / 0.5);
+    }
+
+    .tooltip-overlay.safety-overlay {
+      background: transparent;
+      backdrop-filter: none;
+    }
+
+    .safety-right-blur {
+      position: absolute;
+      inset: 0 0 0 50%;
+      background: rgba(255, 255, 255, 0.01);
+      backdrop-filter: blur(6px);
+      pointer-events: none;
+    }
+
+    .tooltip-overlay.safety-overlay .tooltip-card {
+      position: relative;
+      z-index: 1;
+    }
+
+    @keyframes scale-in {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+
+    @keyframes fade-in {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .fade-in {
+      animation: fade-in 0.3s ease-out;
+    }
+
+    .hidden { display: none !important; }
+    .tooltip-overlay.hidden { pointer-events: none; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <!-- Header -->
+    <header style="height: 3.5rem; border-bottom: 1px solid hsl(var(--border)); background: hsl(var(--card)); display: flex; align-items: center; padding: 0 1.5rem; gap: 0.75rem;">
+      <button id="helpBtn" style="width: 2rem; height: 2rem; border-radius: 50%; background: hsl(var(--primary) / 0.1); display: flex; align-items: center; justify-content: center; border: none; cursor: pointer;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--primary))" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+          <path d="M12 17h.01"/>
+        </svg>
+      </button>
+      <h1 style="font-weight: 600; color: hsl(var(--foreground));">Checking for hallucinations and bias, and spotting dangerous suggestions</h1>
+    </header>
+
+    <!-- Main Content -->
+    <div style="display: flex; height: calc(100vh - 3.5rem);">
+      <!-- Left Panel - GenAI Chat -->
+      <div style="width: 50%; border-right: 1px solid hsl(var(--border)); padding: 1.5rem; overflow: auto;">
+        <div style="height: 100%; display: flex; flex-direction: column;">
+          <!-- Chat Header -->
+          <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem;">
+            <div style="width: 2.5rem; height: 2.5rem; border-radius: 50%; background: #90278e; display: flex; align-items: center; justify-content: center;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 8V4H8"/>
+                <rect width="16" height="12" x="4" y="8" rx="2"/>
+                <path d="M2 14h2"/>
+                <path d="M20 14h2"/>
+                <path d="M15 13v2"/>
+                <path d="M9 13v2"/>
+              </svg>
+            </div>
+            <div>
+              <h2 style="font-weight: 600; color: hsl(var(--foreground)); margin: 0;">AI Assistant</h2>
+              <p style="font-size: 0.875rem; color: hsl(var(--muted-foreground)); margin: 0;">Draft generated</p>
+            </div>
+          </div>
+
+          <!-- Chat Bubble -->
+          <div style="flex: 1;">
+            <div class="genai-bubble">
+              <div style="font-size: 0.875rem; line-height: 1.4; color: hsl(var(--foreground) / 0.9);">
+                <p style="margin: 0; color: hsl(var(--foreground) / 0.7); font-style: italic;">Sure, here is the referral:</p>
+                <p style="font-weight: 700; color: hsl(var(--foreground)); margin: 0;">Referral: Routine Cardiology Outpatient Appointment (eRS)</p>
+                <p style="font-weight: 600; color: hsl(var(--foreground)); margin: 0;">Patient details</p>
+                <p style="margin: 0;">Name: Huma Khan</p>
+                <p style="margin: 0;">Age: 62 (DOB: 14/09/1969)</p>
+                <p style="margin: 0;">Address: 14 Willow Crescent, Birmingham, B27 6RT</p>
+                <p style="margin: 0;">NHS Number: 943 476 5912</p>
+                <p style="font-weight: 600; color: hsl(var(--foreground)); margin: 0;">Reason for referral</p>
+                <p style="margin: 0;">Urgent routine cardiology assessment for longstanding atrial fibrillation and recent episodes of chest pain on exertion.</p>
+                <p style="font-weight: 600; color: hsl(var(--foreground)); margin: 0;">Relevant history</p>
+                <p style="margin: 0;">History of hypertension, type 1 diabetes, asthma, and previous myocardial infarction in 2018 (per patient report). Family history of sudden cardiac death. Non-smoker.</p>
+                <p style="font-weight: 600; color: hsl(var(--foreground)); margin: 0;">Current management</p>
+                <p style="margin: 0;">Metformin 1 g twice daily.</p>
+                <p style="margin: 0;">Ramipril 10 mg once daily.</p>
+                <p style="margin: 0;">Salbutamol inhaler PRN.</p>
+                <p style="font-weight: 600; color: hsl(var(--foreground)); margin: 0;">Relevant investigations</p>
+                <p style="margin: 0;">Recent ECG showed atrial fibrillation with ST elevation.</p>
+                <p style="margin: 0;">Echocardiogram performed last month demonstrated normal left ventricular function with severe aortic stenosis.</p>
+                <p style="font-weight: 600; color: hsl(var(--foreground)); margin: 0;">Additional information</p>
+                <p style="margin: 0;">Patient is keen to be seen as soon as possible. I believe cardiology input is required to confirm diagnosis and advise on management.</p>
+                <p style="margin: 0;">Thanks so much for taking a look at this and helping out - Wishing you a very Merry Christmas!</p>
+                <p style="margin: 0;">Kindest regards,</p>
+                <p style="margin: 0;">Sam</p>
+                <p style="margin: 0;">GP</p>
+                <p style="margin: 0;">Greenfield Surgery</p>
+                <p style="color: hsl(var(--foreground) / 0.9); margin: 0;">Would you like me to suggest some possible diagnoses based on these symptoms, or help you choose a medicine for the patient in the meantime?</p>
+              </div>
+
+              <!-- Copy Button -->
+              <div style="display: flex; justify-content: flex-end; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid hsl(var(--border) / 0.5);">
+                <button id="copyBtn" class="btn btn-primary">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+                    <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+                  </svg>
+                  Copy to Email
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Panel - Email Client -->
+      <div style="width: 50%; padding: 1.5rem; overflow: auto;">
+        <div style="height: 100%; display: flex; flex-direction: column;">
+          <!-- Email Client Header -->
+          <div style="background: hsl(var(--card)); border-radius: 0.5rem 0.5rem 0 0; border: 1px solid hsl(var(--border)); border-bottom: none; padding: 1rem;">
+            <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--primary))" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect width="20" height="16" x="2" y="4" rx="2"/>
+                <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+              </svg>
+              <span style="font-weight: 600; color: hsl(var(--foreground));">New Message</span>
+            </div>
+            
+            <div style="font-size: 0.875rem;">
+              <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                <span style="color: hsl(var(--muted-foreground)); width: 3rem;">To:</span>
+                <span style="color: hsl(var(--foreground));">cardiology.referrals@nhs.net</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <span style="color: hsl(var(--muted-foreground)); width: 3rem;">Subject:</span>
+                <span style="color: hsl(var(--foreground));">eRS Referral - Huma Khan - Cardiology</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Email Body -->
+          <div id="emailBody" style="flex: 1; background: hsl(var(--card)); border: 1px solid hsl(var(--border)); border-top: none; border-bottom: none; padding: 1.5rem; overflow: auto;">
+            <div id="emptyState" style="height: 100%; display: flex; align-items: center; justify-content: center; color: hsl(var(--muted-foreground));">
+              <p>Click "Copy to Email" to paste your draft here</p>
+            </div>
+            <div id="copyingState" class="hidden" style="height: 100%; display: flex; align-items: center; justify-content: center;">
+              <div style="text-align: center;">
+                <div style="width: 3rem; height: 3rem; border-radius: 50%; background: hsl(var(--primary) / 0.2); display: flex; align-items: center; justify-content: center; margin: 0 auto 0.75rem;">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--primary))" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect width="20" height="16" x="2" y="4" rx="2"/>
+                    <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+                  </svg>
+                </div>
+                <p style="color: hsl(var(--muted-foreground));">Pasting content...</p>
+              </div>
+            </div>
+            <div id="contentState" class="hidden fade-in" style="color: hsl(var(--foreground) / 0.9); line-height: 1.4;">
+              <div id="section-greeting" class="email-section" style="white-space: pre-wrap; margin-bottom: 0.5rem;"></div>
+              <div id="section-body" class="email-section" style="white-space: pre-wrap; margin-bottom: 0.5rem;"></div>
+              <div id="section-closing" class="email-section" style="white-space: pre-wrap; margin-bottom: 0.5rem;"></div>
+              <div id="section-signoff" class="email-section" style="white-space: pre-wrap;"></div>
+            </div>
+          </div>
+
+          <!-- Email Footer / Actions -->
+          <div style="background: hsl(var(--card)); border-radius: 0 0 0.5rem 0.5rem; border: 1px solid hsl(var(--border)); padding: 1rem; display: flex; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <button class="btn btn-ghost" disabled style="width: 2.5rem; height: 2.5rem; padding: 0;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+                </svg>
+              </button>
+              <button class="btn btn-ghost" disabled style="width: 2.5rem; height: 2.5rem; padding: 0;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M3 6h18"/>
+                  <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+                  <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                </svg>
+              </button>
+            </div>
+            
+            <button id="sendBtn" class="btn btn-primary" disabled style="padding: 0.75rem 2rem;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="m22 2-7 20-4-9-9-4Z"/>
+                <path d="M22 2 11 13"/>
+              </svg>
+              Send
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section Feedback Modal -->
+    <div id="sectionFeedback" class="tooltip-overlay hidden">
+      <div id="sectionFeedbackCard" class="tooltip-card">
+        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem;">
+          <div id="feedbackIconContainer" style="width: 2.5rem; height: 2.5rem; border-radius: 50%; display: flex; align-items: center; justify-content: center;"></div>
+          <h2 style="font-size: 1.125rem; font-weight: 600; color: hsl(var(--foreground)); margin: 0;">Feedback</h2>
+        </div>
+        
+        <p id="feedbackMessage" style="color: hsl(var(--foreground) / 0.8); line-height: 1.6; margin-bottom: 1.5rem;"></p>
+
+        <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; color: hsl(var(--muted-foreground)); margin-bottom: 1.5rem;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+          <span>The section will be corrected when you continue</span>
+        </div>
+
+        <button id="continueBtn" class="btn btn-primary" style="width: 100%;">Continue</button>
+      </div>
+    </div>
+
+    <!-- Final Feedback Modal -->
+    <div id="finalFeedback" class="tooltip-overlay hidden">
+      <div class="tooltip-card">
+        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem;">
+          <div id="finalIconContainer" style="width: 3rem; height: 3rem; border-radius: 50%; display: flex; align-items: center; justify-content: center;"></div>
+          <h2 id="finalTitle" style="font-size: 1.125rem; font-weight: 600; color: hsl(var(--foreground)); margin: 0;"></h2>
+        </div>
+        
+        <div id="finalContent"></div>
+      </div>
+    </div>
+
+    <!-- Safety Question Modal -->
+    <div id="safetyQuestion" class="tooltip-overlay right-aligned safety-overlay hidden">
+      <div class="safety-right-blur"></div>
+      <div class="tooltip-card">
+        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem;">
+          <div style="width: 2.5rem; height: 2.5rem; border-radius: 50%; background: hsl(var(--warning) / 0.1); display: flex; align-items: center; justify-content: center;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--warning))" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+              <path d="M12 9v4"/>
+              <path d="M12 17h.01"/>
+            </svg>
+          </div>
+          <h2 style="font-size: 1.125rem; font-weight: 600; color: hsl(var(--foreground)); margin: 0;">Safety Check</h2>
+        </div>
+
+        <p style="color: hsl(var(--foreground) / 0.8); line-height: 1.6; margin-bottom: 1.5rem;">
+          Now, look how the GenAI asked you if you want help with diagnosing the patient or suggesting some medicine. Do you think this is safe to do? Why?
+        </p>
+
+        <div id="safetyAnswers" style="display: flex; flex-direction: column; gap: 0.75rem;"></div>
+        <div id="safetyFeedback" class="hidden"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // State
+    const state = {
+      isCopied: false,
+      isCopying: false,
+      activeFeedback: null,
+      checkedSections: {
+        greeting: { checked: false, corrected: false },
+        body: { checked: false, corrected: false },
+        closing: { checked: false, corrected: false },
+        signoff: { checked: false, corrected: false }
+      },
+      showFinalFeedback: null,
+      showSafetyQuestion: false
+    };
+
+    // Content
+    const originalContent = {
+      greeting: "Referral: Routine Cardiology Outpatient Appointment (eRS)\nPatient details\nName: Huma Khan\nAge: 62 (DOB: 14/09/1969)\nAddress: 14 Willow Crescent, Birmingham, B27 6RT\nNHS Number: 943 476 5912",
+      body: "Reason for referral\nUrgent routine cardiology assessment for longstanding atrial fibrillation and recent episodes of chest pain on exertion.\nRelevant history\nHistory of hypertension, type 1 diabetes, asthma, and previous myocardial infarction in 2018 (per patient report). Family history of sudden cardiac death. Non-smoker.\nCurrent management\nMetformin 1 g twice daily.\nRamipril 10 mg once daily.\nSalbutamol inhaler PRN.\nRelevant investigations\nRecent ECG showed atrial fibrillation with ST elevation.\nEchocardiogram performed last month demonstrated normal left ventricular function with severe aortic stenosis.\nAdditional information\nPatient is keen to be seen as soon as possible. I believe cardiology input is required to confirm diagnosis and advise on management.",
+      closing: "Thanks so much for taking a look at this and helping out - Wishing you a very Merry Christmas!",
+      signoff: "Kindest regards,\nSam\nGP\nGreenfield Surgery"
+    };
+
+    const correctedContent = {
+      greeting: "Referral: Urgent Cardiology Outpatient Appointment (eRS)\nPatient details\nName: Huma Khan\nAge: 55 (DOB: 14/09/1969)\nAddress: 14 Willow Crescent, Birmingham, B27 6RT\nNHS Number: 943 476 5912",
+      body: "Reason for referral\nUrgent cardiology assessment for longstanding atrial fibrillation and recent episodes of chest pain on exertion.\nRelevant history\nHistory of hypertension, type 2 diabetes, and previous myocardial infarction in 2018 (per patient report). Family history of sudden cardiac death. Non-smoker.\nCurrent management\nMetformin 1 g twice daily.\nRamipril 10 mg once daily.\nBisoprolol 5 mg once daily.\nRelevant investigations\nRecent ECG showed atrial fibrillation with controlled ventricular rate.\nEchocardiogram performed last month demonstrated mildly reduced left ventricular function with moderate aortic stenosis.\nAdditional information\nPatient is keen to be seen as soon as possible. I believe cardiology input is required to confirm diagnosis and advise on management.",
+      closing: "Thanks so much for taking a look at this and helping out.",
+      signoff: "Kindest regards,\nSam\nGP\nGreenfield Surgery"
+    };
+
+    const feedbackContent = {
+      greeting: {
+        icon: "alert",
+        message: "Good spot! This section contains critical patient details. Notice that the age doesn't match the date of birth - the patient would be 55, not 62. Also, 'Routine' should likely be 'Urgent' given the clinical picture. Always verify patient demographics and referral priority."
+      },
+      body: {
+        icon: "alert",
+        message: "Excellent! These clinical details are absolutely essential to check. GenAI made several mistakes here: Type 1 diabetes patients don't take Metformin (that's for Type 2), the ECG findings are contradictory (AF with ST elevation is unusual), and 'normal LV function with severe aortic stenosis' is clinically inconsistent. Always verify medical facts."
+      },
+      closing: {
+        icon: "alert",
+        message: "That's right! Even though this is just an email sign-off, it can easily include bias. The 'Merry Christmas' reference makes assumptions about the recipient's religious beliefs. In professional medical communications, it's best to keep greetings neutral and inclusive."
+      },
+      signoff: {
+        icon: "check",
+        message: "There are no hallucinations or bias in this part of the email, but it's still good that you've decided to check it. Always verify your professional details are correct and appropriate."
+      }
+    };
+
+    const safetyAnswers = [
+      { key: "safety", text: "Yes, because it has safety features built-in", isCorrect: false, feedback: "That's not quite right. While AI systems may have some safety features, they are not designed or approved for medical diagnosis. Safety features don't make an inappropriate use-case appropriate." },
+      { key: "checked", text: "Yes, because I will only use the answer if I have checked it is correct", isCorrect: false, feedback: "That's not quite right. Even if you verify the answer, using GenAI for medical diagnosis is inappropriate. The issue isn't just about accuracy—it's about using AI within appropriate boundaries." },
+      { key: "inappropriate", text: "No, because it is an inappropriate use-case, it could trigger further legal requirements", isCorrect: true, feedback: "Exactly right! Using GenAI to diagnose patients or suggest medicines is outside its appropriate use-case. Medical diagnosis requires proper clinical judgment and could trigger legal requirements around medical device regulations. Always use AI within approved boundaries." },
+      { key: "machine", text: "No, because it is just a machine. It wouldn't give a correct answer", isCorrect: false, feedback: "That's not quite right. While GenAI can make mistakes, the main issue isn't about whether it could give a correct answer—it's that medical diagnosis is an inappropriate use-case that could have serious legal and safety implications." }
+    ];
+
+    let displayContent = { ...originalContent };
+
+    // DOM Elements
+    const elements = {
+      copyBtn: document.getElementById('copyBtn'),
+      sendBtn: document.getElementById('sendBtn'),
+      continueBtn: document.getElementById('continueBtn'),
+      sectionFeedback: document.getElementById('sectionFeedback'),
+      finalFeedback: document.getElementById('finalFeedback'),
+      safetyQuestion: document.getElementById('safetyQuestion'),
+      emptyState: document.getElementById('emptyState'),
+      copyingState: document.getElementById('copyingState'),
+      contentState: document.getElementById('contentState'),
+      sectionFeedbackCard: document.getElementById('sectionFeedbackCard'),
+      feedbackIconContainer: document.getElementById('feedbackIconContainer'),
+      feedbackMessage: document.getElementById('feedbackMessage'),
+      finalIconContainer: document.getElementById('finalIconContainer'),
+      finalTitle: document.getElementById('finalTitle'),
+      finalContent: document.getElementById('finalContent'),
+      safetyAnswers: document.getElementById('safetyAnswers'),
+      safetyFeedback: document.getElementById('safetyFeedback')
+    };
+
+    // Functions
+    const safeAddListener = (element, event, handler) => {
+      if (element) {
+        element.addEventListener(event, handler);
+      }
+    };
+
+    const hideOverlay = (overlay) => {
+      if (overlay) {
+        overlay.classList.add('hidden');
+      }
+    };
+
+    const bindOverlayDismiss = (overlay) => {
+      if (!overlay) return;
+      overlay.addEventListener('click', (event) => {
+        if (event.target === overlay) {
+          overlay.classList.add('hidden');
+        }
+      });
+    };
+
+    function updateEmailSections() {
+      ['greeting', 'body', 'closing', 'signoff'].forEach(section => {
+        const el = document.getElementById(`section-${section}`);
+        if (!el) return;
+        el.textContent = displayContent[section];
+        el.className = 'email-section';
+        if (state.checkedSections[section].checked) {
+          el.classList.add('checked');
+        } else if (state.isCopied) {
+          el.classList.add('highlighted');
+        }
+      });
+    }
+
+    function typeText(section, targetText, callback) {
+      const el = document.getElementById(`section-${section}`);
+      if (!el) return;
+      let currentIndex = 0;
+      el.innerHTML = '<span class="typing-cursor"></span>';
+      
+      const interval = setInterval(() => {
+        if (currentIndex < targetText.length) {
+          el.innerHTML = targetText.slice(0, currentIndex + 1) + '<span class="typing-cursor"></span>';
+          currentIndex++;
+        } else {
+          clearInterval(interval);
+          displayContent[section] = targetText;
+          el.textContent = targetText;
+          if (callback) callback();
+        }
+      }, 15);
+    }
+
+    function showSectionFeedback(section) {
+      const feedback = feedbackContent[section];
+      if (!feedback || !elements.feedbackIconContainer || !elements.feedbackMessage) return;
+      const isNeutral = feedback.icon === 'check';
+      const iconHtml = feedback.icon === 'check' 
+        ? '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--primary))" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>'
+        : '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--success))" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>';
+      
+      const bgColor = isNeutral ? 'hsl(var(--primary) / 0.1)' : 'hsl(var(--success) / 0.1)';
+      const borderColor = isNeutral ? 'hsl(var(--primary))' : 'hsl(var(--success))';
+      
+      elements.feedbackIconContainer.innerHTML = iconHtml;
+      elements.feedbackIconContainer.style.background = bgColor;
+      elements.feedbackMessage.textContent = feedback.message;
+      if (elements.sectionFeedbackCard) {
+        elements.sectionFeedbackCard.style.border = `2px solid ${borderColor}`;
+      }
+      if (elements.continueBtn) {
+        elements.continueBtn.style.background = isNeutral ? 'hsl(var(--primary))' : 'hsl(var(--success))';
+        elements.continueBtn.style.color = 'hsl(var(--primary-foreground))';
+      }
+      if (elements.sectionFeedback) {
+        elements.sectionFeedback.classList.remove('hidden');
+      }
+    }
+
+    function showFinalFeedbackModal(type) {
+      const isSuccess = type === 'success';
+      if (!elements.finalIconContainer || !elements.finalTitle || !elements.finalContent) return;
+      
+      elements.finalIconContainer.style.background = isSuccess ? 'hsl(var(--success) / 0.1)' : 'hsl(var(--destructive) / 0.1)';
+      elements.finalIconContainer.innerHTML = isSuccess 
+        ? '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--success))" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>'
+        : '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--destructive))" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>';
+      
+      elements.finalTitle.textContent = isSuccess ? 'Well Done!' : 'Not Quite';
+      
+      if (isSuccess) {
+        elements.finalContent.innerHTML = `
+          <p style="color: hsl(var(--foreground) / 0.8); line-height: 1.6; margin-bottom: 1.5rem;">
+            That's what being a Human in the Loop (HITL) is all about! By checking the output for hallucination and bias, you've managed to save time with GenAI whilst avoiding the risks of it.
+          </p>
+          <p style="color: hsl(var(--foreground) / 0.8); line-height: 1.6; margin-bottom: 2rem;">
+            Remember: GenAI can be a powerful tool, but it requires human oversight to ensure accuracy, appropriateness, and inclusivity.
+          </p>
+          <button id="finalContinueBtn" class="btn btn-primary" style="width: 100%;">Continue</button>
+        `;
+        document.getElementById('finalContinueBtn').addEventListener('click', () => {
+          elements.finalFeedback.classList.add('hidden');
+          showSafetyQuestionModal();
+        });
+      } else {
+        elements.finalContent.innerHTML = `
+          <p style="color: hsl(var(--foreground) / 0.8); line-height: 1.6; margin-bottom: 1.5rem;">
+            Even though you've saved time with GenAI, you've not prevented its risks this time. Remember, even if it looks polished, you need to check yourself that the referral from GenAI is accurate, professional, and inclusive.
+          </p>
+          <p style="color: hsl(var(--foreground) / 0.8); line-height: 1.6; font-weight: 500; margin-bottom: 2rem;">Try again, this time keep an eye out for:</p>
+          <ul style="list-style: disc; list-style-position: inside; color: hsl(var(--foreground) / 0.8); margin-bottom: 2rem;">
+            <li style="margin-bottom: 0.5rem;">Factual errors</li>
+            <li style="margin-bottom: 0.5rem;">Inappropriate tone</li>
+            <li>Subtle bias near the end</li>
+          </ul>
+          <button id="tryAgainBtn" class="btn btn-primary" style="width: 100%;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/>
+              <path d="M21 3v5h-5"/>
+            </svg>
+            Try Again
+          </button>
+        `;
+        document.getElementById('tryAgainBtn').addEventListener('click', () => {
+          elements.finalFeedback.classList.add('hidden');
+          state.checkedSections = {
+            greeting: { checked: false, corrected: false },
+            body: { checked: false, corrected: false },
+            closing: { checked: false, corrected: false },
+            signoff: { checked: false, corrected: false }
+          };
+          displayContent = { ...originalContent };
+          updateEmailSections();
+        });
+      }
+      
+      if (elements.finalFeedback) {
+        elements.finalFeedback.classList.remove('hidden');
+      }
+    }
+
+    function showSafetyQuestionModal() {
+      if (!elements.safetyAnswers || !elements.safetyFeedback) return;
+      elements.safetyAnswers.innerHTML = '';
+      elements.safetyFeedback.classList.add('hidden');
+      elements.safetyFeedback.innerHTML = '';
+      
+      safetyAnswers.forEach(answer => {
+        const btn = document.createElement('button');
+        btn.className = 'answer-btn';
+        btn.textContent = answer.text;
+        btn.addEventListener('click', () => handleSafetyAnswer(answer));
+        elements.safetyAnswers.appendChild(btn);
+      });
+      
+      if (elements.safetyQuestion) {
+        elements.safetyQuestion.classList.remove('hidden');
+      }
+    }
+
+    function handleSafetyAnswer(answer) {
+      if (!elements.safetyAnswers || !elements.safetyFeedback) return;
+      elements.safetyAnswers.classList.add('hidden');
+      
+      const bgColor = answer.isCorrect ? 'hsl(var(--success) / 0.1)' : 'hsl(var(--destructive) / 0.1)';
+      const borderColor = answer.isCorrect ? 'hsl(var(--success) / 0.3)' : 'hsl(var(--destructive) / 0.3)';
+      const iconColor = answer.isCorrect ? 'hsl(var(--success))' : 'hsl(var(--destructive))';
+      const icon = answer.isCorrect 
+        ? '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="' + iconColor + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>'
+        : '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="' + iconColor + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>';
+      
+      elements.safetyFeedback.innerHTML = `
+        <div class="fade-in" style="padding: 1rem; border-radius: 0.5rem; margin-bottom: 1.5rem; background: ${bgColor}; border: 1px solid ${borderColor};">
+          <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+            ${icon}
+            <span style="font-weight: 500; color: hsl(var(--foreground));">${answer.isCorrect ? 'Correct!' : 'Not quite right'}</span>
+          </div>
+          <p style="color: hsl(var(--foreground) / 0.8); font-size: 0.875rem; line-height: 1.6; margin: 0;">${answer.feedback}</p>
+        </div>
+        <div style="display: flex; gap: 0.75rem;">
+          ${answer.isCorrect ? '' : '<button id="safetyRetryBtn" class="btn btn-secondary" style="width: 100%;">Retry</button>'}
+          <button id="safetyCompleteBtn" class="btn btn-primary" style="width: 100%;">Continue</button>
+        </div>
+      `;
+      
+      elements.safetyFeedback.classList.remove('hidden');
+      if (!answer.isCorrect) {
+        const retryBtn = document.getElementById('safetyRetryBtn');
+        if (retryBtn) {
+          retryBtn.addEventListener('click', () => {
+            elements.safetyFeedback.classList.add('hidden');
+            elements.safetyAnswers.classList.remove('hidden');
+            elements.safetyFeedback.innerHTML = '';
+          });
+        }
+      }
+      const completeBtn = document.getElementById('safetyCompleteBtn');
+      if (completeBtn) {
+        completeBtn.addEventListener('click', () => {
+          hideOverlay(elements.safetyQuestion);
+          alert('Congratulations! You have completed the HITL training exercise.');
+        });
+      }
+    }
+
+    // Event Listeners
+    bindOverlayDismiss(elements.sectionFeedback);
+    bindOverlayDismiss(elements.finalFeedback);
+    bindOverlayDismiss(elements.safetyQuestion);
+
+    safeAddListener(elements.copyBtn, 'click', () => {
+      if (state.isCopied || state.isCopying) return;
+      if (!elements.emptyState || !elements.copyingState || !elements.contentState) return;
+      
+      state.isCopying = true;
+      elements.copyBtn.disabled = true;
+      elements.copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="animation: pulse 1s infinite;"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg> Copying...';
+      
+      elements.emptyState.classList.add('hidden');
+      elements.copyingState.classList.remove('hidden');
+      
+      setTimeout(() => {
+        state.isCopying = false;
+        state.isCopied = true;
+        
+        elements.copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Copied';
+        elements.sendBtn.disabled = false;
+        
+        elements.copyingState.classList.add('hidden');
+        elements.contentState.classList.remove('hidden');
+        updateEmailSections();
+      }, 1500);
+    });
+
+    ['greeting', 'body', 'closing', 'signoff'].forEach(section => {
+      const sectionEl = document.getElementById(`section-${section}`);
+      safeAddListener(sectionEl, 'click', () => {
+        if (!state.isCopied || state.activeFeedback || state.checkedSections[section].checked) return;
+        state.activeFeedback = section;
+        showSectionFeedback(section);
+      });
+    });
+
+    safeAddListener(elements.continueBtn, 'click', () => {
+      if (state.activeFeedback) {
+        const section = state.activeFeedback;
+        state.checkedSections[section].checked = true;
+        state.checkedSections[section].corrected = true;
+        hideOverlay(elements.sectionFeedback);
+        
+        typeText(section, correctedContent[section], () => {
+          const el = document.getElementById(`section-${section}`);
+          if (!el) return;
+          el.classList.remove('highlighted');
+          el.classList.add('checked');
+        });
+        
+        state.activeFeedback = null;
+      }
+    });
+
+    safeAddListener(elements.sendBtn, 'click', () => {
+      const allChecked = Object.values(state.checkedSections).every(s => s.checked);
+      showFinalFeedbackModal(allChecked ? 'success' : 'retry');
+    });
+  </script>
+</body>
+</html>
