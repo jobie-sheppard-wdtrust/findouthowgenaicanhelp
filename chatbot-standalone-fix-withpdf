@@ -427,7 +427,7 @@
   <script>
     const PRESET_PROMPTS = [
       {
-        label: "Research NICE recommendations",
+        label: "Research NICE Sepsis recommendations",
         prompt: "Research the current NICE recommendations for initial management of Sepsis in adults",
         response: `Sure thing! I found several NICE recommendations based on this webpage (https://www.example-source.com).
         
@@ -446,7 +446,7 @@ Rapid recognition, prompt assessment, and early escalation are emphasized to red
 Would you like me to suggest how this guidance applies to a specific patient or outline the most appropriate next clinical step for them?`
       },
       {
-        label: "Draft a response to this complaint",
+        label: "Draft a response to a patient complaint",
         prompt: "Help me respond to this very sensitive complaint from a bereaved patient, regarding end-of-life care decisions. The response should acknowledge mistakes in communication, and apologise in a way that is polite and genuine. I have attached the complaint",
         attachmentName: "Patel email complaint.pdf",
         response: `Of course — I will draft a calm, compassionate response that acknowledges the communication issues without being defensive.
@@ -471,7 +471,7 @@ Your Name
 If you like, I can make this more formal or more conversational, or I could remove anything that sounds like an admission of liability ?`
       },
       {
-        label: "What are arguments for and against this plan?",
+        label: "What are arguments for and against my colleague's discharge plan?",
         prompt: "I'm reviewing follow-up arrangements for a stable long-term condition patient. We're considering switching routine follow-ups from face-to-face to phone or video. Can you outline some practical arguments for and against this? Keep your answer concise.",
         response: `Sure — here are some points to consider. I've kept the focus practical:
 
