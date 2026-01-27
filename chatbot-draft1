@@ -447,28 +447,27 @@ Would you like me to suggest how this guidance applies to a specific patient or 
       },
       {
         label: "Draft a response to a patient complaint",
-        prompt: "Help me respond to this very sensitive complaint from a bereaved patient, regarding end-of-life care decisions. The response should acknowledge mistakes in communication, and apologise in a way that is polite and genuine. I have attached the complaint",
+        prompt: "Help me respond to this sensitive complaint from a patient, who had an outpatient appointment cancelled at short notice without being given a clear reason. The response should acknowledge mistakes, and apologise genuinely. I have attached the complaint",
         attachmentName: "Patel email complaint.pdf",
-        response: `Of course — I will draft a calm, compassionate response that acknowledges the communication issues without being defensive.
+        response: `Of course — I will draft an accountable response that acknowledges the communication issues without being defensive.
         
-        **Draft response — compassionate and accountable**
+        **Draft response — genuine and accountable**
 
-Dear Mrs Patel,
+Dear Ms Patel,
 
-Thank you for taking the time to write to us and for sharing your concerns following your husband's care. I am very sorry for your loss — I recognise how difficult it may have been to raise these issues.
+Thank you for contacting us. I’m very sorry for the short-notice cancellation of your appointment and for the frustration this caused.
 
-I would like to sincerely apologise for the distress caused by how end-of-life care decisions were communicated to you and your family. On reflection, we did not explain the situation as clearly or as sensitively as we should have, and I am sorry for the additional upset this caused at an already painful time.
+We recognise that cancelling appointments without a clear explanation has a real impact on patients’ time and confidence in the service. While some cancellations are unavoidable given the current pressures on our outpatient services, we recognise that a lack of communication is not acceptable, whatever the reason.
 
-**What we are doing next**  
-Your feedback highlights the importance of clear, compassionate communication, particularly when discussing complex and emotionally challenging decisions. We are reviewing this aspect of our practice to ensure families feel better informed and supported in the future.
+We have raised this with the team involved to ensure it does not happen again. Thank you for taking the time to raise this with us. 
 
-Thank you again for bringing this to our attention. If you would like to discuss this further — or if there is anything else we can do to support you — please let us know.
-
-With sincere condolences,  
-Your Name
+Kind regards,
+[Name]
+Patient Advice and Liaison Service
+[NHS Trust name]
 
 **Refinements**  
-If you like, I can make this more formal or more conversational, or I could remove anything that sounds like an admission of liability ?`
+If you like, I can make this more formal or more conversational, or I could add a short "what we're changing" section to demonstrate improvement?`
       },
       {
         label: "What are arguments for and against my colleague's discharge plan?",
