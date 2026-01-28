@@ -1,0 +1,649 @@
+Full Visual Specification
+Overall Page Structure
+Viewport fill: Full-height page (min-height: 100vh), with a fixed header and a two-panel main layout below it.
+
+Background: Light gray-blue overall background (hsl(220 14% 96%)).
+
+Main layout split: Horizontal split into two equal halves: left panel (GenAI chat) and right panel (email client), each 50% width.
+
+Header
+Height: 3.5rem tall.
+
+Layout: Horizontal row with left-aligned circular help button and heading text.
+
+Background: White card (hsl(0 0% 100%)) with bottom border (hsl(220 13% 91%)).
+
+Padding: 1.5rem left/right.
+
+Icon button: Circular, 2rem x 2rem, subtle primary tint background (primary at 10% opacity). Contains a 20px stroked “help” icon (circle + question mark).
+
+Heading text: Medium bold (600 weight), default foreground color.
+
+Panels and Layout Proportions
+Main container height: calc(100vh - 3.5rem) to fill remaining space beneath header.
+
+Left panel (GenAI): 50% width, right border, 0.5rem padding, vertical scroll if needed.
+
+Right panel (Email client): 50% width, 0.5rem padding, vertical scroll if needed.
+
+Left Panel: GenAI Chat UI
+Chat Header
+Icon: Circular 2.5rem purple (#90278e) badge with a 20px white stroked “bot/robot” icon.
+
+Text:
+
+“AI Assistant” (bold, 600).
+
+“Draft generated” (smaller, muted foreground).
+
+Spacing: 0.75rem icon-text gap; bottom margin 1.5rem.
+
+Chat Bubble
+Container: Rounded 0.75rem, pale blue background (genai-bubble), thin border (genai-border), 1rem padding.
+
+Text block: 0.875rem base size, line-height 1.4.
+
+Chat content: Full multi-paragraph referral text (exact strings listed in “Exact Text Content” section).
+
+Copy Button
+Position: Right-aligned in a footer row inside the bubble, separated by top border.
+
+Style: Primary button, 0.75rem vertical padding, 1.5rem horizontal padding, rounded 0.5rem, medium weight, blue background.
+
+Icon: 16px “copy” icon with 2px stroke.
+
+Label: “Copy to Email”.
+
+Hover: Primary button reduces opacity to 0.9.
+
+Right Panel: Email Client UI
+Email Header Card
+Card container: White card with border; rounded top corners (0.5rem). Border on top/left/right; bottom border removed to connect with body.
+
+Padding: 1rem.
+
+Row 1: Mail icon (20px stroked envelope, primary color) + “New Message” label (bold).
+
+Row 2/3: “To:” label (muted, fixed 3rem width) + recipient. “Subject:” label + subject line.
+
+Email Body
+Card: White background, borders left/right, no top or bottom border (connected to header/footer).
+
+Padding: 1rem.
+
+States:
+
+Empty state: Centered muted text: “Click "Copy to Email" to paste your draft here”.
+
+Copying state: Centered icon badge (3rem circular with primary tint), mail icon, and “Pasting content...”.
+
+Content state: Four paragraph sections (greeting, body, closing, signoff) each with white-space: pre-wrap and bottom margin (except last).
+
+Section styling: Each section is wrapped in an interactive container with padding and margin that can highlight or show checked states. Hover highlights with a light primary tint; active/checked states have inset border and tinted background.
+
+Email Footer
+Card container: White, rounded bottom corners (0.5rem), full border, padding 1rem.
+
+Left controls: Two disabled ghost buttons (2.5rem square), with paperclip icon and trash icon (16px stroke).
+
+Right action: Primary button labeled “Send”, disabled by default, with 16px paper plane icon. Padding 0.75rem vertical, 2rem horizontal.
+
+Typography
+Font family: System UI stack: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif.
+
+Base body text: Default size with foreground color (hsl(222 47% 11%)).
+
+Muted text: hsl(220 9% 46%).
+
+Bold headings: Weight 600.
+
+Small text: 0.875rem in chat bubble and metadata fields.
+
+Button text: Medium weight (500).
+
+Colors & UI Tokens (HSL)
+These values must be used exactly:
+
+Background: 220 14% 96%
+
+Foreground: 222 47% 11%
+
+Card: 0 0% 100%
+
+Card-foreground: 222 47% 11%
+
+Primary: 217 91% 60%
+
+Primary-foreground: 0 0% 100%
+
+Secondary: 220 14% 96%
+
+Muted: 220 14% 96%
+
+Muted-foreground: 220 9% 46%
+
+Border: 220 13% 91%
+
+Success: 142 71% 45%
+
+Warning: 38 92% 50%
+
+Destructive: 0 84% 60%
+
+GenAI bubble: 217 91% 97%
+
+GenAI border: 217 91% 90%
+
+Highlight section: 217 91% 60% / 0.15
+
+Highlight border: 217 91% 60%
+
+Overlay: 222 47% 11% / 0.6
+
+Icons (Shapes, Stroke, Sizes, Placement)
+All icons are line icons, 2px stroke, rounded caps and joins:
+
+Help icon: 20px circle with question mark, in header help button.
+
+Chat avatar: 20px robot icon inside purple 2.5rem circle.
+
+Copy icon: 16px stacked square icon on “Copy to Email”.
+
+Mail icon: 20px envelope on email header; 24px envelope in copying state.
+
+Paperclip and trash icons: 16px each on disabled ghost buttons.
+
+Send icon: 16px paper plane on “Send” button.
+
+Feedback icons:
+
+Alert: 20px circle with exclamation mark (green stroke).
+
+Check: 20px check in circle (primary stroke).
+
+Final modal icons:
+
+Success: 24px check in circle (success stroke).
+
+Failure: 24px X in circle (destructive stroke).
+
+Safety modal: 20px warning triangle with exclamation mark (warning stroke).
+
+Button Styles
+Primary Button
+Background: Primary blue.
+
+Text: White.
+
+Padding: 0.75rem vertical, 1.5rem horizontal (or 2rem for Send).
+
+Radius: 0.5rem.
+
+Hover: 0.9 opacity.
+
+Disabled: 0.5 opacity, cursor not-allowed.
+
+Secondary Button
+Background: Secondary gray.
+
+Text: Foreground.
+
+Radius: 0.5rem.
+
+Used in safety retry button.
+
+Ghost Button
+Background: Transparent.
+
+Text: Muted-foreground.
+
+Disabled: 0.5 opacity.
+
+Answer Buttons
+Width: Full.
+
+Padding: 1rem.
+
+Border: 1px solid border token.
+
+Background: Muted.
+
+Hover: Border color shifts to 50% primary.
+
+Text: 0.875rem, slightly muted.
+
+All buttons use 0.2s transition and 500 font weight (where applicable).
+
+Panel / Card Styling, Rounding, Shadows
+Email card sections: 0.5rem rounding on top or bottom; white background; 1px border.
+
+Chat bubble: 0.75rem rounding, border 1px, no shadow.
+
+Modals: 0.75rem rounding with drop shadow 0 25px 50px -12px rgb(0 0 0 / 0.25). Padding 2rem. Max width 32rem (right-aligned modal uses max 450px).
+
+Modal Layout, Overlay, Blur
+Overlay
+Full screen: fixed, inset 0, z-index 50.
+
+Background: overlay color (hsl(222 47% 11% / 0.6)).
+
+Blur: backdrop blur 4px.
+
+Modal Card
+Center aligned by default. Right-aligned variant for safety modal.
+
+Scale-in animation: 0.3s ease-out.
+
+Padding: 2rem.
+
+Right-aligned Safety Modal
+Overlay background: transparent (no darkening).
+
+Right-side blur overlay: covers right half of screen, blur 6px, subtle white overlay.
+
+Modal position: right aligned with 5% right margin, max width 450px.
+
+Animations and Transitions
+Scale-in: For tooltip cards; 0.3s ease-out with scale 0.95→1 and opacity 0→1.
+
+Fade-in: 0.3s ease-out with translateY(10px) → 0.
+
+Typing cursor: 1s blinking steps, 2px wide.
+
+Button hover: 0.2s opacity transition.
+
+Typing animation: 15ms per character.
+
+Copying state: button icon uses pulse animation (implied via inline style on copy icon).
+
+Full Interaction / Behavior Specification
+Initial State
+Copy button enabled.
+
+Send button disabled.
+
+Email body shows empty state message.
+
+No sections highlighted because content not yet copied.
+
+No modals open.
+
+Copy-to-Email Workflow
+User clicks “Copy to Email”.
+
+Button disables; label and icon change to “Copying…”.
+
+Empty state hides; copying state shows “Pasting content...” with mail icon.
+
+After 1500ms:
+
+Copy button changes label to “Copied” with check icon.
+
+Send button enabled.
+
+Copying state hides; email content shows.
+
+All email sections visible and highlighted (blue-tint background).
+
+Copy button remains disabled after completion (no reset).
+
+All copy and send text state transitions must be exact.
+
+Section Clickability Rules
+Sections are clickable only after content is copied.
+
+If a section has already been checked, it is no longer clickable.
+
+If a feedback modal is open, sections are not clickable.
+
+On click, a feedback modal appears with section-specific feedback and icon.
+
+After clicking “Continue”, section content is replaced by corrected text with typing animation; section is marked checked (green tint/border).
+
+Feedback Modal Behavior
+Open: triggered by clicking a section.
+
+Content: Feedback message for that section; icon state:
+
+“Alert” uses green icon and success colors (note: alert uses success in this file).
+
+“Check” uses primary styling.
+
+Continue button:
+
+Closes modal.
+
+Starts typing animation on the section (15ms per character).
+
+Marks section as checked with green background and border.
+
+Overlay dismiss: clicking outside the modal closes it.
+
+Text Typing Animation
+Replaces section text with animated incremental rendering.
+
+A blinking cursor appears during typing.
+
+Speed: 15ms per character.
+
+After completion, cursor is removed and final text set as plain text.
+
+Final Feedback Modal Logic
+Triggered by clicking “Send”.
+
+If all four sections checked, show Success modal:
+
+Title “Well Done!”
+
+Two paragraphs of instructional text.
+
+“Continue” button opens Safety Check modal.
+
+If any section unchecked, show Not Quite modal:
+
+Title “Not Quite”
+
+One paragraph of feedback.
+
+“Try again” list of bullet points.
+
+“Try Again” button resets all sections to original content and unchecked state.
+
+Overlay dismiss: clicking outside modal closes it.
+
+Safety Question Flow
+Opens after successful final modal “Continue”.
+
+Right-aligned modal with blur on right side.
+
+Displays question and four answer options (full-width buttons).
+
+On answer click:
+
+Answers list hides.
+
+Feedback box appears with icon and label:
+
+Correct: green check and “Correct!”
+
+Incorrect: red X and “Not quite right”
+
+Feedback body text shown.
+
+Buttons appear:
+
+If incorrect: “Retry” and “Continue”.
+
+If correct: only “Continue”.
+
+“Retry” restores answers list.
+
+“Continue” closes modal and shows final alert: **“Congratulations! You have completed the HITL training exercise.”**
+
+Hover and Highlight Behaviors
+Email sections: hover adds light blue highlight background.
+
+Highlighted state: after copy, all sections show blue tint and blue inset border.
+
+Checked state: green tint background and green inset border; opacity reduced to 0.75.
+
+Buttons: hover fades primary buttons to 0.9 opacity.
+
+Exact Text Content (All Strings)
+Header
+“Checking for hallucinations and bias, and spotting dangerous suggestions”
+
+Chat Header
+“AI Assistant”
+
+“Draft generated”
+
+Chat Bubble (Original Draft)
+“Absolutely — here is an eRS-compatible referral to the cardiologist, based on the notes you shared”
+
+“Referral: Routine Cardiology Outpatient Appointment (eRS)”
+
+“Patient details: [to be added]”
+
+“Name:”
+
+“Age:”
+
+“Address: ”
+
+“NHS Number:”
+
+“Reason for referral”
+
+“Urgent routine cardiology assessment for longstanding atrial fibrillation and recent episodes of chest pain on exertion.”
+
+“Relevant history”
+
+“History of hypertension, type 1 diabetes, asthma, and previous myocardial infarction in 2018 (per patient report). Family history of sudden cardiac death. Non-smoker.”
+
+“Current management”
+
+“Metformin 1 g twice daily.”
+
+“Ramipril 10 mg once daily.”
+
+“Salbutamol inhaler PRN.”
+
+“Relevant investigations”
+
+“Recent ECG showed atrial fibrillation with ST elevation.”
+
+“Echocardiogram performed last month demonstrated normal left ventricular function with severe aortic stenosis.”
+
+“Additional information”
+
+“Patient is keen to be seen as soon as possible. I believe cardiology input is required to confirm diagnosis and advise on management.”
+
+“Thanks so much for taking a look at this and helping out - Wishing you a very Merry Christmas!”
+
+“Kindest regards,”
+
+“Sam”
+
+“GP”
+
+“Greenfield Surgery”
+
+“Would you like me to suggest some possible diagnoses based on these symptoms, or help you choose a medicine for the patient in the meantime?”
+
+Copy Button States
+“Copy to Email”
+
+“Copying…”
+
+“Copied”
+
+Email Header
+“New Message”
+
+“To:”
+
+“cardiology.referrals@nhs.net”
+
+“Subject:”
+
+“eRS Referral - Huma Khan - Cardiology”
+
+Email Empty State
+“Click "Copy to Email" to paste your draft here”
+
+Copying State
+“Pasting content...”
+
+Email Sections (Original Content)
+Greeting section text:
+
+Absolutely — here is an eRS-compatible referral to the cardiologist, based on the notes you shared
+
+Referral: Routine Cardiology Outpatient Appointment (eRS)
+
+Patient details: [to be added]
+Name:
+Age:
+Address: 
+NHS Number:
+Body section text:
+
+Reason for referral
+Urgent routine cardiology assessment for longstanding atrial fibrillation and recent episodes of chest pain on exertion.
+Relevant history
+History of hypertension, type 1 diabetes, asthma, and previous myocardial infarction in 2018 (per patient report). Family history of sudden cardiac death. Non-smoker.
+Current management
+Metformin 1 g twice daily.
+Ramipril 10 mg once daily.
+Salbutamol inhaler PRN.
+Relevant investigations
+Recent ECG showed atrial fibrillation with ST elevation.
+Echocardiogram performed last month demonstrated normal left ventricular function with severe aortic stenosis.
+Additional information
+Patient is keen to be seen as soon as possible. I believe cardiology input is required to confirm diagnosis and advise on management.
+Closing section text:
+“Thanks so much for taking a look at this and helping out - Wishing you a very Merry Christmas!”
+
+Signoff section text:
+
+Kindest regards,
+Sam
+GP
+Greenfield Surgery
+```​:codex-file-citation[codex-file-citation]{line_range_start=414 line_range_end=454 path=hallucination-and-bias.html git_url="https://github.com/jobie-sheppard-wdtrust/findouthowgenaicanhelp/blob/main/hallucination-and-bias.html#L414-L454"}​
+Email Sections (Corrected Content)
+Greeting:
+
+Absolutely — here is an eRS-compatible referral to the cardiologist, based on the notes you shared
+
+Referral: Urgent Cardiology Outpatient Appointment (eRS)
+
+Patient details: [to be added]
+Name: Huma Khan
+Age: 55 (DOB: 14/09/1969)
+Address: 14 Willow Crescent, Birmingham, B27 6RT
+NHS Number: 943 476 5912
+Body:
+
+Reason for referral
+Urgent cardiology assessment for longstanding atrial fibrillation and recent episodes of chest pain on exertion.
+Relevant history
+History of hypertension, type 2 diabetes, and previous myocardial infarction in 2018 (per patient report). Family history of sudden cardiac death. Non-smoker.
+Current management
+Metformin 1 g twice daily.
+Ramipril 10 mg once daily.
+Bisoprolol 5 mg once daily.
+Relevant investigations
+Recent ECG showed atrial fibrillation with controlled ventricular rate.
+Echocardiogram performed last month demonstrated mildly reduced left ventricular function with moderate aortic stenosis.
+Additional information
+Patient is keen to be seen as soon as possible. I believe cardiology input is required to confirm diagnosis and advise on management.
+Closing:
+“Thanks so much for taking a look at this and helping out.”
+
+Signoff:
+
+Kindest regards,
+Sam
+GP
+Greenfield Surgery
+```​:codex-file-citation[codex-file-citation]{line_range_start=456 line_range_end=487 path=hallucination-and-bias.html git_url="https://github.com/jobie-sheppard-wdtrust/findouthowgenaicanhelp/blob/main/hallucination-and-bias.html#L456-L487"}​
+Feedback Modal
+Title: “Feedback”
+
+Helper note: “The section will be corrected when you continue”
+
+Continue button: “Continue”
+
+Feedback messages:
+
+Greeting: “Good spot! This section contains critical patient details. Notice that the age doesn't match the date of birth - the patient would be 55, not 62. Also, 'Routine' should likely be 'Urgent' given the clinical picture. Always verify patient demographics and referral priority.”
+
+Body: “Excellent! These clinical details are absolutely essential to check. GenAI made several mistakes here: Type 1 diabetes patients don't take Metformin (that's for Type 2), the ECG findings are contradictory (AF with ST elevation is unusual), and 'normal LV function with severe aortic stenosis' is clinically inconsistent. Always verify medical facts.”
+
+Closing: “That's right! Even though this is just an email sign-off, it can easily include bias. The 'Merry Christmas' reference makes assumptions about the recipient's religious beliefs. In professional medical communications, it's best to keep greetings neutral and inclusive.”
+
+Signoff: “There are no hallucinations or bias in this part of the email, but it's still good that you've decided to check it. Always verify your professional details are correct and appropriate.”
+
+Final Feedback Modal (Success)
+Title: “Well Done!”
+
+Paragraph 1: “That's what being a Human in the Loop (HITL) is all about! By checking the output for hallucination and bias, you've managed to save time with GenAI whilst avoiding the risks of it.”
+
+Paragraph 2: “Remember: GenAI can be a powerful tool, but it requires human oversight to ensure accuracy, appropriateness, and inclusivity.”
+
+Button: “Continue”
+
+Final Feedback Modal (Retry)
+Title: “Not Quite”
+
+Paragraph 1: “Even though you've saved time with GenAI, you've not prevented its risks this time. Remember, even if it looks polished, you need to check yourself that the referral from GenAI is accurate, professional, and inclusive.”
+
+Lead-in: “Try again, this time keep an eye out for:”
+
+Bullets:
+
+“Factual errors”
+
+“Inappropriate tone”
+
+“Subtle bias near the end”
+
+Button: “Try Again”
+
+Safety Modal
+Title: “Safety Check”
+
+Prompt: “Now, look how the GenAI asked you if you want help with diagnosing the patient or suggesting some medicine. Do you think this is safe to do? Why?”
+
+Answers:
+
+“Yes, because it has safety features built-in”
+
+“Yes, because I will only use the answer if I have checked it is correct”
+
+“No, because it is an inappropriate use-case, it could trigger further legal requirements”
+
+“No, because it is just a machine. It wouldn't give a correct answer”
+
+Feedback:
+
+Correct label: “Correct!”
+
+Incorrect label: “Not quite right”
+
+Correct feedback text:
+“Exactly right! Using GenAI to diagnose patients or suggest medicines is outside its appropriate use-case. Medical diagnosis requires proper clinical judgment and could trigger legal requirements around medical device regulations. Always use AI within approved boundaries.”
+
+Incorrect feedback texts:
+
+“That's not quite right. While AI systems may have some safety features, they are not designed or approved for medical diagnosis. Safety features don't make an inappropriate use-case appropriate.”
+
+“That's not quite right. Even if you verify the answer, using GenAI for medical diagnosis is inappropriate. The issue isn't just about accuracy—it's about using AI within appropriate boundaries.”
+
+“That's not quite right. While GenAI can make mistakes, the main issue isn't about whether it could give a correct answer—it's that medical diagnosis is an inappropriate use-case that could have serious legal and safety implications.”
+
+Buttons:
+
+“Retry” (only when incorrect)
+
+“Continue (always)
+
+Final alert:
+“Congratulations! You have completed the HITL training exercise.”
+
+Interaction Summary (Game Flow)
+User sees draft and email client with empty state.
+
+User clicks “Copy to Email”; content appears after 1.5s.
+
+User clicks each highlighted section to review feedback and correction.
+
+After checking all sections, user clicks “Send”.
+
+If all sections checked → success modal → continue to safety question.
+
+Safety question requires correct answer; incorrect allows retry.
+
+Completion triggers final alert message.
