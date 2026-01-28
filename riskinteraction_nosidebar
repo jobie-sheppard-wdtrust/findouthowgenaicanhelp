@@ -494,14 +494,28 @@
       {
         id: 'prompt1',
         label: "Research NICE recommendations",
-        prompt: "Research the current NICE recommendations for initial management of Sepsis in adults",
+        prompt: "Can you help me draft a short clinic letter summarising a recent GP review?
+
+This is for the patient record and onward sharing with community services, so it should be clear and neutral in tone.
+
+Here are my rough notes from the review:
+
+– Elderly patient with CVD and CKD
+– Walked to surgery (few minutes)
+– BP normal today
+– Routine long-term condition review
+– No changes made
+– Follow-up planned",
         responseSegments: [
-          { text: "Sure thing! I found several NICE recommendations based on this webpage (https://www.example-source.com).\n\nSummary — NICE initial management of suspected sepsis (adults)\n\nRapid recognition and prompt assessment are emphasized. " },
-          { text: "Initial management should be guided by confirmation of sepsis following further assessment and investigations.", highlight: true, highlightId: 'p1-confirmation' },
-          { text: "\n\nKey steps\n\n" },
-          { text: "Use of a sepsis identification tool, such as NEWS2 thresholds, to diagnose patients", highlight: true, highlightId: 'p1-news2' },
-          { text: "\n\nUrgent clinical review and early recording of full vital signs\n\nBlood tests, including lactate when indicated\n\nPrompt antibiotics and IV fluids where sepsis is suspected\n\nOngoing monitoring and timely escalation to senior or critical care services\n\n\n" },
-          { text: "Next step\nWould you like me to suggest how this guidance applies to a specific patient or outline the most appropriate next clinical step for them?", highlight: true, highlightId: 'p1-next-step' }
+          { text: "Sure — here's a short, neutral clinic letter based on your notes \n\n Clinic Letter \n This letter summarises a recent GP review of an elderly patient with multiple long-term conditions, including cardiovascular disease and chronic kidney disease. Overall, the notes suggest that the patient remains relatively mobile, as they could walk the few minutes to the appointment." },
+          { text: "Notes identify that their blood pressure has been stable,", highlight: true, highlightId: 'p1-confirmation' },
+          { text: "and that regular follow-ups appointments would be appropriate for the patient." },
+          { text: "\n\nGiven their age, the patient may benefit from additional community support to help manage day-to-day activities.", highlight: true, highlightId: 'p1-news2' },
+          { text: "No changes were made at this review, pending ongoing monitoring." },
+          { text: "If helpful, I can" },
+          { text: "suggest whether escalation might be needed", highlight: true, highlightId: 'p1-confirmation' },
+          { text: "or I could" },
+          { text: "highlight which factors may be most relevant to monitor closely?", highlight: true, highlightId: 'p1-next-step' },
         ]
       },
       {
