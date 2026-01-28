@@ -496,16 +496,16 @@
         label: "Summarise this review into a clinic letter",
         prompt: "Can you help me draft a short clinic letter summarising a recent GP review? \n\nIt is for the patient record and onward sharing with community services, so it should be clear and neutral in tone. Here are my rough notes from the review: \n\nSamuel Dannam, 83\n– Elderly patient with CVD and CKD\n– Walked to surgery (5 mins)\n– BP normal today\n– Routine long-term condition review\n– No changes made\n– Follow-up planned",
         responseSegments: [
-          { text: "Sure — here's a short, neutral clinic letter based on your notes \n\n Clinic Letter \n This letter summarises a recent GP review of an elderly patient," },
+          { text: "Sure — here's a short, neutral clinic letter based on your notes \n\nClinic Letter \nThis letter summarises a recent GP review of an elderly patient, " },
           { text: "Samuel Dannam, 83", highlight: true, highlightId: 'patient-details' },
-          { text: ", with multiple long-term conditions, including cardiovascular disease and chronic kidney disease. Overall, the notes suggest that the patient remains relatively mobile, as they could walk the few minutes to the appointment." }, 
-          { text: "Notes identify that their blood pressure has been stable,", highlight: true, highlightId: 'bpstable' },
-          { text: "and that regular follow-ups appointments would be appropriate for the patient." },
+          { text: ", with multiple long-term conditions, including cardiovascular disease and chronic kidney disease. Overall, the notes suggest that the patient remains relatively mobile, as they could walk the few minutes to the appointment. " }, 
+          { text: "Notes identify that their blood pressure has been stable", highlight: true, highlightId: 'bpstable' },
+          { text: ", and that regular follow-ups appointments would be appropriate for the patient." },
           { text: "\n\nGiven their age, the patient may benefit from additional community support to help manage day-to-day activities.", highlight: true, highlightId: 'agebias' },
-          { text: "No changes were made at this review, pending ongoing monitoring." },
-          { text: "If helpful, I can" },
+          { text: " No changes were made at this review, pending ongoing monitoring." },
+          { text: " If helpful, I can " },
           { text: "suggest whether escalation might be needed", highlight: true, highlightId: 'next-step' },
-          { text: "or I could" },
+          { text: " or I could " },
           { text: "highlight which factors may be most relevant to monitor closely?", highlight: true, highlightId: 'next-step' },
         ]
       },
@@ -691,59 +691,19 @@
         title: 'GDPR – protecting personal data heading',
         text: "Remember how GenAI works? Since GenAI companies could store or pass on the data you enter, it is a GDPR violation to enter any information that would allow a third-party to link the patient to their medical data, including their name and age. Later in the module, you will explore how to do this safely and legally"
       },
+      'p2-details': {
+        title: 'Identifiable patient data',
+        text: "The referral letter includes a full name and address. Even for legitimate workflows, personal data should be minimized and handled only within approved systems to reduce privacy risk."
+      },
+      'p3-christmas': {
+        title: 'Tone and timing risks',
+        text: "The mention of Christmas could feel insensitive or inaccurate depending on when the complaint is received. This is a good example of how generative text can introduce assumptions that need careful human review."
+      },
     };
 
     function applyHighlights(ids) {
       ids.forEach((id) => activeHighlights.add(id));
       renderMessages();
-    }
-
-    function getTypingDuration(text, wordsPerSecond = 8.4) {
-      const words = String(text).trim().split(/\s+/).filter(Boolean).length;
-      if (words === 0) return 0;
-      return Math.max((words / wordsPerSecond) * 1000, 300);
-    }
-
-    function typeCharacters(element, text, durationMs, callback) {
-      const chars = Array.from(String(text));
-      if (chars.length === 0) {
-        element.textContent = '';
-        if (callback) callback();
-        return;
-      }
-      const interval = durationMs / chars.length;
-      let index = 0;
-
-      function nextChar() {
-        index += 1;
-        element.textContent = chars.slice(0, index).join('');
-        if (index < chars.length) {
-          const lastChar = chars[index - 1];
-          const pause = /[.!?]/.test(lastChar) ? 700 : 0;
-          setTimeout(nextChar, interval + pause);
-        } else if (callback) {
-          callback();
-        }
-      }
-      nextChar();
-    }
-
-    function typeRiskContent(titleHTML, bodyText, onComplete, bodyDelayMs = 0) {
-      riskTitle.innerHTML = '';
-      riskText.textContent = '';
-      const temp = document.createElement('div');
-      temp.innerHTML = titleHTML;
-      const headingText = temp.textContent || '';
-      const headingDuration = getTypingDuration(headingText);
-      const bodyDuration = getTypingDuration(bodyText);
-      typeCharacters(riskTitle, headingText, headingDuration, () => {
-        riskTitle.innerHTML = titleHTML;
-        setTimeout(() => {
-          typeCharacters(riskText, bodyText, bodyDuration, () => {
-            if (onComplete) onComplete();
-          });
-        }, bodyDelayMs);
-      });
     }
 
     function lockScrolling() {
@@ -787,37 +747,18 @@
     }
 
     function showRiskPopup(targetEl, riskData, riskKey) {
-      if (!riskData || isRiskTyping) return;
+      if (!riskData) return;
       currentRiskTarget = targetEl;
       const cacheKey = riskData.cacheKey || riskKey;
       currentRiskKey = cacheKey || null;
       lockScrolling();
       riskPopup.classList.remove('hidden');
-      riskBody.style.display = '';
-      riskBody.style.visibility = 'hidden';
       riskTitle.innerHTML = riskData.title;
       riskText.textContent = riskData.text;
       const measuredPopupRect = riskPopup.getBoundingClientRect();
       positionRiskPopup(targetEl, measuredPopupRect);
-      if (cacheKey && seenRiskKeys.has(cacheKey)) {
-        riskBody.style.visibility = '';
-        isRiskTyping = false;
-        setMinimizeEnabled(true);
-        positionRiskPopup(targetEl);
-        return;
-      }
-      isRiskTyping = true;
-      setMinimizeEnabled(false);
-      riskTitle.innerHTML = '';
-      riskText.textContent = '';
-      riskBody.style.visibility = '';
-      const bodyDelayMs = cacheKey && !seenRiskKeys.has(cacheKey) ? 1500 : 0;
-      typeRiskContent(riskData.title, riskData.text, () => {
-        isRiskTyping = false;
-        if (cacheKey) seenRiskKeys.add(cacheKey);
-        setMinimizeEnabled(true);
-        positionRiskPopup(targetEl);
-      }, bodyDelayMs);
+      setMinimizeEnabled(true);
+      if (cacheKey) seenRiskKeys.add(cacheKey);
     }
 
     function dismissRiskPopup() {
@@ -833,7 +774,7 @@
 
     function handlePromptHighlights(promptId) {
       if (promptId === 'prompt1') {
-        applyHighlights(['bpstable', 'agebias', 'next-step', 'patient-details]);
+        applyHighlights(['bpstable', 'agebias', 'next-step', 'patient-details']);
       }
 
       if (promptId === 'prompt2') {
