@@ -493,20 +493,8 @@
     const PRESET_PROMPTS = [
       {
         id: 'prompt1',
-        label: "Research NICE recommendations",
-        prompt: "Can you help me draft a short clinic letter summarising a recent GP review?
-
-This is for the patient record and onward sharing with community services, so it should be clear and neutral in tone.
-
-Here are my rough notes from the review:
-
-Samuel Dannam, 83
-– Elderly patient with CVD and CKD
-– Walked to surgery (5 mins)
-– BP normal today
-– Routine long-term condition review
-– No changes made
-– Follow-up planned",
+        label: "Summarise this review into a clinic letter",
+        prompt: "Can you help me draft a short clinic letter summarising a recent GP review? \n\nIt is for the patient record and onward sharing with community services, so it should be clear and neutral in tone. Here are my rough notes from the review: \n\nSamuel Dannam, 83\n– Elderly patient with CVD and CKD\n– Walked to surgery (5 mins)\n– BP normal today\n– Routine long-term condition review\n– No changes made\n– Follow-up planned",
         responseSegments: [
           { text: "Sure — here's a short, neutral clinic letter based on your notes \n\n Clinic Letter \n This letter summarises a recent GP review of an elderly patient," },
           { text: "Samuel Dannam, 83", highlight: true, highlightId: 'patient-details' },
