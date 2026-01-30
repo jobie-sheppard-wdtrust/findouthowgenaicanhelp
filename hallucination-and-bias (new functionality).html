@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HITL Training - Checking for Hallucinations and Bias</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --background: 220 14% 96%;
+      --foreground: 222 47% 11%;
+      --card: 0 0% 100%;
+      --card-foreground: 222 47% 11%;
+      --primary: 217 91% 60%;
+      --primary-foreground: 0 0% 100%;
+      --secondary: 220 14% 96%;
+      --muted: 220 14% 96%;
+      --muted-foreground: 220 9% 46%;
+      --border: 220 13% 91%;
+      --success: 142 71% 45%;
+      --warning: 38 92% 50%;
+      --destructive: 0 84% 60%;
+      --genai-bubble: 217 91% 97%;
+      --genai-border: 217 91% 90%;
+      --highlight-section: 217 91% 60% / 0.15;
+      --highlight-border: 217 91% 60%;
+      --overlay: 222 47% 11% / 0.6;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: hsl(var(--background));
+      color: hsl(var(--foreground));
+      margin: 0;
+      min-height: 100vh;
+    }
+
+    .tooltip-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: hsl(var(--overlay));
+      backdrop-filter: blur(4px);
+    }
+
+    .tooltip-overlay.right-aligned {
+      justify-content: flex-end;
+    }
+
+    .tooltip-overlay.right-aligned .tooltip-card {
+      margin-right: 5%;
+      max-width: 450px;
+    }
+
+    .tooltip-card {
+      background: hsl(var(--card));
+      border-radius: 0.75rem;
+      box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+      padding: 2rem;
+      max-width: 32rem;
+      margin: 1rem;
+      animation: scale-in 0.3s ease-out;
+    }
+
+    .genai-bubble {
+      border-radius: 0.75rem;
+      padding: 1rem;
+      background: hsl(var(--genai-bubble));
+      border: 1px solid hsl(var(--genai-border));
+    }
+
+    .genai-section {
+      cursor: pointer;
+      transition: all 0.2s;
+      border-radius: 0.375rem;
+      padding: 0.5rem;
+      margin: -0.25rem -0.5rem;
+    }
+
+    .genai-section:hover {
+      background: hsl(var(--highlight-section));
+    }
+
+    .genai-section.selected {
+      background: hsl(var(--primary) / 0.2);
+      box-shadow: inset 0 0 0 2px hsl(var(--primary) / 0.25);
+    }
+
+    .genai-section.deactivated {
+      opacity: 0.6;
+      color: hsl(var(--muted-foreground));
+      background: transparent;
+    }
+
+    .genai-section.disabled {
+      cursor: not-allowed;
+    }
+
+    .context-menu {
+      position: fixed;
+      background: hsl(var(--card));
+      border: 1px solid hsl(var(--border));
+      border-radius: 0.5rem;
+      box-shadow: 0 15px 30px -12px rgb(0 0 0 / 0.25);
+      padding: 0.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      z-index: 40;
+      min-width: 160px;
+    }
+
+    .context-menu button {
+      border: none;
+      background: hsl(var(--secondary));
+      color: hsl(var(--foreground));
+      border-radius: 0.375rem;
+      padding: 0.5rem 0.75rem;
+      font-size: 0.875rem;
+      text-align: left;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .context-menu button:hover {
+      background: hsl(var(--primary) / 0.1);
+    }
+
+    .pulse {
+      animation: pulse 0.6s ease-in-out;
+    }
+
+    .typing-cursor {
+      display: inline-block;
+      width: 2px;
+      height: 1.25rem;
+      background: hsl(var(--foreground));
+      margin-left: 2px;
+      animation: blink 1s step-end infinite;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1.5rem;
+      border-radius: 0.5rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+    }
+
+    .btn-primary {
+      background: hsl(var(--primary));
+      color: hsl(var(--primary-foreground));
+    }
+
+    .btn-primary:hover {
+      opacity: 0.9;
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-secondary {
+      background: hsl(var(--secondary));
+      color: hsl(var(--foreground));
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: hsl(var(--muted-foreground));
+    }
+
+    .btn-ghost:disabled {
+      opacity: 0.5;
+    }
+
+    .answer-btn {
+      width: 100%;
+      text-align: left;
+      padding: 1rem;
+      border-radius: 0.5rem;
+      border: 1px solid hsl(var(--border));
+      background: hsl(var(--muted));
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 0.875rem;
+      color: hsl(var(--foreground) / 0.9);
+    }
+
+    .answer-btn:hover {
+      background: hsl(var(--muted));
+      border-color: hsl(var(--primary) / 0.5);
+    }
+
+    .tooltip-overlay.safety-overlay {
+      background: transparent;
+      backdrop-filter: none;
+    }
+
+    .safety-right-blur {
+      position: absolute;
+      inset: 0 0 0 50%;
+      background: rgba(255, 255, 255, 0.01);
+      backdrop-filter: blur(6px);
+      pointer-events: none;
+    }
+
+    .tooltip-overlay.safety-overlay .tooltip-card {
+      position: relative;
+      z-index: 1;
+    }
+
+    @keyframes scale-in {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+
+    @keyframes fade-in {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 hsl(var(--primary) / 0.4); }
+      70% { box-shadow: 0 0 0 10px hsl(var(--primary) / 0); }
+      100% { box-shadow: 0 0 0 0 hsl(var(--primary) / 0); }
+    }
+
+    .fade-in {
+      animation: fade-in 0.3s ease-out;
+    }
+
+    .hidden { display: none !important; }
+    .tooltip-overlay.hidden { pointer-events: none; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <!-- Header -->
+    <header style="height: 3.5rem; border-bottom: 1px solid hsl(var(--border)); background: hsl(var(--card)); display: flex; align-items: center; padding: 0 1.5rem; gap: 0.75rem;">
+      <button id="helpBtn" style="width: 2rem; height: 2rem; border-radius: 50%; background: hsl(var(--primary) / 0.1); display: flex; align-items: center; justify-content: center; border: none; cursor: pointer;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--primary))" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+          <path d="M12 17h.01"/>
+        </svg>
+      </button>
+      <h1 style="font-weight: 600; color: hsl(var(--foreground));">Checking for hallucinations and bias, and spotting dangerous suggestions</h1>
+    </header>
+
+    <!-- Main Content -->
+    <div style="display: flex; height: calc(100vh - 3.5rem);">
+      <!-- Left Panel - GenAI Chat -->
+      <div style="width: 50%; border-right: 1px solid hsl(var(--border)); padding: 0.5rem; overflow: auto;">
+        <div style="height: 100%; display: flex; flex-direction: column;">
+          <!-- Chat Header -->
+          <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem;">
+            <div style="width: 2.5rem; height: 2.5rem; border-radius: 50%; background: #90278e; display: flex; align-items: center; justify-content: center;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 8V4H8"/>
+                <rect width="16" height="12" x="4" y="8" rx="2"/>
+                <path d="M2 14h2"/>
+                <path d="M20 14h2"/>
+                <path d="M15 13v2"/>
+                <path d="M9 13v2"/>
+              </svg>
+            </div>
+            <div>
+              <h2 style="font-weight: 600; color: hsl(var(--foreground)); margin: 0;">AI Assistant</h2>
+              <p style="font-size: 0.875rem; color: hsl(var(--muted-foreground)); margin: 0;">Draft generated</p>
+            </div>
+          </div>
+
+          <!-- Chat Bubble -->
+          <div style="flex: 1;">
+            <div class="genai-bubble">
+              <div style="font-size: 0.875rem; line-height: 1.4; color: hsl(var(--foreground)); display: flex; flex-direction: column; gap: 0.75rem;">
+                <div id="genai-section-1" class="genai-section" data-section="section1" style="white-space: pre-wrap;">Absolutely — here is an eRS-compatible referral to the cardiologist, based on the notes you shared</div>
+                <div id="genai-section-2" class="genai-section" data-section="section2" style="white-space: pre-wrap;">Referral: Routine Cardiology Outpatient Appointment (eRS)
+Patient details: [to be added]
+Name:
+Age:
+Address:
+NHS Number:
+</div>
+                <div id="genai-section-3" class="genai-section" data-section="section3" style="white-space: pre-wrap;">
+Reason for referral
+Urgent routine cardiology assessment for longstanding atrial fibrillation and recent episodes of chest pain on exertion.
+Relevant history
+History of hypertension, type 1 diabetes, asthma, and previous myocardial infarction in 2018 (per patient report).
+Family history of sudden cardiac death. Non-smoker.
+Current management
+Metformin 1 g twice daily.
+Ramipril 10 mg once daily.
+Salbutamol inhaler PRN.
+Relevant investigations
+Recent ECG showed atrial fibrillation with ST elevation.
+Echocardiogram performed last month demonstrated normal left ventricular function with severe aortic stenosis.</div>
+                <div id="genai-section-4" class="genai-section" data-section="section4" style="white-space: pre-wrap;">Additional information
+Patient is keen to be seen as soon as possible. I believe cardiology input is required to confirm diagnosis and advise on management.</div>
+                <div id="genai-section-5" class="genai-section" data-section="section5" style="white-space: pre-wrap;">Thanks so much for taking a look at this and helping out - Wishing you a very Merry Christmas!
+Kindest regards,
+Sam - GP
+Greenfield Surgery</div>
+                <div id="genai-section-6" class="genai-section" data-section="section6" style="white-space: pre-wrap;">Would you like me to suggest some possible diagnoses based on these symptoms, or help you choose a medicine for the patient in the meantime?</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Panel - Email Client -->
+      <div style="width: 50%; padding: 0.5rem; overflow: auto;">
+        <div style="height: 100%; display: flex; flex-direction: column;">
+          <!-- Email Client Header -->
+          <div style="background: hsl(var(--card)); border-radius: 0.5rem 0.5rem 0 0; border: 1px solid hsl(var(--border)); border-bottom: none; padding: 1rem;">
+            <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--primary))" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect width="20" height="16" x="2" y="4" rx="2"/>
+                <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+              </svg>
+              <span style="font-weight: 600; color: hsl(var(--foreground));">New Message</span>
+            </div>
+            
+            <div style="font-size: 0.875rem;">
+              <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                <span style="color: hsl(var(--muted-foreground)); width: 3rem;">To:</span>
+                <span style="color: hsl(var(--foreground));">cardiology.referrals@nhs.net</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <span style="color: hsl(var(--muted-foreground)); width: 3rem;">Subject:</span>
+                <span style="color: hsl(var(--foreground));">eRS Referral - [patient details] - Cardiology</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Email Body -->
+          <div id="emailBody" style="flex: 1; background: hsl(var(--card)); border: 1px solid hsl(var(--border)); border-top: none; border-bottom: none; padding: 1rem; overflow: auto;">
+            <div id="emptyState" style="height: 100%; display: flex; align-items: center; justify-content: center; color: hsl(var(--muted-foreground));">
+              <p>Choose "Copy-paste" or "Check content" from the draft to fill this email.</p>
+            </div>
+            <div id="contentState" class="hidden fade-in" style="color: hsl(var(--foreground) / 0.9); line-height: 1.4;">
+              <div id="email-section-1" style="white-space: pre-wrap;"></div>
+              <div id="email-section-2" style="white-space: pre-wrap;"></div>
+              <div id="email-section-3" style="white-space: pre-wrap;"></div>
+              <div id="email-section-4" style="white-space: pre-wrap;"></div>
+              <div id="email-section-5" style="white-space: pre-wrap;"></div>
+              <div id="email-section-6" style="white-space: pre-wrap;"></div>
+            </div>
+          </div>
+
+          <!-- Email Footer / Actions -->
+          <div style="background: hsl(var(--card)); border-radius: 0 0 0.5rem 0.5rem; border: 1px solid hsl(var(--border)); padding: 1rem; display: flex; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <button class="btn btn-ghost" disabled style="width: 2.5rem; height: 2.5rem; padding: 0;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+                </svg>
+              </button>
+              <button class="btn btn-ghost" disabled style="width: 2.5rem; height: 2.5rem; padding: 0;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M3 6h18"/>
+                  <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+                  <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                </svg>
+              </button>
+            </div>
+            
+            <button id="sendBtn" class="btn btn-primary" disabled style="padding: 0.75rem 2rem;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="m22 2-7 20-4-9-9-4Z"/>
+                <path d="M22 2 11 13"/>
+              </svg>
+              Send
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Context Menu -->
+    <div id="contextMenu" class="context-menu hidden">
+      <button id="copyPasteBtn">Copy-paste</button>
+      <button id="checkContentBtn">Check content</button>
+    </div>
+
+    <!-- Section Feedback Modal -->
+    <div id="sectionFeedback" class="tooltip-overlay hidden">
+      <div id="sectionFeedbackCard" class="tooltip-card">
+        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem;">
+          <div id="feedbackIconContainer" style="width: 2.5rem; height: 2.5rem; border-radius: 50%; display: flex; align-items: center; justify-content: center;"></div>
+          <h2 style="font-size: 1.125rem; font-weight: 600; color: hsl(var(--foreground)); margin: 0;">Feedback</h2>
+        </div>
+        
+        <p id="feedbackMessage" style="color: hsl(var(--foreground) / 0.8); line-height: 1.6; margin-bottom: 1.5rem;"></p>
+
+        <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; color: hsl(var(--muted-foreground)); margin-bottom: 1.5rem;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+          <span>The section will be corrected when you continue</span>
+        </div>
+
+        <button id="continueBtn" class="btn btn-primary" style="width: 100%;">Continue</button>
+      </div>
+    </div>
+
+    <!-- Final Feedback Modal -->
+    <div id="finalFeedback" class="tooltip-overlay hidden">
+      <div class="tooltip-card">
+        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem;">
+          <div id="finalIconContainer" style="width: 3rem; height: 3rem; border-radius: 50%; display: flex; align-items: center; justify-content: center;"></div>
+          <h2 id="finalTitle" style="font-size: 1.125rem; font-weight: 600; color: hsl(var(--foreground)); margin: 0;"></h2>
+        </div>
+        
+        <div id="finalContent"></div>
+      </div>
+    </div>
+
+    <!-- Safety Question Modal -->
+    <div id="safetyQuestion" class="tooltip-overlay right-aligned safety-overlay hidden">
+      <div class="safety-right-blur"></div>
+      <div class="tooltip-card">
+        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem;">
+          <div style="width: 2.5rem; height: 2.5rem; border-radius: 50%; background: hsl(var(--warning) / 0.1); display: flex; align-items: center; justify-content: center;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--warning))" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+              <path d="M12 9v4"/>
+              <path d="M12 17h.01"/>
+            </svg>
+          </div>
+          <h2 style="font-size: 1.125rem; font-weight: 600; color: hsl(var(--foreground)); margin: 0;">Safety Check</h2>
+        </div>
+
+        <p style="color: hsl(var(--foreground) / 0.8); line-height: 1.6; margin-bottom: 1.5rem;">
+          Now, look how the GenAI asked you if you want help with diagnosing the patient or suggesting some medicine. Do you think this is safe to do? Why?
+        </p>
+
+        <div id="safetyAnswers" style="display: flex; flex-direction: column; gap: 0.75rem;"></div>
+        <div id="safetyFeedback" class="hidden"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // State
+    const state = {
+      activeFeedback: null,
+      activeSection: null,
+      isAnimating: false,
+      sectionStatus: {
+        section1: { copied: false, checked: false },
+        section2: { copied: false, checked: false },
+        section3: { copied: false, checked: false },
+        section4: { copied: false, checked: false },
+        section5: { copied: false, checked: false },
+        section6: { copied: false, checked: false }
+      }
+    };
+
+    const sectionOrder = ['section1', 'section2', 'section3', 'section4', 'section5', 'section6'];
+    const requiredSections = ['section3', 'section5', 'section6'];
+
+    // Content
+    const originalSections = {
+      section1: "Absolutely — here is an eRS-compatible referral to the cardiologist, based on the notes you shared",
+      section2: `Referral: Routine Cardiology Outpatient Appointment (eRS) 
+      Patient details: [to be added]
+      Name:
+      Age:
+      Address:
+      NHS Number:`
+      
+      section3: `Reason for referral
+      Urgent routine cardiology assessment for longstanding atrial fibrillation and recent episodes of chest pain on exertion.
+      Relevant history
+      History of hypertension, type 1 diabetes, asthma, and previous myocardial infarction in 2018 (per patient report). Family history of sudden cardiac death. Non-smoker.
+      Current management
+      Metformin 1 g twice daily.
+      Ramipril 10 mg once daily.
+      Salbutamol inhaler PRN.
+      Relevant investigations
+      Recent ECG showed atrial fibrillation with ST elevation. Echocardiogram performed last month demonstrated normal left ventricular function with severe aortic stenosis.`
+      
+      section4: `Additional information
+      Patient is keen to be seen as soon as possible. I believe cardiology input is required to confirm diagnosis and advise on management.`
+      
+      section5: `Thanks so much for taking a look at this and helping out - Wishing you a very Merry Christmas!
+      Kindest regards,
+      Sam - GP
+      Greenfield Surgery`
+      
+      section6: "Would you like me to suggest some possible diagnoses based on these symptoms, or help you choose a medicine for the patient in the meantime?"
+    };
+
+    const correctedSections = {
+      section1: "Absolutely — here is an eRS-compatible referral to the cardiologist, based on the notes you shared",
+      section2: `Referral: Routine Cardiology Outpatient Appointment (eRS)
+      Patient details: [to be added]
+      Name:
+      Age:
+      Address:
+      NHS Number:`
+      section3: `Reason for referral
+      Urgent cardiology assessment for longstanding atrial fibrillation and recent episodes of chest pain on exertion.
+      Relevant history
+      History of hypertension, type 2 diabetes, and previous myocardial infarction in 2018 (per patient report). Family history of sudden cardiac death. Non-smoker.
+      Current management
+      Metformin 1 g twice daily.
+      Ramipril 10 mg once daily.
+      Bisoprolol 5 mg once daily.
+      Relevant investigations
+      Recent ECG showed atrial fibrillation with controlled ventricular rate.
+      Echocardiogram performed last month demonstrated mildly reduced left ventricular function with moderate aortic stenosis.`,
+      section4: `Additional information
+      Patient is keen to be seen as soon as possible. I believe cardiology input is required to confirm diagnosis and advise on management.`,
+      section5: `Thanks so much for taking a look at this and helping out.
+      Kindest regards,
+      Sam - GP
+      Greenfield Surgery`,
+      section6: ``
+    };
+
+    const feedbackContent = {
+      section1: {
+        icon: "check",
+        message: "There are no hallucinations or bias here, but it's also not part of the email! It can erode trust to leave parts of a GenAI response in your email, which is another reason it's important to stay a HITL"
+      },
+      section2: {
+        icon: "check",
+        message: "There are no hallucinations or bias in this part of the email, but it's important that you're being a HITL and remembering to check!"
+      },
+      section3: {
+        icon: "alert",
+        message: "That's what being a HITL is all about!\n\nGenAI made several mistakes here: Type 1 diabetes patients don't take Metformin (that's for Type 2), the ECG findings are contradictory (AF with ST elevation is unusual), and 'normal LV function with severe aortic stenosis' is clinically inconsistent.\n\nClinical details are absolutely essential to check."
+      },
+      section4: {
+        icon: "check",
+        message: "There are no hallucinations or bias in this part of the email, but it's important that you're being a HITL and remembering to check!"
+      },
+      section5: {
+        icon: "alert",
+        message: "That's what being a HITL is all about! This sign-off contains subtle bias: 'Merry Christmas' makes assumptions about the recipient's religious beliefs"
+      },
+      section6: {
+        icon: "alert",
+        message: "It's important to check these suggestions, but they aren't part of the email. It can erode trust when the recipient sees that you've left part of a GenAI response in communications with them."
+      }
+    };
+
+    const safetyAnswers = [
+      { key: "safety", text: "Yes, because it has safety features built-in", isCorrect: false, feedback: "That's not quite right. While AI systems may have some safety features, they are not designed or approved for medical diagnosis. Safety features don't make an inappropriate use-case appropriate." },
+      { key: "checked", text: "Yes, because I will only use the answer if I have checked it is correct", isCorrect: false, feedback: "That's not quite right. Even if you verify the answer, using GenAI for medical diagnosis is inappropriate. The issue isn't just about accuracy—it's about using AI within appropriate boundaries." },
+      { key: "inappropriate", text: "No, because it is an inappropriate use-case, it could trigger further legal requirements", isCorrect: true, feedback: "Exactly right! Using GenAI to diagnose patients or suggest medicines is outside its appropriate use-case. Medical diagnosis requires proper clinical judgment and could trigger legal requirements around medical device regulations. Always use AI within approved boundaries." },
+      { key: "machine", text: "No, because it is just a machine. It wouldn't give a correct answer", isCorrect: false, feedback: "That's not quite right. While GenAI can make mistakes, the main issue isn't about whether it could give a correct answer—it's that medical diagnosis is an inappropriate use-case that could have serious legal and safety implications." }
+    ];
+
+    let emailContent = {
+      section1: "",
+      section2: "",
+      section3: "",
+      section4: "",
+      section5: "",
+      section6: ""
+    };
+
+    // DOM Elements
+    const elements = {
+      sendBtn: document.getElementById('sendBtn'),
+      continueBtn: document.getElementById('continueBtn'),
+      sectionFeedback: document.getElementById('sectionFeedback'),
+      finalFeedback: document.getElementById('finalFeedback'),
+      safetyQuestion: document.getElementById('safetyQuestion'),
+      emptyState: document.getElementById('emptyState'),
+      contentState: document.getElementById('contentState'),
+      sectionFeedbackCard: document.getElementById('sectionFeedbackCard'),
+      feedbackIconContainer: document.getElementById('feedbackIconContainer'),
+      feedbackMessage: document.getElementById('feedbackMessage'),
+      finalIconContainer: document.getElementById('finalIconContainer'),
+      finalTitle: document.getElementById('finalTitle'),
+      finalContent: document.getElementById('finalContent'),
+      safetyAnswers: document.getElementById('safetyAnswers'),
+      safetyFeedback: document.getElementById('safetyFeedback'),
+      contextMenu: document.getElementById('contextMenu'),
+      copyPasteBtn: document.getElementById('copyPasteBtn'),
+      checkContentBtn: document.getElementById('checkContentBtn')
+    };
+
+    // Functions
+    const safeAddListener = (element, event, handler) => {
+      if (element) {
+        element.addEventListener(event, handler);
+      }
+    };
+
+    const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+    const hideOverlay = (overlay) => {
+      if (overlay) {
+        overlay.classList.add('hidden');
+      }
+    };
+
+    const bindOverlayDismiss = (overlay, onDismiss) => {
+      if (!overlay) return;
+      overlay.addEventListener('click', (event) => {
+        if (event.target === overlay) {
+          overlay.classList.add('hidden');
+          if (onDismiss) {
+            onDismiss();
+          }
+        }
+      });
+    };
+
+    const isOverlayOpen = () => {
+      return [elements.sectionFeedback, elements.finalFeedback, elements.safetyQuestion].some(overlay => overlay && !overlay.classList.contains('hidden'));
+    };
+
+    const hideContextMenu = () => {
+      if (!elements.contextMenu) return;
+      elements.contextMenu.classList.add('hidden');
+      state.activeSection = null;
+    };
+
+    function updateSendState() {
+      const hasContent = Object.values(emailContent).some(value => value && value.trim().length > 0);
+      if (elements.sendBtn) {
+        elements.sendBtn.disabled = !hasContent;
+      }
+      if (elements.emptyState && elements.contentState) {
+        elements.emptyState.classList.toggle('hidden', hasContent);
+        elements.contentState.classList.toggle('hidden', !hasContent);
+      }
+    }
+
+    function updateEmailSections() {
+      sectionOrder.forEach(section => {
+        const el = document.getElementById(`email-section-${section.slice(-1)}`);
+        if (!el) return;
+        el.textContent = emailContent[section] || '';
+      });
+      updateSendState();
+    }
+
+    function showSectionFeedback(section) {
+      const feedback = feedbackContent[section];
+      if (!feedback || !elements.sectionFeedback || !elements.feedbackIconContainer || !elements.feedbackMessage) {
+        return false;
+      }
+
+      const isCheck = feedback.icon === 'check';
+      const iconHtml = isCheck
+        ? '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--primary))" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>'
+        : '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--success))" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>';
+
+      const bgColor = isCheck ? 'hsl(var(--primary) / 0.1)' : 'hsl(var(--success) / 0.1)';
+      const borderColor = isCheck ? 'hsl(var(--primary))' : 'hsl(var(--success))';
+
+      elements.feedbackIconContainer.innerHTML = iconHtml;
+      elements.feedbackIconContainer.style.background = bgColor;
+      elements.feedbackMessage.textContent = feedback.message;
+      elements.feedbackMessage.style.whiteSpace = 'pre-wrap';
+
+      if (elements.sectionFeedbackCard) {
+        elements.sectionFeedbackCard.style.border = `2px solid ${borderColor}`;
+      }
+      if (elements.continueBtn) {
+        elements.continueBtn.style.background = isCheck ? 'hsl(var(--primary))' : 'hsl(var(--success))';
+        elements.continueBtn.style.color = 'hsl(var(--primary-foreground))';
+      }
+
+      elements.sectionFeedback.classList.remove('hidden');
+      return true;
+    }
+
+    function markGenaiChecked(section) {
+      const index = sectionOrder.indexOf(section) + 1;
+      const el = document.getElementById(`genai-section-${index}`);
+      if (el) {
+        el.classList.add('deactivated', 'disabled');
+      }
+    }
+
+    async function insertEmailSection(section, content) {
+      const index = sectionOrder.indexOf(section) + 1;
+      const el = document.getElementById(`email-section-${index}`);
+      if (!el) return;
+      emailContent[section] = content;
+      el.textContent = content;
+      el.classList.add('fade-in');
+      await wait(300);
+      el.classList.remove('fade-in');
+      updateSendState();
+    }
+
+    function tokenize(text) {
+      return text.split(/(\s+)/).filter(token => token.length > 0);
+    }
+
+    function diffTokens(originalTokens, correctedTokens) {
+      const n = originalTokens.length;
+      const m = correctedTokens.length;
+      const dp = Array.from({ length: n + 1 }, () => Array(m + 1).fill(0));
+
+      for (let i = n - 1; i >= 0; i--) {
+        for (let j = m - 1; j >= 0; j--) {
+          if (originalTokens[i] === correctedTokens[j]) {
+            dp[i][j] = dp[i + 1][j + 1] + 1;
+          } else {
+            dp[i][j] = Math.max(dp[i + 1][j], dp[i][j + 1]);
+          }
+        }
+      }
+
+      const ops = [];
+      let i = 0;
+      let j = 0;
+      while (i < n && j < m) {
+        if (originalTokens[i] === correctedTokens[j]) {
+          ops.push({ type: 'equal', text: originalTokens[i] });
+          i += 1;
+          j += 1;
+        } else if (dp[i + 1][j] >= dp[i][j + 1]) {
+          ops.push({ type: 'delete', text: originalTokens[i] });
+          i += 1;
+        } else {
+          ops.push({ type: 'insert', text: correctedTokens[j] });
+          j += 1;
+        }
+      }
+      while (i < n) {
+        ops.push({ type: 'delete', text: originalTokens[i] });
+        i += 1;
+      }
+      while (j < m) {
+        ops.push({ type: 'insert', text: correctedTokens[j] });
+        j += 1;
+      }
+
+      const merged = [];
+      for (const op of ops) {
+        const last = merged[merged.length - 1];
+        if (last && last.type === op.type) {
+          last.text += op.text;
+        } else {
+          merged.push({ ...op });
+        }
+      }
+      return merged;
+    }
+
+    async function applyDiffAnimation(el, originalText, correctedText) {
+      const ops = diffTokens(tokenize(originalText), tokenize(correctedText));
+      let chars = originalText.split('');
+      let cursorIndex = 0;
+
+      const render = () => {
+        el.innerHTML = `${chars.slice(0, cursorIndex).join('')}<span class="typing-cursor"></span>${chars.slice(cursorIndex).join('')}`;
+      };
+
+      render();
+
+      for (const op of ops) {
+        if (op.type === 'equal') {
+          cursorIndex += op.text.length;
+          render();
+          await wait(10);
+          continue;
+        }
+        if (op.type === 'delete') {
+          cursorIndex += op.text.length;
+          render();
+          await wait(10);
+          for (let k = 0; k < op.text.length; k++) {
+            if (cursorIndex > 0) {
+              chars.splice(cursorIndex - 1, 1);
+              cursorIndex -= 1;
+              render();
+              await wait(15);
+            }
+          }
+          continue;
+        }
+        if (op.type === 'insert') {
+          for (const ch of op.text) {
+            chars.splice(cursorIndex, 0, ch);
+            cursorIndex += 1;
+            render();
+            await wait(15);
+          }
+        }
+      }
+
+      el.textContent = chars.join('');
+    }
+
+    async function animateCopyPaste(section) {
+      if (state.isAnimating || !section) return;
+      state.isAnimating = true;
+      const index = sectionOrder.indexOf(section) + 1;
+      const genaiEl = document.getElementById(`genai-section-${index}`);
+      if (genaiEl) {
+        genaiEl.classList.add('pulse');
+      }
+      await wait(600);
+      if (genaiEl) {
+        genaiEl.classList.remove('pulse');
+      }
+      await insertEmailSection(section, originalSections[section]);
+      markGenaiChecked(section);
+      state.sectionStatus[section].copied = true;
+      state.sectionStatus[section].checked = false;
+      state.isAnimating = false;
+    }
+
+    async function animateCheckSection(section) {
+      if (state.isAnimating) return;
+      state.isAnimating = true;
+      const index = sectionOrder.indexOf(section) + 1;
+      const genaiEl = document.getElementById(`genai-section-${index}`);
+      const emailEl = document.getElementById(`email-section-${index}`);
+      const originalText = originalSections[section];
+      const correctedText = correctedSections[section];
+
+      if (genaiEl) {
+        genaiEl.classList.add('selected');
+        genaiEl.classList.add('pulse');
+      }
+
+      await wait(600);
+
+      if (genaiEl) {
+        genaiEl.classList.remove('pulse');
+        genaiEl.classList.remove('selected');
+      }
+
+      await insertEmailSection(section, originalText);
+
+      if (originalText !== correctedText && emailEl) {
+        markGenaiChecked(section);
+        await applyDiffAnimation(emailEl, originalText, correctedText);
+        emailContent[section] = correctedText;
+        updateSendState();
+      } else {
+        markGenaiChecked(section);
+      }
+
+      state.sectionStatus[section].copied = true;
+      state.sectionStatus[section].checked = true;
+      state.isAnimating = false;
+    }
+    // Event Listeners
+    bindOverlayDismiss(elements.sectionFeedback, async () => {
+      if (state.activeFeedback && !state.isAnimating) {
+        const section = state.activeFeedback;
+        state.activeFeedback = null;
+        await animateCheckSection(section);
+      }
+    });
+    bindOverlayDismiss(elements.finalFeedback);
+    bindOverlayDismiss(elements.safetyQuestion);
+
+    document.addEventListener('click', (event) => {
+      if (!elements.contextMenu || elements.contextMenu.classList.contains('hidden')) return;
+      if (!elements.contextMenu.contains(event.target)) {
+        hideContextMenu();
+      }
+    });
+
+    if (elements.contextMenu) {
+      elements.contextMenu.addEventListener('click', (event) => {
+        event.stopPropagation();
+      });
+    }
+
+    sectionOrder.forEach((section, index) => {
+      const sectionEl = document.getElementById(`genai-section-${index + 1}`);
+      safeAddListener(sectionEl, 'click', (event) => {
+        event.stopPropagation();
+        if (isOverlayOpen() || state.isAnimating) return;
+        if (state.sectionStatus[section].copied || state.sectionStatus[section].checked) return;
+        if (!elements.contextMenu) return;
+        state.activeSection = section;
+        elements.contextMenu.style.left = `${event.clientX}px`;
+        elements.contextMenu.style.top = `${event.clientY}px`;
+        elements.contextMenu.classList.remove('hidden');
+      });
+    });
+
+    safeAddListener(elements.copyPasteBtn, 'click', async () => {
+      if (state.isAnimating || !state.activeSection) return;
+      const section = state.activeSection;
+      hideContextMenu();
+      await animateCopyPaste(section);
+    });
+
+    safeAddListener(elements.checkContentBtn, 'click', async () => {
+      if (state.isAnimating || !state.activeSection) return;
+      const section = state.activeSection;
+      hideContextMenu();
+      state.activeFeedback = section;
+      const shown = showSectionFeedback(section);
+      if (!shown) {
+        state.activeFeedback = null;
+        await animateCheckSection(section);
+      }
+    });
+
+    safeAddListener(elements.continueBtn, 'click', async () => {
+      if (state.activeFeedback && !state.isAnimating) {
+        const section = state.activeFeedback;
+        hideOverlay(elements.sectionFeedback);
+        state.activeFeedback = null;
+        await animateCheckSection(section);
+      }
+    });
+
+    safeAddListener(elements.sendBtn, 'click', () => {
+      const allChecked = requiredSections.every(section => state.sectionStatus[section].checked);
+      showFinalFeedbackModal(allChecked ? 'success' : 'retry');
+    });
+
+    updateSendState();
+  </script>
+</body>
+</html>
