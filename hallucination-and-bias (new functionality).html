@@ -1339,7 +1339,7 @@ Greenfield Surgery`,
       const heading = 'Feedback';
       const subheading = success 
         ? "Well done! You were the Human In The Loop: see below how you handled the risks"
-        : "Not quite – you've missed a few details here. Look below to see how you can be the Human In The Loop next time";
+        : "Not quite – you've missed a few details here. Being the Human In The Loop means you need to check the output, ensuring it's as good as what you would write yourself. Check below to see how you can improve";
       
       let sectionsHTML = '';
       
@@ -1348,8 +1348,8 @@ Greenfield Surgery`,
         'section1',
         !state.sectionStatus.section1.included,
         !state.sectionStatus.section1.included 
-          ? "Great! You correctly identified that this preamble shouldn't be included in the professional email. This maintains the appropriate tone and professionalism of your communication."
-          : "This preamble should not be included in the email. It's a GenAI artifact that can erode trust and professionalism when left in professional communications."
+          ? "Great! This preamble shouldn't be included - it would erode your patients' trust in you to see it left in professional communications"
+          : "This preamble shouldn be included. It's a GenAI artifact that erodes trust when left in professional communications."
       );
       
       // Section 2
@@ -1357,8 +1357,8 @@ Greenfield Surgery`,
         'section2',
         state.sectionStatus.section2.included,
         state.sectionStatus.section2.included
-          ? "Excellent! You included this essential header section. While it contained no errors, checking is always important to maintain your role as the Human In The Loop."
-          : "You missed the essential referral header. Always include all necessary administrative information, even when it appears correct. Being a HITL means checking everything."
+          ? "Good - you included this essential header section. While it didn't contain errors, you always need to check as the Human In The Loop."
+          : "You didn't include this essential referral header in your email"
       );
       
       // Section 3
@@ -1369,8 +1369,8 @@ Greenfield Surgery`,
         'section4',
         state.sectionStatus.section4.included,
         state.sectionStatus.section4.included
-          ? "Well done! You included this important context section. Even though it was correct, you demonstrated good practice by checking before including it."
-          : "You missed important contextual information for the specialist. Always include complete information to ensure proper patient care, even when content appears accurate."
+          ? "Good - you included this important context section. While it didn't contain errors, you always need to check as the Human In The Loop"
+          : "You didn't include this important context for the specialist"
       );
       
       // Section 5
@@ -1381,8 +1381,8 @@ Greenfield Surgery`,
         'section6',
         !state.sectionStatus.section6.included,
         !state.sectionStatus.section6.included
-          ? "Excellent judgment! You correctly identified that offering diagnoses or medicines is inappropriate and potentially dangerous in this professional context. This is critical oversight."
-          : "This section should never be included. Offering diagnoses or medication suggestions in a referral is inappropriate and potentially unsafe. Always exercise professional judgment."
+          ? "Excellent! You spotted that this GenAI follow-up should not be included. It erodes trust when left in professional communications"
+          : "This GenAI follow-up should not be included. It erodes trust when left in professional communications"
       );
       
       return `
@@ -1408,11 +1408,11 @@ Greenfield Surgery`,
       
       let feedbackText;
       if (succeeded) {
-        feedbackText = "Perfect! You identified and corrected the hallucinations in this section - changing type 1 to type 2 diabetes, removing asthma, adding the missing beta-blocker, and correcting the ECG and echo findings. This is exactly what being a Human In The Loop means.";
+        feedbackText = "Perfect! You identified and corrected the hallucinations in this section - changing type 1 to type 2 diabetes, removing asthma, adding the missing beta-blocker, and correcting the ECG and echo findings. This is exactly what being a Human In The Loop involves.";
       } else if (included && !checked) {
-        feedbackText = "You included this section but didn't check it for errors. The AI hallucinated several critical details: wrong diabetes type, non-existent asthma, missing medication, and incorrect test results. Always verify medical information before sending.";
+        feedbackText = "You included this section but didn't check it for errors. The AI hallucinated several critical details: wrong diabetes type, non-existent asthma, missing medication, and incorrect test results. As the Human In The Loop, it's your responsibility to check all factual details.";
       } else {
-        feedbackText = "You missed this crucial section entirely. It contained multiple hallucinations that needed correction: wrong diabetes type, fabricated asthma diagnosis, missing medication (Bisoprolol), and incorrect ECG/echo findings. Never skip sections without reviewing them.";
+        feedbackText = "You didn't include this crucial section of the email, even though it also needed hallucinated details correcting ";
       }
       
       return buildSectionFeedback('section3', succeeded, feedbackText);
@@ -1425,16 +1425,15 @@ Greenfield Surgery`,
       
       let feedbackText;
       if (succeeded) {
-        feedbackText = "Great work! You identified the inappropriate seasonal greeting and removed it. Professional medical referrals should maintain formal tone year-round. This shows good judgment in identifying bias and contextual errors.";
+        feedbackText = "Great work! You identified the subtle bias here: the inappropriate seasonal greeting makes religious assumptions about the recipient. This is exactly what being a Human In The Loop involves.";
       } else if (included && !checked) {
-        feedbackText = "You included this section without checking it. The 'Merry Christmas' greeting is inappropriate in professional medical correspondence - it assumes the recipient's religious background and can introduce bias. Always review sign-offs for professionalism.";
+        feedbackText = "You included this section without checking it. 'Merry Christmas' is subtle bias: it makes religious assumptions about the recipient. As the Human In The Loop, it's your responsibility to check for bias as well.";
       } else {
-        feedbackText = "You missed the closing section. While it needed correction (removing the Christmas greeting), omitting professional sign-offs entirely is also inappropriate. Always include proper closings while ensuring they're professionally neutral.";
+        feedbackText = "You missed this closing section of the email, even though it also needed correction (removing the Christmas greeting).";
       }
       
       return buildSectionFeedback('section5', succeeded, feedbackText);
     }
-
     function buildSectionFeedback(section, succeeded, feedbackText) {
       const emoji = succeeded ? '✅' : '❌';
       const sectionNumber = section.replace('section', '');
