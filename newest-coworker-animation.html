@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GenAI Chatbot</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --background: hsl(220 20% 97%);
+      --foreground: hsl(220 20% 10%);
+      --card: hsl(0 0% 100%);
+      --border: hsl(220 15% 90%);
+      --primary: hsl(221 83% 53%);
+      --primary-foreground: hsl(0 0% 100%);
+      --muted-foreground: hsl(220 10% 50%);
+      --chat-bot: hsl(220 15% 95%);
+      --chat-bot-foreground: hsl(220 20% 15%);
+      --chat-user: hsl(221 83% 53%);
+      --chat-user-foreground: hsl(0 0% 100%);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: var(--background);
+      color: var(--foreground);
+      line-height: 1.5;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    header {
+      flex-shrink: 0;
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.5);
+      backdrop-filter: blur(8px);
+    }
+
+    header .inner {
+      max-width: 48rem;
+      margin: 0 auto;
+    }
+
+    header h1 {
+      font-size: 1.125rem;
+      font-weight: 600;
+    }
+
+    header p {
+      font-size: 0.875rem;
+      color: var(--muted-foreground);
+    }
+
+    main {
+      flex: 1;
+      overflow-y: auto;
+      scroll-behavior: auto;
+      padding: 1.5rem 1rem;
+    }
+
+    .messages {
+      width: 100%;
+      max-width: 48rem;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .message {
+      width: 100%;
+      min-width: 0;
+      display: flex;
+      gap: 0.75rem;
+      align-items: flex-start;
+      opacity: 0;
+      transform: translateY(10px);
+      animation: messageIn 0.3s ease-out forwards;
+    }
+
+    .message.no-animate {
+      opacity: 1;
+      transform: translateY(0);
+      animation: none;
+    }
+
+    .message.user {
+      justify-content: flex-end;
+    }
+
+    .message.bot {
+      justify-content: flex-start;
+    }
+
+    .avatar {
+      flex-shrink: 0;
+      width: 2.25rem;
+      height: 2.25rem;
+      border-radius: 50%;
+      background: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .message.bot .avatar {
+      background: #90278e;
+    }
+
+    .typing-indicator .avatar {
+      background: #90278e;
+    }
+
+    .avatar svg {
+      width: 1.25rem;
+      height: 1.25rem;
+      fill: none;
+      stroke: var(--primary-foreground);
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .bubble {
+      flex: 0 1 auto;
+      display: inline-flex;
+      width: max-content;
+      max-width: 32rem;
+      min-width: 0;
+      padding: 0.75rem 1rem;
+      border-radius: 1rem;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      font-size: 0.9375rem;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      word-break: break-word;
+      overflow-wrap: break-word;
+    }
+
+
+    .message.bot .bubble {
+      background: var(--chat-bot);
+      color: var(--chat-bot-foreground);
+      border-top-left-radius: 0.375rem;
+    }
+
+    .message.user .bubble {
+      background: var(--chat-user);
+      color: var(--chat-user-foreground);
+      border-top-right-radius: 0.375rem;
+    }
+
+    .bubble-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      align-items: flex-start;
+    }
+
+    .message.user .bubble-group {
+      align-items: flex-end;
+    }
+
+    .message-attachment {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.4rem 0.75rem;
+      border-radius: 0.75rem;
+      border: 1px solid rgba(59, 130, 246, 0.4);
+      background: rgba(59, 130, 246, 0.12);
+      color: var(--foreground);
+      font-size: 0.8125rem;
+      font-weight: 600;
+      box-shadow: 0 6px 16px rgba(37, 99, 235, 0.16);
+    }
+
+    .message-list {
+      margin: 0.25rem 0 0.5rem 1.25rem;
+      padding: 0;
+    }
+
+    .message-list li {
+      margin: 0.25rem 0;
+    }
+
+    .typing-indicator {
+      display: flex;
+      gap: 0.75rem;
+      align-items: flex-start;
+    }
+
+    .typing-dots {
+      display: flex;
+      gap: 0.25rem;
+      padding: 1rem;
+      background: var(--chat-bot);
+      border-radius: 1rem;
+      border-top-left-radius: 0.375rem;
+    }
+
+    .typing-dots span {
+      width: 0.5rem;
+      height: 0.5rem;
+      background: var(--muted-foreground);
+      border-radius: 50%;
+      animation: bounce 1.4s infinite ease-in-out;
+    }
+
+    .typing-dots span:nth-child(1) { animation-delay: -0.32s; }
+    .typing-dots span:nth-child(2) { animation-delay: -0.16s; }
+    .typing-dots span:nth-child(3) { animation-delay: 0s; }
+
+    footer {
+      flex-shrink: 0;
+      padding: 0.5rem 1rem 1.5rem;
+      background: linear-gradient(to top, var(--background), var(--background), transparent);
+    }
+
+    footer .inner {
+      max-width: 48rem;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .prompts {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      justify-content: center;
+      animation: fadeIn 0.3s ease-out;
+    }
+
+    .prompt-btn {
+      padding: 0.5rem 1rem;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 9999px;
+      font-size: 0.875rem;
+      color: var(--foreground);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .prompt-btn:hover {
+      background: var(--primary);
+      color: var(--primary-foreground);
+      border-color: var(--primary);
+    }
+
+    .prompt-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .input-wrapper {
+      position: relative;
+      background: var(--card);
+      border-radius: 1rem;
+      border: 1px solid var(--border);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      overflow: hidden;
+    }
+
+    .attachment-preview {
+      display: none;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 0.75rem;
+      border-bottom: 1px solid rgba(59, 130, 246, 0.25);
+      background: rgba(59, 130, 246, 0.08);
+      font-size: 0.8125rem;
+      color: var(--foreground);
+      font-weight: 600;
+    }
+
+    .attachment-preview.visible {
+      display: flex;
+    }
+
+    .attachment-preview svg,
+    .message-attachment svg {
+      width: 1rem;
+      height: 1rem;
+      stroke: currentColor;
+      stroke-width: 1.8;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    textarea {
+      width: 100%;
+      resize: none;
+      background: transparent;
+      border: none;
+      padding: 1rem 1.25rem;
+      padding-right: 3.5rem;
+      font-size: 0.9375rem;
+      font-family: inherit;
+      color: var(--foreground);
+      outline: none;
+      min-height: 56px;
+      max-height: 200px;
+    }
+
+    textarea::placeholder {
+      color: var(--muted-foreground);
+    }
+
+    textarea.text-fade-in {
+      animation: textFadeIn 0.4s ease-out;
+    }
+
+    .send-btn {
+      position: absolute;
+      right: 0.75rem;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 2.5rem;
+      height: 2.5rem;
+      border-radius: 0.75rem;
+      background: var(--primary);
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .send-btn:hover {
+      opacity: 0.9;
+    }
+
+    .send-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .send-btn.bulge {
+      animation: buttonBulge 0.3s ease-out;
+    }
+
+    .send-btn svg {
+      width: 1.25rem;
+      height: 1.25rem;
+      stroke: var(--primary-foreground);
+      stroke-width: 2;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    @keyframes messageIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes bounce {
+      0%, 80%, 100% { transform: scale(0); }
+      40% { transform: scale(1); }
+    }
+
+    @keyframes textFadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes buttonBulge {
+      0% { transform: translateY(-50%) scale(1); }
+      50% { transform: translateY(-50%) scale(1.15); }
+      100% { transform: translateY(-50%) scale(1); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="inner">
+        <h1>GenAI Chatbot</h1>
+        <p>See some examples of the help it can provide</p>
+      </div>
+    </header>
+
+    <main>
+      <div class="messages" id="messages"></div>
+    </main>
+
+    <footer>
+      <div class="inner">
+        <div class="prompts" id="prompts"></div>
+        <div class="input-wrapper">
+          <div class="attachment-preview" id="attachmentPreview"></div>
+          <textarea id="input" placeholder="Type your message..." rows="1"></textarea>
+          <button class="send-btn" id="sendBtn" disabled>
+            <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+          </button>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    const PRESET_PROMPTS = [
+      {
+        label: "Research NICE Sepsis recommendations",
+        prompt: "Research the current NICE recommendations for initial management of Sepsis in adults",
+        response: `Sure thing! I found several NICE recommendations based on this webpage (https://www.example-source.com).
+        
+**Summary — NICE initial management of suspected sepsis (adults)** 
+
+Rapid recognition, prompt assessment, and early escalation are emphasized to reduce time-to-treatment and deterioration.
+
+**Key steps**  
+• Structured risk assessment to identify high-risk patients  
+• Urgent clinical review and early vital signs  
+• Blood tests, including lactate when indicated  
+• Prompt antibiotics and IV fluids where sepsis is suspected  
+• Ongoing monitoring and timely escalation to senior/critical care
+
+**Next step**  
+Would you like me to suggest how this guidance applies to a specific patient or outline the most appropriate next clinical step for them?`
+      },
+      {
+        label: "Draft a response to a patient complaint",
+        prompt: "Help me respond to this sensitive complaint from a patient, who had an outpatient appointment cancelled at short notice without being given a clear reason. The response should acknowledge mistakes, and apologise genuinely. I have attached the complaint",
+        attachmentName: "Patel email complaint.pdf",
+        response: `Of course — I will draft an accountable response that acknowledges the communication issues without being defensive.
+        
+        **Draft response — genuine and accountable**
+
+Dear Ms Patel,
+
+Thank you for contacting us. I’m very sorry for the short-notice cancellation of your appointment and for the frustration this caused.
+
+We recognise that cancelling appointments without a clear explanation has a real impact on patients’ time and confidence in the service. While some cancellations are unavoidable given the current pressures on our outpatient services, we recognise that a lack of communication is not acceptable, whatever the reason.
+
+We have raised this with the team involved to ensure it does not happen again. Thank you for taking the time to raise this with us. 
+
+Kind regards,
+[Name]
+Patient Advice and Liaison Service
+[NHS Trust name]
+
+**Refinements**  
+If you like, I can make this more formal or more conversational, or I could add a short "what we're changing" section to demonstrate improvement?`
+      },
+      {
+        label: "What are arguments for and against my colleague's discharge plan?",
+        prompt: "I'm reviewing follow-up arrangements for a stable long-term condition patient. We're considering switching routine follow-ups from face-to-face to phone or video. Can you outline some practical arguments for and against this? Keep your answer concise.",
+        response: `Sure — here are some points to consider. I've kept the focus practical:
+
+**Pros vs. cons — remote follow-ups**
+
+**Possible advantages**  
+• Easier access for patients who work, travel, or have mobility issues  
+• Fewer missed appointments  
+• Saves clinic space and time  
+• Can feel more convenient and less stressful
+
+**Possible downsides**  
+• You lose non-verbal cues and in-room context  
+• Some patients may struggle with technology or privacy  
+• Harder to pick up subtle deterioration or safeguarding concerns  
+• Continuity can suffer if different clinicians handle calls
+
+**Adjustments**  
+If you like, I could turn this into a suitability checklist or adapt it to a specific condition?`
+      }
+    ];
+
+    let messages = [];
+    let usedPrompts = new Set();
+    let isTyping = false;
+    let promptsLocked = false;
+    let queuedAttachment = null;
+
+    const messagesEl = document.getElementById('messages');
+    const promptsEl = document.getElementById('prompts');
+    const inputEl = document.getElementById('input');
+    const sendBtn = document.getElementById('sendBtn');
+    const attachmentPreviewEl = document.getElementById('attachmentPreview');
+
+    // Bot icon SVG
+    const botIconSVG = `<svg viewBox="0 0 24 24"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>`;
+    const fileIconSVG = `<svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>`;
+
+    function renderAttachmentPreview(name) {
+      if (!name) {
+        attachmentPreviewEl.classList.remove('visible');
+        attachmentPreviewEl.innerHTML = '';
+        return;
+      }
+      attachmentPreviewEl.classList.add('visible');
+      attachmentPreviewEl.innerHTML = `${fileIconSVG}<span>${escapeHTML(name)}</span>`;
+    }
+
+    function attachmentMarkup(name) {
+      if (!name) return '';
+      return `<div class="message-attachment">${fileIconSVG}<span>${escapeHTML(name)}</span></div>`;
+    }
+
+    function scrollToBottom() {
+      const scroller = document.querySelector('main');
+      if (!scroller) return;
+      scroller.scrollTop = scroller.scrollHeight;
+    }
+
+    function escapeHTML(str = '') {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function formatBotMessage(text = '') {
+      const escaped = escapeHTML(text);
+      const lines = escaped.split('\n');
+      const output = [];
+      let inList = false;
+
+      const applyBold = (line) => line.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+
+      lines.forEach((line, index) => {
+        const trimmed = line.trim();
+        if (!trimmed) {
+          if (inList) {
+            output.push('</ul>');
+            inList = false;
+          }
+          output.push('<br>');
+          return;
+        }
+
+        if (trimmed.startsWith('• ')) {
+          if (!inList) {
+            output.push('<ul class="message-list">');
+            inList = true;
+          }
+          output.push(`<li>${applyBold(trimmed.slice(2))}</li>`);
+          return;
+        }
+
+        if (inList) {
+          output.push('</ul>');
+          inList = false;
+        }
+
+        output.push(`${applyBold(trimmed)}${index < lines.length - 1 ? '<br>' : ''}`);
+      });
+
+      if (inList) {
+        output.push('</ul>');
+      }
+
+      return output.join('');
+    }
+
+    function renderMessages(updateOnly = false) {
+      if (updateOnly && messages.length > 0) {
+        // Update only the last message's text node (avoid restarting animations)
+        const lastMsgIndex = messages.length - 1;
+        const lastMsg = messages[lastMsgIndex];
+        const lastWrap = document.getElementById(`msg-${lastMsgIndex}`);
+
+        if (lastWrap) {
+          const lastMsgEl = lastWrap.querySelector('.content');
+          if (lastMsgEl) {
+            if (lastMsg.role === 'bot') {
+              lastMsgEl.innerHTML = formatBotMessage(lastMsg.displayContent || lastMsg.content);
+            } else {
+              lastMsgEl.textContent = lastMsg.displayContent || lastMsg.content;
+            }
+          }
+
+          scrollToBottom();
+          return;
+        }
+      }
+
+      messagesEl.innerHTML = messages
+        .map((msg, i) => {
+          const isBot = msg.role === 'bot';
+          const showCursor = msg.isTyping;
+          const content = isBot
+            ? formatBotMessage(msg.displayContent || msg.content)
+            : escapeHTML(msg.displayContent || msg.content);
+          const attachment = attachmentMarkup(msg.attachment);
+          return `
+            <div class="message ${msg.role} ${msg.noAnimate || msg.hasRendered ? 'no-animate' : ''}" id="msg-${i}" data-msg-index="${i}">
+              ${isBot ? `<div class="avatar">${botIconSVG}</div>` : ''}
+              <div class="bubble-group">
+                ${attachment}
+                <div class="bubble">
+                  <span class="content">${content}</span>
+                </div>
+              </div>
+            </div>
+          `;
+        })
+        .join('');
+
+      messages.forEach((msg) => {
+        msg.hasRendered = true;
+      });
+
+      if (isTyping) {
+        messagesEl.innerHTML += `
+          <div class="typing-indicator">
+            <div class="avatar">${botIconSVG}</div>
+            <div class="typing-dots">
+              <span></span><span></span><span></span>
+            </div>
+          </div>
+        `;
+      }
+
+      scrollToBottom();
+    }
+
+
+    function renderPrompts() {
+      const available = PRESET_PROMPTS.filter((_, i) => !usedPrompts.has(i));
+      if (available.length === 0 || isTyping || promptsLocked) {
+        promptsEl.style.display = 'none';
+        return;
+      }
+      promptsEl.style.display = 'flex';
+      promptsEl.innerHTML = PRESET_PROMPTS.map((p, i) => {
+        if (usedPrompts.has(i)) return '';
+        return `<button class="prompt-btn" data-index="${i}" ${isTyping ? 'disabled' : ''}>${p.label}</button>`;
+      }).join('');
+    }
+
+    function typeText(msgIndex, text, speed, callback) {
+      let i = 0;
+      messages[msgIndex].displayContent = '';
+      messages[msgIndex].isTyping = true;
+      
+      // Initial render to create the message element
+      renderMessages(false);
+      
+      function typeNext() {
+        if (i < text.length) {
+          messages[msgIndex].displayContent = text.slice(0, i + 1);
+          i++;
+          renderMessages(true); // Update only, don't re-render
+          setTimeout(typeNext, speed);
+        } else {
+          messages[msgIndex].isTyping = false;
+          renderMessages(true); // Final update
+          if (callback) callback();
+        }
+      }
+      typeNext();
+    }
+
+    function addMessage(role, content, skipTyping = false, onComplete, attachment = null) {
+      const msg = {
+        role,
+        content,
+        displayContent: skipTyping ? content : '',
+        noAnimate: false,
+        hasRendered: false,
+        attachment
+      };
+      messages.push(msg);
+      
+      if (skipTyping) {
+        renderMessages();
+        if (onComplete) onComplete();
+      } else {
+        const speed = role === 'bot' ? 16 : 10;
+        renderMessages();
+        typeText(messages.length - 1, content, speed, onComplete);
+      }
+    }
+
+    function sendMessage(prompt, response, skipUserTyping = false, attachmentName = null) {
+      promptsLocked = true;
+      inputEl.disabled = true;
+      renderPrompts();
+      addMessage('user', prompt, skipUserTyping, null, attachmentName);
+      inputEl.value = '';
+      inputEl.style.height = 'auto';
+      updateSendBtn();
+      queuedAttachment = null;
+      renderAttachmentPreview(null);
+      
+      isTyping = true;
+      renderPrompts();
+      renderMessages();
+
+      const delay = skipUserTyping ? 1000 : 1500;
+      setTimeout(() => {
+        isTyping = false;
+        addMessage('bot', response, false, () => {
+          promptsLocked = false;
+          inputEl.disabled = false;
+          renderPrompts();
+        });
+      }, delay);
+    }
+
+    function handlePresetClick(index) {
+      const preset = PRESET_PROMPTS[index];
+      usedPrompts.add(index);
+      renderPrompts();
+
+      // Step 1: Fade in text
+      inputEl.value = preset.prompt;
+      inputEl.classList.add('text-fade-in');
+      inputEl.style.height = 'auto';
+      inputEl.style.height = Math.min(inputEl.scrollHeight, 200) + 'px';
+      updateSendBtn();
+      queuedAttachment = preset.attachmentName || null;
+      renderAttachmentPreview(queuedAttachment);
+
+      // Step 2: After 1.4s, bulge button
+      setTimeout(() => {
+        inputEl.classList.remove('text-fade-in');
+        sendBtn.classList.add('bulge');
+
+        // Step 3: After bulge, send
+        setTimeout(() => {
+          sendBtn.classList.remove('bulge');
+          sendMessage(preset.prompt, preset.response, true, queuedAttachment);
+        }, 300);
+      }, 1400);
+    }
+
+    function updateSendBtn() {
+      sendBtn.disabled = !inputEl.value.trim() || isTyping;
+    }
+
+    // Event listeners
+    inputEl.addEventListener('input', () => {
+      inputEl.style.height = 'auto';
+      inputEl.style.height = Math.min(inputEl.scrollHeight, 200) + 'px';
+      updateSendBtn();
+    });
+
+    inputEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        if (inputEl.value.trim() && !isTyping) {
+          const match = PRESET_PROMPTS.find(p => p.prompt.toLowerCase() === inputEl.value.toLowerCase());
+          const response = match ? match.response : "**Note — preset prompts only**  \nBecause I am just a realistic simulation of a GenAI, I can only answer the preset prompts you see on screen. If you were speaking to a full GenAI chatbot, it would answer your specific question here.";
+          const attachmentName = match ? match.attachmentName : null;
+          sendMessage(inputEl.value, response, false, attachmentName);
+        }
+      }
+    });
+
+    sendBtn.addEventListener('click', () => {
+      if (inputEl.value.trim() && !isTyping) {
+        const match = PRESET_PROMPTS.find(p => p.prompt.toLowerCase() === inputEl.value.toLowerCase());
+        const response = match ? match.response : "**Note — preset prompts only**  \nBecause I am just a realistic simulation of a GenAI, I can only answer the preset prompts you see on screen. If you were speaking to a full GenAI chatbot, it would answer your specific question here.";
+        const attachmentName = match ? match.attachmentName : null;
+        sendMessage(inputEl.value, response, false, attachmentName);
+      }
+    });
+
+    promptsEl.addEventListener('click', (e) => {
+      if (e.target.classList.contains('prompt-btn')) {
+        const index = parseInt(e.target.dataset.index);
+        handlePresetClick(index);
+      }
+    });
+
+    // Initialize
+    messages.push({ role: 'bot', content: 'How can I help?', displayContent: 'How can I help?', noAnimate: true });
+    renderMessages();
+    renderPrompts();
+  </script>
+</body>
+</html>
