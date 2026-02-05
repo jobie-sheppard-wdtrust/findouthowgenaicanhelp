@@ -100,6 +100,26 @@
       cursor: not-allowed;
     }
 
+    .genai-section.non-clickable {
+      cursor: default;
+    }
+
+    .genai-section.non-clickable:hover {
+      background: hsl(var(--highlight-section));
+    }
+
+    .feedback-section {
+      transition: box-shadow 0.3s ease, transform 0.3s ease;
+    }
+
+    .feedback-section.glow-success {
+      box-shadow: 0 0 15px 3px hsla(142, 71%, 45%, 0.6);
+    }
+
+    .feedback-section.glow-error {
+      box-shadow: 0 0 15px 3px hsla(0, 84%, 60%, 0.6);
+    }
+
     .context-menu {
       position: fixed;
       background: hsl(var(--card));
@@ -1173,6 +1193,9 @@ Greenfield Surgery`,
     document.addEventListener('click', (event) => {
       const sectionEl = getGenaiSectionFromEvent(event);
       if (sectionEl) {
+        // Don't show context menu if section is non-clickable
+        if (sectionEl.classList.contains('non-clickable')) return;
+        
         if (isOverlayOpen() || state.isAnimating) return;
         const section = sectionEl.dataset.section;
         if (!section || state.sectionStatus[section].copied || state.sectionStatus[section].checked) return;
@@ -1304,11 +1327,35 @@ Greenfield Surgery`,
         // Change from flex column to flex row to accommodate feedback side-by-side
         genaiInnerContainer.style.flexDirection = 'row';
         genaiInnerContainer.style.gap = '2rem';
-        genaiInnerContainer.style.alignItems = 'flex-start';
+        genaiInnerContainer.style.alignItems = 'flex-start'; // Align to top by default
         
-        // Make the chat bubble container fixed width (half of the pane)
-        if (genaiContentContainer) {
-          genaiContentContainer.style.flex = '0 0 calc(50% - 1rem)';
+        // Find the chat header
+        const chatHeader = genaiInnerContainer.querySelector('div[style*="margin-bottom: 1.5rem"]');
+        
+        if (genaiContentContainer && chatHeader) {
+          // Create a wrapper to keep header and bubble together vertically
+          const genaiColumnWrapper = document.createElement('div');
+          genaiColumnWrapper.style.cssText = `
+            flex: 0 0 calc(50% - 1rem);
+            display: flex;
+            flex-direction: column;
+            margin-top: 20vh;
+          `;
+          
+          // Clone header and bubble
+          const headerClone = chatHeader.cloneNode(true);
+          const bubbleClone = genaiContentContainer.cloneNode(true);
+          
+          // Add to wrapper
+          genaiColumnWrapper.appendChild(headerClone);
+          genaiColumnWrapper.appendChild(bubbleClone);
+          
+          // Remove originals
+          chatHeader.remove();
+          genaiContentContainer.remove();
+          
+          // Insert wrapper at beginning
+          genaiInnerContainer.insertBefore(genaiColumnWrapper, genaiInnerContainer.firstChild);
         }
         
         // Create feedback container as sibling to chat bubble
@@ -1317,6 +1364,7 @@ Greenfield Surgery`,
         feedbackContainer.style.cssText = `
           flex: 0 0 calc(50% - 1rem);
           padding-top: 0;
+          align-self: flex-start;
         `;
         
         // Build feedback HTML
@@ -1324,6 +1372,25 @@ Greenfield Surgery`,
         feedbackContainer.innerHTML = feedbackHTML;
         
         genaiInnerContainer.appendChild(feedbackContainer);
+        
+        // Reset all GenAI sections to original state
+        sectionOrder.forEach(section => {
+          const index = sectionOrder.indexOf(section) + 1;
+          const genaiEl = document.getElementById(`genai-section-${index}`);
+          if (genaiEl) {
+            // Remove deactivated/disabled classes
+            genaiEl.classList.remove('deactivated', 'disabled');
+            
+            // Add non-clickable class
+            genaiEl.classList.add('non-clickable');
+            
+            // Restore original text
+            genaiEl.textContent = originalSections[section];
+          }
+        });
+        
+        // Set up hover interactions between GenAI sections and feedback sections
+        setupHoverInteractions(success);
         
         // Add try again button handler
         const tryAgainBtn = document.getElementById('tryAgainBtn');
@@ -1333,6 +1400,57 @@ Greenfield Surgery`,
       } else {
         console.error('Could not find genaiInnerContainer');
       }
+    }
+
+    function setupHoverInteractions(success) {
+      // Determine which sections succeeded for glow colors
+      const sectionSuccess = {};
+      sectionOrder.forEach(section => {
+        // Evaluate if this specific section succeeded based on the criteria
+        if (section === 'section1') {
+          sectionSuccess[section] = !state.sectionStatus.section1.included;
+        } else if (section === 'section2') {
+          sectionSuccess[section] = state.sectionStatus.section2.included;
+        } else if (section === 'section3') {
+          sectionSuccess[section] = state.sectionStatus.section3.included && state.sectionStatus.section3.checked;
+        } else if (section === 'section4') {
+          sectionSuccess[section] = state.sectionStatus.section4.included;
+        } else if (section === 'section5') {
+          sectionSuccess[section] = state.sectionStatus.section5.included && state.sectionStatus.section5.checked;
+        } else if (section === 'section6') {
+          sectionSuccess[section] = !state.sectionStatus.section6.included;
+        }
+      });
+      
+      sectionOrder.forEach(section => {
+        const index = sectionOrder.indexOf(section) + 1;
+        const genaiEl = document.getElementById(`genai-section-${index}`);
+        const feedbackEl = document.querySelector(`.feedback-section[data-section="${section}"]`);
+        
+        if (!genaiEl || !feedbackEl) return;
+        
+        const glowClass = sectionSuccess[section] ? 'glow-success' : 'glow-error';
+        
+        // GenAI section hover -> glow feedback section
+        genaiEl.addEventListener('mouseenter', () => {
+          feedbackEl.classList.add(glowClass);
+        });
+        
+        genaiEl.addEventListener('mouseleave', () => {
+          feedbackEl.classList.remove(glowClass);
+        });
+        
+        // Feedback section hover -> glow feedback section + hover GenAI section
+        feedbackEl.addEventListener('mouseenter', () => {
+          feedbackEl.classList.add(glowClass);
+          genaiEl.style.background = 'hsl(var(--highlight-section))';
+        });
+        
+        feedbackEl.addEventListener('mouseleave', () => {
+          feedbackEl.classList.remove(glowClass);
+          genaiEl.style.background = '';
+        });
+      });
     }
 
     function buildFeedbackHTML(success) {
@@ -1386,11 +1504,11 @@ Greenfield Surgery`,
       );
       
       return `
-        <div style="max-width: 600px;">
+        <div style="max-width: 600px; display: flex; flex-direction: column;">
           <h2 style="font-size: 1.875rem; font-weight: 700; margin-bottom: 0.5rem; color: hsl(var(--foreground));">${heading}</h2>
           <p style="font-size: 1.125rem; color: hsl(var(--muted-foreground)); margin-bottom: 2rem;">${subheading}</p>
           
-          <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+          <div id="feedbackCards" style="display: flex; flex-direction: column; gap: 1.5rem;">
             ${sectionsHTML}
           </div>
           
@@ -1436,13 +1554,24 @@ Greenfield Surgery`,
     }
     function buildSectionFeedback(section, succeeded, feedbackText) {
       const emoji = succeeded ? '✅' : '❌';
-      const sectionNumber = section.replace('section', '');
+      
+      // Map section IDs to descriptive names
+      const sectionNames = {
+        'section1': 'GenAI Introduction',
+        'section2': 'Patient info',
+        'section3': 'Medical details',
+        'section4': 'Additional info',
+        'section5': 'Email sign-off',
+        'section6': 'GenAI follow-up'
+      };
+      
+      const sectionName = sectionNames[section] || section;
       
       return `
-        <div style="display: flex; align-items: start; gap: 1rem; padding: 1rem; border-radius: 0.5rem; background: ${succeeded ? 'hsl(var(--success) / 0.1)' : 'hsl(var(--destructive) / 0.1)'};">
+        <div class="feedback-section" data-section="${section}" style="display: flex; align-items: start; gap: 1rem; padding: 1rem; border-radius: 0.5rem; background: ${succeeded ? 'hsl(var(--success) / 0.1)' : 'hsl(var(--destructive) / 0.1)'};">
           <div style="flex-shrink: 0; font-size: 1.5rem;">${emoji}</div>
           <div style="flex: 1;">
-            <h3 style="font-weight: 600; margin-bottom: 0.5rem;">Section ${sectionNumber}</h3>
+            <h3 style="font-weight: 600; margin-bottom: 0.5rem;">${sectionName}</h3>
             <p style="color: hsl(var(--foreground) / 0.8); font-size: 0.875rem; line-height: 1.5;">${feedbackText}</p>
           </div>
         </div>
@@ -1472,16 +1601,41 @@ Greenfield Surgery`,
       }
       
       // Restore GenAI inner container layout
-      const genaiContentContainer = genaiPane ? (genaiPane.querySelector('div[style*="flex: 1"]') || genaiPane.querySelector('div[style*="flex: 0 0 calc(50% - 1rem)"]')) : null;
-      const genaiInnerContainer = genaiContentContainer ? genaiContentContainer.parentElement : null;
+      const genaiInnerContainer = genaiPane ? genaiPane.querySelector('div[style*="height: 100%"]') : null;
       
       if (genaiInnerContainer) {
+        // Check if there's a wrapper (from feedback mode)
+        const genaiColumnWrapper = genaiInnerContainer.querySelector('div[style*="margin-top: 20vh"]');
+        
+        if (genaiColumnWrapper) {
+          // Unwrap: move children back to genaiInnerContainer
+          const chatHeader = genaiColumnWrapper.children[0];
+          const contentContainer = genaiColumnWrapper.children[1];
+          
+          if (chatHeader && contentContainer) {
+            // Clone them before removing wrapper
+            const headerClone = chatHeader.cloneNode(true);
+            const contentClone = contentContainer.cloneNode(true);
+            
+            // Remove wrapper
+            genaiColumnWrapper.remove();
+            
+            // Add back to genaiInnerContainer in correct order
+            genaiInnerContainer.insertBefore(headerClone, genaiInnerContainer.firstChild);
+            genaiInnerContainer.insertBefore(contentClone, genaiInnerContainer.children[1]);
+          }
+        }
+        
+        // Restore original flex properties
         genaiInnerContainer.style.flexDirection = 'column';
         genaiInnerContainer.style.gap = '';
         genaiInnerContainer.style.alignItems = '';
         
+        const genaiContentContainer = genaiInnerContainer.querySelector('div[style*="flex: 1"]');
         if (genaiContentContainer) {
           genaiContentContainer.style.flex = '1';
+          genaiContentContainer.style.marginTop = '';
+          genaiContentContainer.style.alignSelf = '';
         }
       }
       
@@ -1508,12 +1662,16 @@ Greenfield Surgery`,
         }
       });
       
-      // Reset GenAI sections (remove deactivated state)
+      // Reset GenAI sections (remove deactivated state and non-clickable)
       sectionOrder.forEach(section => {
         const index = sectionOrder.indexOf(section) + 1;
         const genaiEl = document.getElementById(`genai-section-${index}`);
         if (genaiEl) {
-          genaiEl.classList.remove('deactivated', 'disabled');
+          genaiEl.classList.remove('deactivated', 'disabled', 'non-clickable');
+          // Restore original text
+          genaiEl.textContent = originalSections[section];
+          // Clear inline styles that might have been added by hover
+          genaiEl.style.background = '';
         }
       });
       
