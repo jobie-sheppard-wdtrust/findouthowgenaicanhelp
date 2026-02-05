@@ -355,7 +355,7 @@ Greenfield Surgery</div>
             <div style="font-size: 0.875rem;">
               <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
                 <span style="color: hsl(var(--muted-foreground)); width: 3rem;">To:</span>
-                <span style="color: hsl(var(--foreground));">cardiology.referrals@nhs.net</span>
+                <span style="color: hsl(var(--foreground));"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="f192908395989e9d9e9688df839497948383909d82b19f9982df9f9485">[email&#160;protected]</a></span>
               </div>
               <div style="display: flex; align-items: center; gap: 0.5rem;">
                 <span style="color: hsl(var(--muted-foreground)); width: 3rem;">Subject:</span>
@@ -472,19 +472,19 @@ Greenfield Surgery</div>
     </div>
   </div>
 
-  <script>
+  <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
     // State
     const state = {
       activeFeedback: null,
       activeSection: null,
       isAnimating: false,
       sectionStatus: {
-        section1: { copied: false, checked: false },
-        section2: { copied: false, checked: false },
-        section3: { copied: false, checked: false },
-        section4: { copied: false, checked: false },
-        section5: { copied: false, checked: false },
-        section6: { copied: false, checked: false }
+        section1: { copied: false, checked: false, included: false },
+        section2: { copied: false, checked: false, included: false },
+        section3: { copied: false, checked: false, included: false },
+        section4: { copied: false, checked: false, included: false },
+        section5: { copied: false, checked: false, included: false },
+        section6: { copied: false, checked: false, included: false }
       }
     };
 
@@ -622,6 +622,9 @@ Greenfield Surgery`,
       copyPasteBtn: document.getElementById('copyPasteBtn'),
       checkContentBtn: document.getElementById('checkContentBtn')
     };
+    
+    console.log('Send button element:', elements.sendBtn);
+    console.log('Send button exists:', !!elements.sendBtn);
 
     // Functions
     const safeAddListener = (element, event, handler) => {
@@ -871,6 +874,12 @@ Greenfield Surgery`,
     }
 
     function showSectionFeedback(section) {
+      // Only show feedback modal for incorrect sections (3 and 5) when checking
+      const incorrectSections = ['section3', 'section5'];
+      if (!incorrectSections.includes(section)) {
+        return false;
+      }
+      
       const feedback = feedbackContent[section];
       if (!feedback || !elements.sectionFeedback || !elements.feedbackIconContainer || !elements.feedbackMessage) {
         return false;
@@ -1105,6 +1114,7 @@ Greenfield Surgery`,
       markGenaiChecked(section);
       state.sectionStatus[section].copied = true;
       state.sectionStatus[section].checked = false;
+      state.sectionStatus[section].included = true;
       state.isAnimating = false;
     }
 
@@ -1136,6 +1146,7 @@ Greenfield Surgery`,
 
       state.sectionStatus[section].copied = true;
       state.sectionStatus[section].checked = true;
+      state.sectionStatus[section].included = true;
       state.isAnimating = false;
     }
     // Event Listeners
@@ -1213,12 +1224,303 @@ Greenfield Surgery`,
       }
     });
 
-    safeAddListener(elements.sendBtn, 'click', () => {
-      const allChecked = requiredSections.every(section => state.sectionStatus[section].checked);
-      showFinalFeedbackModal(allChecked ? 'success' : 'retry');
+    safeAddListener(elements.sendBtn, 'click', async () => {
+      console.log('Send button clicked');
+      console.log('isAnimating:', state.isAnimating);
+      console.log('Button disabled:', elements.sendBtn?.disabled);
+      
+      if (state.isAnimating) return;
+      
+      // Evaluate success/failure based on included sections
+      const success = evaluateSuccess();
+      console.log('Success evaluation:', success);
+      
+      // Transform UI to feedback view
+      await showFeedbackView(success);
     });
+    
+    // Backup direct listener
+    if (elements.sendBtn) {
+      elements.sendBtn.addEventListener('click', () => {
+        console.log('Direct listener triggered');
+      });
+    } else {
+      console.error('Send button not found!');
+    }
 
-    updateSendState();
+    function evaluateSuccess() {
+      const status = state.sectionStatus;
+      
+      // Check if sections 1 or 6 were included (automatic failure)
+      if (status.section1.included || status.section6.included) {
+        return false;
+      }
+      
+      // Check all success conditions
+      const section2Included = status.section2.included;
+      const section3CheckedAndIncluded = status.section3.included && status.section3.checked;
+      const section4Included = status.section4.included;
+      const section5CheckedAndIncluded = status.section5.included && status.section5.checked;
+      
+      return section2Included && section3CheckedAndIncluded && section4Included && section5CheckedAndIncluded;
+    }
+
+    async function showFeedbackView(success) {
+      console.log('showFeedbackView called with success:', success);
+      
+      // Get the main container and panels - the second child of #app is the main content div
+      const app = document.getElementById('app');
+      console.log('App element:', app);
+      console.log('App children count:', app ? app.children.length : 0);
+      
+      const mainContainer = app ? app.children[1] : null; // Second child (0-indexed = 1)
+      console.log('Main container:', mainContainer);
+      
+      const genaiPane = mainContainer ? mainContainer.children[0] : null; // First child
+      const emailPane = mainContainer ? mainContainer.children[1] : null; // Second child
+      
+      console.log('GenAI pane:', genaiPane);
+      console.log('Email pane:', emailPane);
+      
+      // Hide email pane
+      if (emailPane) {
+        emailPane.style.display = 'none';
+      }
+      
+      // Make GenAI pane take full width
+      if (genaiPane) {
+        genaiPane.style.width = '100%';
+        genaiPane.style.borderRight = 'none';
+      }
+      
+      // Get the GenAI bubble content container
+      const genaiContentContainer = genaiPane ? genaiPane.querySelector('div[style*="flex: 1"]') : null;
+      const genaiInnerContainer = genaiContentContainer ? genaiContentContainer.parentElement : null;
+      
+      console.log('GenAI content container:', genaiContentContainer);
+      console.log('GenAI inner container:', genaiInnerContainer);
+      
+      if (genaiInnerContainer) {
+        // Change from flex column to flex row to accommodate feedback side-by-side
+        genaiInnerContainer.style.flexDirection = 'row';
+        genaiInnerContainer.style.gap = '2rem';
+        genaiInnerContainer.style.alignItems = 'flex-start';
+        
+        // Make the chat bubble container fixed width (half of the pane)
+        if (genaiContentContainer) {
+          genaiContentContainer.style.flex = '0 0 calc(50% - 1rem)';
+        }
+        
+        // Create feedback container as sibling to chat bubble
+        const feedbackContainer = document.createElement('div');
+        feedbackContainer.id = 'feedbackContainer';
+        feedbackContainer.style.cssText = `
+          flex: 0 0 calc(50% - 1rem);
+          padding-top: 0;
+        `;
+        
+        // Build feedback HTML
+        const feedbackHTML = buildFeedbackHTML(success);
+        feedbackContainer.innerHTML = feedbackHTML;
+        
+        genaiInnerContainer.appendChild(feedbackContainer);
+        
+        // Add try again button handler
+        const tryAgainBtn = document.getElementById('tryAgainBtn');
+        if (tryAgainBtn) {
+          tryAgainBtn.addEventListener('click', resetInteraction);
+        }
+      } else {
+        console.error('Could not find genaiInnerContainer');
+      }
+    }
+
+    function buildFeedbackHTML(success) {
+      const heading = 'Feedback';
+      const subheading = success 
+        ? "Well done! You were the Human In The Loop: see below how you handled the risks"
+        : "Not quite – you've missed a few details here. Look below to see how you can be the Human In The Loop next time";
+      
+      let sectionsHTML = '';
+      
+      // Section 1
+      sectionsHTML += buildSectionFeedback(
+        'section1',
+        !state.sectionStatus.section1.included,
+        !state.sectionStatus.section1.included 
+          ? "Great! You correctly identified that this preamble shouldn't be included in the professional email. This maintains the appropriate tone and professionalism of your communication."
+          : "This preamble should not be included in the email. It's a GenAI artifact that can erode trust and professionalism when left in professional communications."
+      );
+      
+      // Section 2
+      sectionsHTML += buildSectionFeedback(
+        'section2',
+        state.sectionStatus.section2.included,
+        state.sectionStatus.section2.included
+          ? "Excellent! You included this essential header section. While it contained no errors, checking is always important to maintain your role as the Human In The Loop."
+          : "You missed the essential referral header. Always include all necessary administrative information, even when it appears correct. Being a HITL means checking everything."
+      );
+      
+      // Section 3
+      sectionsHTML += buildSection3Feedback();
+      
+      // Section 4
+      sectionsHTML += buildSectionFeedback(
+        'section4',
+        state.sectionStatus.section4.included,
+        state.sectionStatus.section4.included
+          ? "Well done! You included this important context section. Even though it was correct, you demonstrated good practice by checking before including it."
+          : "You missed important contextual information for the specialist. Always include complete information to ensure proper patient care, even when content appears accurate."
+      );
+      
+      // Section 5
+      sectionsHTML += buildSection5Feedback();
+      
+      // Section 6
+      sectionsHTML += buildSectionFeedback(
+        'section6',
+        !state.sectionStatus.section6.included,
+        !state.sectionStatus.section6.included
+          ? "Excellent judgment! You correctly identified that offering diagnoses or medicines is inappropriate and potentially dangerous in this professional context. This is critical oversight."
+          : "This section should never be included. Offering diagnoses or medication suggestions in a referral is inappropriate and potentially unsafe. Always exercise professional judgment."
+      );
+      
+      return `
+        <div style="max-width: 600px;">
+          <h2 style="font-size: 1.875rem; font-weight: 700; margin-bottom: 0.5rem; color: hsl(var(--foreground));">${heading}</h2>
+          <p style="font-size: 1.125rem; color: hsl(var(--muted-foreground)); margin-bottom: 2rem;">${subheading}</p>
+          
+          <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+            ${sectionsHTML}
+          </div>
+          
+          <button id="tryAgainBtn" class="btn btn-primary" style="margin-top: 2rem; width: 100%;">
+            Try again
+          </button>
+        </div>
+      `;
+    }
+
+    function buildSection3Feedback() {
+      const included = state.sectionStatus.section3.included;
+      const checked = state.sectionStatus.section3.checked;
+      const succeeded = included && checked;
+      
+      let feedbackText;
+      if (succeeded) {
+        feedbackText = "Perfect! You identified and corrected the hallucinations in this section - changing type 1 to type 2 diabetes, removing asthma, adding the missing beta-blocker, and correcting the ECG and echo findings. This is exactly what being a Human In The Loop means.";
+      } else if (included && !checked) {
+        feedbackText = "You included this section but didn't check it for errors. The AI hallucinated several critical details: wrong diabetes type, non-existent asthma, missing medication, and incorrect test results. Always verify medical information before sending.";
+      } else {
+        feedbackText = "You missed this crucial section entirely. It contained multiple hallucinations that needed correction: wrong diabetes type, fabricated asthma diagnosis, missing medication (Bisoprolol), and incorrect ECG/echo findings. Never skip sections without reviewing them.";
+      }
+      
+      return buildSectionFeedback('section3', succeeded, feedbackText);
+    }
+
+    function buildSection5Feedback() {
+      const included = state.sectionStatus.section5.included;
+      const checked = state.sectionStatus.section5.checked;
+      const succeeded = included && checked;
+      
+      let feedbackText;
+      if (succeeded) {
+        feedbackText = "Great work! You identified the inappropriate seasonal greeting and removed it. Professional medical referrals should maintain formal tone year-round. This shows good judgment in identifying bias and contextual errors.";
+      } else if (included && !checked) {
+        feedbackText = "You included this section without checking it. The 'Merry Christmas' greeting is inappropriate in professional medical correspondence - it assumes the recipient's religious background and can introduce bias. Always review sign-offs for professionalism.";
+      } else {
+        feedbackText = "You missed the closing section. While it needed correction (removing the Christmas greeting), omitting professional sign-offs entirely is also inappropriate. Always include proper closings while ensuring they're professionally neutral.";
+      }
+      
+      return buildSectionFeedback('section5', succeeded, feedbackText);
+    }
+
+    function buildSectionFeedback(section, succeeded, feedbackText) {
+      const emoji = succeeded ? '✅' : '❌';
+      const sectionNumber = section.replace('section', '');
+      
+      return `
+        <div style="display: flex; align-items: start; gap: 1rem; padding: 1rem; border-radius: 0.5rem; background: ${succeeded ? 'hsl(var(--success) / 0.1)' : 'hsl(var(--destructive) / 0.1)'};">
+          <div style="flex-shrink: 0; font-size: 1.5rem;">${emoji}</div>
+          <div style="flex: 1;">
+            <h3 style="font-weight: 600; margin-bottom: 0.5rem;">Section ${sectionNumber}</h3>
+            <p style="color: hsl(var(--foreground) / 0.8); font-size: 0.875rem; line-height: 1.5;">${feedbackText}</p>
+          </div>
+        </div>
+      `;
+    }
+
+    function resetInteraction() {
+      // Remove feedback container
+      const feedbackContainer = document.getElementById('feedbackContainer');
+      if (feedbackContainer) {
+        feedbackContainer.remove();
+      }
+      
+      // Restore layout
+      const app = document.getElementById('app');
+      const mainContainer = app ? app.children[1] : null; // Second child (0-indexed = 1)
+      const genaiPane = mainContainer ? mainContainer.children[0] : null;
+      const emailPane = mainContainer ? mainContainer.children[1] : null;
+      
+      if (emailPane) {
+        emailPane.style.display = '';
+      }
+      
+      if (genaiPane) {
+        genaiPane.style.width = '50%';
+        genaiPane.style.borderRight = '1px solid hsl(var(--border))';
+      }
+      
+      // Restore GenAI inner container layout
+      const genaiContentContainer = genaiPane ? (genaiPane.querySelector('div[style*="flex: 1"]') || genaiPane.querySelector('div[style*="flex: 0 0 calc(50% - 1rem)"]')) : null;
+      const genaiInnerContainer = genaiContentContainer ? genaiContentContainer.parentElement : null;
+      
+      if (genaiInnerContainer) {
+        genaiInnerContainer.style.flexDirection = 'column';
+        genaiInnerContainer.style.gap = '';
+        genaiInnerContainer.style.alignItems = '';
+        
+        if (genaiContentContainer) {
+          genaiContentContainer.style.flex = '1';
+        }
+      }
+      
+      // Reset all state
+      Object.keys(state.sectionStatus).forEach(section => {
+        state.sectionStatus[section] = { copied: false, checked: false, included: false };
+      });
+      
+      state.activeSection = null;
+      state.activeFeedback = null;
+      state.isAnimating = false;
+      
+      // Reset email content
+      Object.keys(emailContent).forEach(section => {
+        emailContent[section] = '';
+      });
+      
+      // Clear email display
+      sectionOrder.forEach(section => {
+        const index = sectionOrder.indexOf(section) + 1;
+        const emailEl = document.getElementById(`email-section-${index}`);
+        if (emailEl) {
+          emailEl.textContent = '';
+        }
+      });
+      
+      // Reset GenAI sections (remove deactivated state)
+      sectionOrder.forEach(section => {
+        const index = sectionOrder.indexOf(section) + 1;
+        const genaiEl = document.getElementById(`genai-section-${index}`);
+        if (genaiEl) {
+          genaiEl.classList.remove('deactivated', 'disabled');
+        }
+      });
+      
+      // Reset send button
+      updateSendState();
+    }
   </script>
 </body>
 </html>
