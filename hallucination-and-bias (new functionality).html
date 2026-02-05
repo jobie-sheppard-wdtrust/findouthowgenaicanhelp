@@ -143,6 +143,22 @@
       animation: blink 1s step-end infinite;
     }
 
+    .typing-cursor.typing {
+      animation: none;
+      opacity: 1;
+    }
+
+    .highlight-cursor {
+      position: absolute;
+      width: 2px;
+      height: 1.25rem;
+      background: hsl(var(--primary));
+      pointer-events: none;
+      z-index: 45;
+      opacity: 0;
+      transition: opacity 0.1s ease;
+    }
+
     .btn {
       display: inline-flex;
       align-items: center;
@@ -474,64 +490,70 @@ Greenfield Surgery</div>
 
     const sectionOrder = ['section1', 'section2', 'section3', 'section4', 'section5', 'section6'];
     const requiredSections = ['section3', 'section5', 'section6'];
+    const highlightDurationMs = 1000;
+    const correctionHighlightDurationMs = 900;
+    const correctionCharDelayMs = 80;
+    const correctionWordPauseMs = 300;
+    const correctionPreHighlightPauseMs = 1000;
+    const correctionPostHighlightPauseMs = 650;
+    const correctionNextBlockPauseMs = 900;
+    const correctionPreDeletePauseMs = 500;
 
     // Content
     const originalSections = {
       section1: "Absolutely — here is an eRS-compatible referral to the cardiologist, based on the notes you shared",
-      section2: `Referral: Routine Cardiology Outpatient Appointment (eRS) 
-      Patient details: [to be added]
-      Name:
-      Age:
-      Address:
-      NHS Number:`
-      
+      section2: `Referral: Routine Cardiology Outpatient Appointment (eRS)
+Patient details: [to be added]
+Name:
+Age:
+Address:
+NHS Number:`,
       section3: `Reason for referral
-      Urgent routine cardiology assessment for longstanding atrial fibrillation and recent episodes of chest pain on exertion.
-      Relevant history
-      History of hypertension, type 1 diabetes, asthma, and previous myocardial infarction in 2018 (per patient report). Family history of sudden cardiac death. Non-smoker.
-      Current management
-      Metformin 1 g twice daily.
-      Ramipril 10 mg once daily.
-      Salbutamol inhaler PRN.
-      Relevant investigations
-      Recent ECG showed atrial fibrillation with ST elevation. Echocardiogram performed last month demonstrated normal left ventricular function with severe aortic stenosis.`
-      
+Urgent routine cardiology assessment for longstanding atrial fibrillation and recent episodes of chest pain on exertion.
+Relevant history
+History of hypertension, type 1 diabetes, asthma, and previous myocardial infarction in 2018 (per patient report). Family history of sudden cardiac death. Non-smoker.
+Current management
+Metformin 1 g twice daily.
+Ramipril 10 mg once daily.
+Salbutamol inhaler PRN.
+
+Relevant investigations
+Recent ECG showed atrial fibrillation with ST elevation. Echocardiogram performed last month demonstrated normal left ventricular function with severe aortic stenosis.`,
       section4: `Additional information
-      Patient is keen to be seen as soon as possible. I believe cardiology input is required to confirm diagnosis and advise on management.`
-      
+Patient is keen to be seen as soon as possible. I believe cardiology input is required to confirm diagnosis and advise on management.`,
       section5: `Thanks so much for taking a look at this and helping out - Wishing you a very Merry Christmas!
-      Kindest regards,
-      Sam - GP
-      Greenfield Surgery`
-      
+Kindest regards,
+Sam - GP
+Greenfield Surgery`,
       section6: "Would you like me to suggest some possible diagnoses based on these symptoms, or help you choose a medicine for the patient in the meantime?"
     };
 
     const correctedSections = {
       section1: "Absolutely — here is an eRS-compatible referral to the cardiologist, based on the notes you shared",
       section2: `Referral: Routine Cardiology Outpatient Appointment (eRS)
-      Patient details: [to be added]
-      Name:
-      Age:
-      Address:
-      NHS Number:`
+Patient details: [to be added]
+Name:
+Age:
+Address:
+NHS Number:`,
       section3: `Reason for referral
-      Urgent cardiology assessment for longstanding atrial fibrillation and recent episodes of chest pain on exertion.
-      Relevant history
-      History of hypertension, type 2 diabetes, and previous myocardial infarction in 2018 (per patient report). Family history of sudden cardiac death. Non-smoker.
-      Current management
-      Metformin 1 g twice daily.
-      Ramipril 10 mg once daily.
-      Bisoprolol 5 mg once daily.
-      Relevant investigations
-      Recent ECG showed atrial fibrillation with controlled ventricular rate.
-      Echocardiogram performed last month demonstrated mildly reduced left ventricular function with moderate aortic stenosis.`,
+Urgent cardiology assessment for longstanding atrial fibrillation and recent episodes of chest pain on exertion.
+Relevant history
+History of hypertension, type 2 diabetes, and previous myocardial infarction in 2018 (per patient report). Family history of sudden cardiac death. Non-smoker.
+Current management
+Metformin 1 g twice daily.
+Ramipril 10 mg once daily.
+Bisoprolol 5 mg once daily.
+
+Relevant investigations
+Recent ECG showed atrial fibrillation with controlled ventricular rate.
+Echocardiogram performed last month demonstrated mildly reduced left ventricular function with moderate aortic stenosis.`,
       section4: `Additional information
-      Patient is keen to be seen as soon as possible. I believe cardiology input is required to confirm diagnosis and advise on management.`,
+Patient is keen to be seen as soon as possible. I believe cardiology input is required to confirm diagnosis and advise on management.`,
       section5: `Thanks so much for taking a look at this and helping out.
-      Kindest regards,
-      Sam - GP
-      Greenfield Surgery`,
+Kindest regards,
+Sam - GP
+Greenfield Surgery`,
       section6: ``
     };
 
@@ -587,6 +609,7 @@ Greenfield Surgery</div>
       safetyQuestion: document.getElementById('safetyQuestion'),
       emptyState: document.getElementById('emptyState'),
       contentState: document.getElementById('contentState'),
+      emailBody: document.getElementById('emailBody'),
       sectionFeedbackCard: document.getElementById('sectionFeedbackCard'),
       feedbackIconContainer: document.getElementById('feedbackIconContainer'),
       feedbackMessage: document.getElementById('feedbackMessage'),
@@ -636,6 +659,196 @@ Greenfield Surgery</div>
       elements.contextMenu.classList.add('hidden');
       state.activeSection = null;
     };
+
+    const highlightCursor = (() => {
+      const cursor = document.createElement('div');
+      cursor.className = 'highlight-cursor';
+      document.body.appendChild(cursor);
+      return cursor;
+    })();
+    const typingCursor = document.createElement('span');
+    typingCursor.className = 'typing-cursor';
+
+    const hideHighlightCursor = () => {
+      if (highlightCursor) {
+        highlightCursor.style.opacity = '0';
+      }
+    };
+
+    const positionHighlightCursor = (range) => {
+      if (!highlightCursor || !range) return;
+      const rects = range.getClientRects();
+      if (!rects.length) {
+        hideHighlightCursor();
+        return;
+      }
+      const rect = rects[rects.length - 1];
+      highlightCursor.style.left = `${rect.right}px`;
+      highlightCursor.style.top = `${rect.top}px`;
+      highlightCursor.style.height = `${rect.height || 20}px`;
+      highlightCursor.style.opacity = '1';
+    };
+
+    const getTextPositions = (element) => {
+      const positions = [];
+      if (!element) return positions;
+      const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+      let node = walker.nextNode();
+      while (node) {
+        const text = node.textContent || '';
+        for (let i = 0; i < text.length; i += 1) {
+          positions.push({ node, offset: i + 1 });
+        }
+        node = walker.nextNode();
+      }
+      return positions;
+    };
+
+    const getCharPosition = (element, index) => {
+      if (!element) return null;
+      const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+      let node = walker.nextNode();
+      let count = 0;
+      while (node) {
+        const text = node.textContent || '';
+        const nextCount = count + text.length;
+        if (index <= nextCount) {
+          return { node, offset: Math.max(0, index - count) };
+        }
+        count = nextCount;
+        node = walker.nextNode();
+      }
+      return null;
+    };
+
+    const getRangePositions = (element, startIndex, endIndex) => {
+      const positions = [];
+      if (!element || startIndex >= endIndex) return positions;
+      const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+      let node = walker.nextNode();
+      let count = 0;
+      while (node) {
+        const text = node.textContent || '';
+        const nodeStart = count;
+        const nodeEnd = count + text.length;
+        if (endIndex <= nodeStart) {
+          break;
+        }
+        const sliceStart = Math.max(startIndex, nodeStart);
+        const sliceEnd = Math.min(endIndex, nodeEnd);
+        if (sliceStart < sliceEnd) {
+          for (let i = sliceStart; i < sliceEnd; i += 1) {
+            positions.push({ node, offset: i - nodeStart + 1 });
+          }
+        }
+        count = nodeEnd;
+        node = walker.nextNode();
+      }
+      return positions;
+    };
+
+    const getScrollParent = (element) => {
+      let current = element;
+      while (current && current !== document.body) {
+        const style = window.getComputedStyle(current);
+        if (/(auto|scroll)/.test(style.overflow + style.overflowY + style.overflowX)) {
+          return current;
+        }
+        current = current.parentElement;
+      }
+      return null;
+    };
+
+    const clearSelection = () => {
+      const selection = window.getSelection();
+      if (selection) {
+        selection.removeAllRanges();
+      }
+      hideHighlightCursor();
+    };
+
+    const getRangeRect = (range) => {
+      if (!range) return null;
+      const rects = range.getClientRects();
+      if (!rects.length) return null;
+      return rects[0];
+    };
+
+    const ensureRangeVisible = (range, scrollParent) => {
+      if (!range || !scrollParent) return;
+      const rangeRect = getRangeRect(range);
+      const containerRect = scrollParent.getBoundingClientRect();
+      if (!rangeRect || !containerRect) return;
+      const threshold = 60;
+      const isBelow = rangeRect.bottom > containerRect.bottom - threshold;
+      const isAbove = rangeRect.top < containerRect.top + threshold;
+      if (isBelow || isAbove) {
+        const offset = rangeRect.top - containerRect.top - 20;
+        scrollParent.scrollTop += offset;
+      }
+    };
+
+    async function animateHighlightDragRange(element, startIndex, endIndex, scrollParent, autoScrollOnce, durationMs, holdPauseMs = 0) {
+      if (!element) return autoScrollOnce;
+      const selection = window.getSelection();
+      if (!selection) return autoScrollOnce;
+      const startPos = getCharPosition(element, startIndex);
+      const positions = getRangePositions(element, startIndex, endIndex);
+      if (!startPos || !positions.length) return autoScrollOnce;
+      const stepDelay = Math.max(1, durationMs / positions.length);
+      const range = document.createRange();
+      range.setStart(startPos.node, startPos.offset);
+      range.setEnd(startPos.node, startPos.offset);
+      selection.removeAllRanges();
+      selection.addRange(range);
+      if (!autoScrollOnce) {
+        ensureRangeVisible(range, scrollParent);
+        autoScrollOnce = true;
+      }
+      positionHighlightCursor(range);
+      for (const position of positions) {
+        range.setEnd(position.node, position.offset);
+        selection.removeAllRanges();
+        selection.addRange(range);
+        positionHighlightCursor(range);
+        await wait(stepDelay);
+      }
+      if (holdPauseMs > 0) {
+        await wait(holdPauseMs);
+      }
+      clearSelection();
+      return autoScrollOnce;
+    }
+
+    async function animateHighlightDrag(element) {
+      if (!element) return;
+      const selection = window.getSelection();
+      if (!selection) return;
+      selection.removeAllRanges();
+      const positions = getTextPositions(element);
+      if (!positions.length) return;
+      const scrollParent = getScrollParent(element);
+      const initialScrollTop = scrollParent ? scrollParent.scrollTop : 0;
+      const initialScrollLeft = scrollParent ? scrollParent.scrollLeft : 0;
+      const stepDelay = Math.max(1, highlightDurationMs / positions.length);
+      const range = document.createRange();
+      range.setStart(positions[0].node, 0);
+      range.setEnd(positions[0].node, 0);
+      selection.addRange(range);
+      positionHighlightCursor(range);
+      for (const position of positions) {
+        range.setEnd(position.node, position.offset);
+        selection.removeAllRanges();
+        selection.addRange(range);
+        positionHighlightCursor(range);
+        if (scrollParent) {
+          scrollParent.scrollTop = initialScrollTop;
+          scrollParent.scrollLeft = initialScrollLeft;
+        }
+        await wait(stepDelay);
+      }
+      clearSelection();
+    }
 
     function updateSendState() {
       const hasContent = Object.values(emailContent).some(value => value && value.trim().length > 0);
@@ -709,7 +922,8 @@ Greenfield Surgery</div>
     }
 
     function tokenize(text) {
-      return text.split(/(\s+)/).filter(token => token.length > 0);
+      const matches = text.match(/\S+\s*/g);
+      return matches ? matches : [];
     }
 
     function diffTokens(originalTokens, correctedTokens) {
@@ -764,49 +978,121 @@ Greenfield Surgery</div>
       return merged;
     }
 
-    async function applyDiffAnimation(el, originalText, correctedText) {
+    async function applyDiffAnimation(el, originalText, correctedText, scrollParent, options = {}) {
+      const highlightDuration = options.highlightDurationMs || correctionHighlightDurationMs;
       const ops = diffTokens(tokenize(originalText), tokenize(correctedText));
       let chars = originalText.split('');
       let cursorIndex = 0;
+      let autoScrolled = false;
+      let hasPausedBeforeFirstHighlight = false;
+      let isCursorVisible = false;
 
-      const render = () => {
-        el.innerHTML = `${chars.slice(0, cursorIndex).join('')}<span class="typing-cursor"></span>${chars.slice(cursorIndex).join('')}`;
+      const setTypingState = (isTyping) => {
+        if (isTyping) {
+          typingCursor.classList.add('typing');
+        } else {
+          typingCursor.classList.remove('typing');
+        }
       };
 
-      render();
+      const renderWithCursor = (showCursor) => {
+        if (!el) return;
+        if (!showCursor) {
+          if (typingCursor.isConnected) {
+            typingCursor.remove();
+          }
+          el.textContent = chars.join('');
+          isCursorVisible = false;
+          return;
+        }
+        el.innerHTML = '';
+        const beforeText = document.createTextNode(chars.slice(0, cursorIndex).join(''));
+        const afterText = document.createTextNode(chars.slice(cursorIndex).join(''));
+        el.appendChild(beforeText);
+        el.appendChild(typingCursor);
+        el.appendChild(afterText);
+        isCursorVisible = true;
+      };
 
-      for (const op of ops) {
+      const pauseBeforeHighlight = async () => {
+        if (!hasPausedBeforeFirstHighlight) {
+          hasPausedBeforeFirstHighlight = true;
+          setTypingState(false);
+          renderWithCursor(true);
+          await wait(correctionPreHighlightPauseMs);
+        }
+      };
+
+      const typeInsertText = async (text) => {
+        setTypingState(true);
+        for (let idx = 0; idx < text.length; idx += 1) {
+          const ch = text[idx];
+          chars.splice(cursorIndex, 0, ch);
+          cursorIndex += 1;
+          renderWithCursor(true);
+          await wait(correctionCharDelayMs);
+          if (/\s/.test(ch) && idx < text.length - 1 && !/\s/.test(text[idx - 1] || '')) {
+            await wait(correctionWordPauseMs);
+          }
+        }
+        setTypingState(false);
+      };
+
+      for (let i = 0; i < ops.length; i += 1) {
+        const op = ops[i];
         if (op.type === 'equal') {
           cursorIndex += op.text.length;
-          render();
-          await wait(10);
           continue;
         }
-        if (op.type === 'delete') {
-          cursorIndex += op.text.length;
-          render();
-          await wait(10);
-          for (let k = 0; k < op.text.length; k++) {
-            if (cursorIndex > 0) {
-              chars.splice(cursorIndex - 1, 1);
-              cursorIndex -= 1;
-              render();
-              await wait(15);
-            }
-          }
-          continue;
+
+        if (hasPausedBeforeFirstHighlight) {
+          setTypingState(false);
+          renderWithCursor(true);
+          await wait(correctionNextBlockPauseMs);
         }
-        if (op.type === 'insert') {
-          for (const ch of op.text) {
-            chars.splice(cursorIndex, 0, ch);
-            cursorIndex += 1;
-            render();
-            await wait(15);
+
+        let deleteText = '';
+        let insertText = '';
+        while (i < ops.length && ops[i].type !== 'equal') {
+          if (ops[i].type === 'delete') {
+            deleteText += ops[i].text;
           }
+          if (ops[i].type === 'insert') {
+            insertText += ops[i].text;
+          }
+          i += 1;
+        }
+        i -= 1;
+
+        await pauseBeforeHighlight();
+
+        if (deleteText) {
+          if (isCursorVisible) {
+            renderWithCursor(false);
+          }
+          const startIndex = cursorIndex;
+          const endIndex = cursorIndex + deleteText.length;
+          autoScrolled = await animateHighlightDragRange(
+            el,
+            startIndex,
+            endIndex,
+            scrollParent,
+            autoScrolled,
+            highlightDuration,
+            correctionPreDeletePauseMs
+          );
+          setTypingState(false);
+          chars.splice(startIndex, deleteText.length);
+          renderWithCursor(true);
+          await wait(correctionPostHighlightPauseMs);
+        }
+
+        if (insertText) {
+          await typeInsertText(insertText);
         }
       }
 
-      el.textContent = chars.join('');
+      renderWithCursor(false);
     }
 
     async function animateCopyPaste(section) {
@@ -814,13 +1100,7 @@ Greenfield Surgery</div>
       state.isAnimating = true;
       const index = sectionOrder.indexOf(section) + 1;
       const genaiEl = document.getElementById(`genai-section-${index}`);
-      if (genaiEl) {
-        genaiEl.classList.add('pulse');
-      }
-      await wait(600);
-      if (genaiEl) {
-        genaiEl.classList.remove('pulse');
-      }
+      await animateHighlightDrag(genaiEl);
       await insertEmailSection(section, originalSections[section]);
       markGenaiChecked(section);
       state.sectionStatus[section].copied = true;
@@ -836,24 +1116,18 @@ Greenfield Surgery</div>
       const emailEl = document.getElementById(`email-section-${index}`);
       const originalText = originalSections[section];
       const correctedText = correctedSections[section];
-
-      if (genaiEl) {
-        genaiEl.classList.add('selected');
-        genaiEl.classList.add('pulse');
-      }
-
-      await wait(600);
-
-      if (genaiEl) {
-        genaiEl.classList.remove('pulse');
-        genaiEl.classList.remove('selected');
-      }
+      await animateHighlightDrag(genaiEl);
 
       await insertEmailSection(section, originalText);
 
       if (originalText !== correctedText && emailEl) {
         markGenaiChecked(section);
-        await applyDiffAnimation(emailEl, originalText, correctedText);
+        const perSectionHighlightDuration = section === 'section3'
+          ? correctionHighlightDurationMs
+          : correctionHighlightDurationMs;
+        await applyDiffAnimation(emailEl, originalText, correctedText, elements.emailBody, {
+          highlightDurationMs: perSectionHighlightDuration
+        });
         emailContent[section] = correctedText;
         updateSendState();
       } else {
@@ -875,7 +1149,30 @@ Greenfield Surgery</div>
     bindOverlayDismiss(elements.finalFeedback);
     bindOverlayDismiss(elements.safetyQuestion);
 
+    const getGenaiSectionFromEvent = (event) => {
+      if (!event) return null;
+      const path = typeof event.composedPath === 'function' ? event.composedPath() : [];
+      if (path && path.length) {
+        return path.find((node) => node instanceof Element && node.classList.contains('genai-section')) || null;
+      }
+      const target = event.target instanceof Element ? event.target : event.target?.parentElement;
+      return target ? target.closest('.genai-section') : null;
+    };
+
     document.addEventListener('click', (event) => {
+      const sectionEl = getGenaiSectionFromEvent(event);
+      if (sectionEl) {
+        if (isOverlayOpen() || state.isAnimating) return;
+        const section = sectionEl.dataset.section;
+        if (!section || state.sectionStatus[section].copied || state.sectionStatus[section].checked) return;
+        if (!elements.contextMenu) return;
+        event.stopPropagation();
+        state.activeSection = section;
+        elements.contextMenu.style.left = `${event.clientX}px`;
+        elements.contextMenu.style.top = `${event.clientY}px`;
+        elements.contextMenu.classList.remove('hidden');
+        return;
+      }
       if (!elements.contextMenu || elements.contextMenu.classList.contains('hidden')) return;
       if (!elements.contextMenu.contains(event.target)) {
         hideContextMenu();
@@ -887,20 +1184,6 @@ Greenfield Surgery</div>
         event.stopPropagation();
       });
     }
-
-    sectionOrder.forEach((section, index) => {
-      const sectionEl = document.getElementById(`genai-section-${index + 1}`);
-      safeAddListener(sectionEl, 'click', (event) => {
-        event.stopPropagation();
-        if (isOverlayOpen() || state.isAnimating) return;
-        if (state.sectionStatus[section].copied || state.sectionStatus[section].checked) return;
-        if (!elements.contextMenu) return;
-        state.activeSection = section;
-        elements.contextMenu.style.left = `${event.clientX}px`;
-        elements.contextMenu.style.top = `${event.clientY}px`;
-        elements.contextMenu.classList.remove('hidden');
-      });
-    });
 
     safeAddListener(elements.copyPasteBtn, 'click', async () => {
       if (state.isAnimating || !state.activeSection) return;
