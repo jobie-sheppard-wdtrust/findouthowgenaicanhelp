@@ -296,7 +296,7 @@
           <path d="M12 17h.01"/>
         </svg>
       </button>
-      <h1 style="font-weight: 600; color: hsl(var(--foreground));">Checking for hallucinations and bias, and spotting dangerous suggestions</h1>
+      <h1 style="font-weight: 600; color: hsl(var(--foreground));">Being a HITL - defend against hallucination and bias</h1>
     </header>
 
     <!-- Main Content -->
@@ -379,7 +379,7 @@ Greenfield Surgery</div>
               </div>
               <div style="display: flex; align-items: center; gap: 0.5rem;">
                 <span style="color: hsl(var(--muted-foreground)); width: 3rem;">Subject:</span>
-                <span style="color: hsl(var(--foreground));">eRS Referral - [patient details] - Cardiology</span>
+                <span style="color: hsl(var(--foreground));">eRS Referral - Cardiology</span>
               </div>
             </div>
           </div>
@@ -1456,7 +1456,7 @@ Greenfield Surgery`,
     function buildFeedbackHTML(success) {
       const heading = 'Feedback';
       const subheading = success 
-        ? "Well done! You were the Human In The Loop: see below how you handled the risks"
+        ? "Well done! You succeeded in your role as the Human In The Loop, ensuring the output was appropriate and accurate. Explore the risks you avoided below"
         : "Not quite – you've missed a few details here. Being the Human In The Loop means you need to check the output, ensuring it's as good as what you would write yourself. Check below to see how you can improve";
       
       let sectionsHTML = '';
@@ -1466,7 +1466,7 @@ Greenfield Surgery`,
         'section1',
         !state.sectionStatus.section1.included,
         !state.sectionStatus.section1.included 
-          ? "Great! This preamble shouldn't be included - it would erode your patients' trust in you to see it left in professional communications"
+          ? "Good - you didn't include this preamble. Including this would erode trust with colleagues or patients"
           : "This preamble shouldn be included. It's a GenAI artifact that erodes trust when left in professional communications."
       );
       
@@ -1499,8 +1499,8 @@ Greenfield Surgery`,
         'section6',
         !state.sectionStatus.section6.included,
         !state.sectionStatus.section6.included
-          ? "Excellent! You spotted that this GenAI follow-up should not be included. It erodes trust when left in professional communications"
-          : "This GenAI follow-up should not be included. It erodes trust when left in professional communications"
+          ? "Good - You didn't include this GenAI follow-up. Including this would erode trust with colleagues or patients"
+          : "This GenAI follow-up should not have been included. It erodes trust when left in professional communications"
       );
       
       return `
@@ -1526,7 +1526,7 @@ Greenfield Surgery`,
       
       let feedbackText;
       if (succeeded) {
-        feedbackText = "Perfect! You identified and corrected the hallucinations in this section - changing type 1 to type 2 diabetes, removing asthma, adding the missing beta-blocker, and correcting the ECG and echo findings. This is exactly what being a Human In The Loop involves.";
+        feedbackText = "Perfect! You corrected the hallucinations in this section - changing type 1 to type 2 diabetes, removing asthma, adding the missing beta-blocker, and correcting the ECG and echo findings. This is exactly what being a Human In The Loop involves.";
       } else if (included && !checked) {
         feedbackText = "You included this section but didn't check it for errors. The AI hallucinated several critical details: wrong diabetes type, non-existent asthma, missing medication, and incorrect test results. As the Human In The Loop, it's your responsibility to check all factual details.";
       } else {
@@ -1543,7 +1543,7 @@ Greenfield Surgery`,
       
       let feedbackText;
       if (succeeded) {
-        feedbackText = "Great work! You identified the subtle bias here: the inappropriate seasonal greeting makes religious assumptions about the recipient. This is exactly what being a Human In The Loop involves.";
+        feedbackText = "Great work! You corrected the inappropriate Christmas greeting. This is subtle bias, because it makes religious assumptions";
       } else if (included && !checked) {
         feedbackText = "You included this section without checking it. 'Merry Christmas' is subtle bias: it makes religious assumptions about the recipient. As the Human In The Loop, it's your responsibility to check for bias as well.";
       } else {
