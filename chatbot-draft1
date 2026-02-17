@@ -64,7 +64,7 @@
     main {
       flex: 1;
       overflow-y: auto;
-      scroll-behavior: auto;
+      scroll-behavior: smooth;
       padding: 1.5rem 1rem;
     }
 
@@ -407,12 +407,27 @@
     </header>
 
     <main>
-      <div class="messages" id="messages"></div>
+      <div class="messages" id="messages">
+        <div class="message bot no-animate" id="msg-0" data-msg-index="0">
+          <div class="avatar">
+            <svg viewBox="0 0 24 24"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
+          </div>
+          <div class="bubble-group">
+            <div class="bubble">
+              <span class="content">How can I help?</span>
+            </div>
+          </div>
+        </div>
+      </div>
     </main>
 
     <footer>
       <div class="inner">
-        <div class="prompts" id="prompts"></div>
+        <div class="prompts" id="prompts">
+          <button class="prompt-btn" data-index="0">Research NICE Sepsis recommendations</button>
+          <button class="prompt-btn" data-index="1">Draft a response to a patient complaint</button>
+          <button class="prompt-btn" data-index="2">What are arguments for and against my colleague's discharge plan?</button>
+        </div>
         <div class="input-wrapper">
           <div class="attachment-preview" id="attachmentPreview"></div>
           <textarea id="input" placeholder="Type your message..." rows="1"></textarea>
@@ -447,9 +462,9 @@ Would you like me to suggest how this guidance applies to a specific patient or 
       },
       {
         label: "Draft a response to a patient complaint",
-        prompt: "Help me respond to this sensitive complaint from a patient, who had an outpatient appointment cancelled at short notice without being given a clear reason. The response should acknowledge mistakes, and apologise genuinely. I have attached the complaint",
+        prompt: "Help me respond to this patient complaint. She had an outpatient appointment cancelled at short notice, and wasn't given a clear reason. The response should acknowledge mistakes, and apologise genuinely",
         attachmentName: "Patel email complaint.pdf",
-        response: `Of course — I will draft an accountable response that acknowledges the communication issues without being defensive.
+        response: `Of course — I will draft an accountable response to the complaint you've attached. It will acknowledge the communication issues without being defensive.
         
         **Draft response — genuine and accountable**
 
@@ -504,6 +519,15 @@ If you like, I could turn this into a suitability checklist or adapt it to a spe
     const inputEl = document.getElementById('input');
     const sendBtn = document.getElementById('sendBtn');
     const attachmentPreviewEl = document.getElementById('attachmentPreview');
+    const scroller = document.querySelector('main');
+    let isAutoScrollEnabled = true;
+
+    if (scroller) {
+      scroller.addEventListener('scroll', () => {
+        const distanceFromBottom = scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight;
+        isAutoScrollEnabled = distanceFromBottom < 120;
+      });
+    }
 
     // Bot icon SVG
     const botIconSVG = `<svg viewBox="0 0 24 24"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>`;
@@ -524,10 +548,19 @@ If you like, I could turn this into a suitability checklist or adapt it to a spe
       return `<div class="message-attachment">${fileIconSVG}<span>${escapeHTML(name)}</span></div>`;
     }
 
+    let scrollFrame = null;
     function scrollToBottom() {
-      const scroller = document.querySelector('main');
-      if (!scroller) return;
-      scroller.scrollTop = scroller.scrollHeight;
+      if (!scroller || !isAutoScrollEnabled) return;
+      if (scrollFrame) cancelAnimationFrame(scrollFrame);
+      scrollFrame = requestAnimationFrame(() => {
+        const targetTop = scroller.scrollHeight;
+        if (typeof scroller.scrollTo === 'function') {
+          scroller.scrollTo(0, targetTop);
+        } else {
+          scroller.scrollTop = targetTop;
+        }
+        scrollFrame = null;
+      });
     }
 
     function escapeHTML(str = '') {
@@ -696,7 +729,7 @@ If you like, I could turn this into a suitability checklist or adapt it to a spe
         renderMessages();
         if (onComplete) onComplete();
       } else {
-        const speed = role === 'bot' ? 16 : 10;
+        const speed = role === 'bot' ? 5 : 10;
         renderMessages();
         typeText(messages.length - 1, content, speed, onComplete);
       }
