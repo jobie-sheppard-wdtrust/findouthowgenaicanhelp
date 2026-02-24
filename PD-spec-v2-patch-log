@@ -1,0 +1,157 @@
+PD-spec-v2 Accessibility Patch Log
+
+Scope
+- Patched file: `PD-spec-v2`
+- Goal: remove/mitigate all risks listed in `PD-risksheet` for WCAG 2.2 A/AA.
+- Strategy: one normative accessibility section was added to address many risks at once, plus targeted copy fixes.
+
+Applied patches
+
+1) Shared modal/focus/dialog patch (covers KFP-01, KFP-05, KFP-06, KFP-11, SRA-04, SRA-17)
+Verbatim text added:
+- "• Focus MUST never be hidden by overlays; when modal is open, focus MUST remain within modal controls/content until closed."
+- "• On modal open, focus MUST move to the modal title (or first focusable control). On close, focus MUST return to the control that opened the modal, unless removed, in which case focus goes to the nearest logical next control in main flow."
+- "• Feedback modal MUST use `role=\"dialog\"`, `aria-modal=\"true\"`, and programmatic name/description linked to visible title/body text."
+- "• Finish confirmation text MUST be rendered as in-page status message (`role=\"status\"` or `role=\"alert\"`), not browser `window.alert()`."
+What/why:
+- Added explicit focus entry/trap/return rules and dialog semantics so keyboard and assistive technology behaviour is deterministic.
+
+2) Keyboard and control semantics patch (covers KFP-03, KFP-04, KFP-10, SRA-03)
+Verbatim text added:
+- "• All interactive controls (Reset, info trigger, Copy/Remove controls, Send, Retry, Finish) MUST use native `<button>` elements or equivalent semantics with role, keyboard operation, and disabled-state support."
+- "• Activation for all buttons MUST support keyboard Enter and Space in addition to pointer/touch."
+- "• Minimum pointer target size for all controls MUST be at least 24x24 CSS px..."
+What/why:
+- Prevents mouse-only implementations and undersized targets.
+
+3) Focus indicator patch (covers KFP-05)
+Verbatim text added:
+- "• All keyboard-focusable controls MUST have a visible focus indicator with 3:1 minimum contrast against adjacent colours..."
+What/why:
+- Makes focus visibility testable and mandatory.
+
+4) Disabled/lock state patch (covers KFP-07)
+Verbatim text added:
+- "• During the 600ms lock window, Copy/Remove controls MUST expose disabled state programmatically (`disabled` or `aria-disabled=\"true\"`) and visually."
+What/why:
+- Ensures temporary non-interactive state is exposed beyond visuals.
+
+5) DOM/tab order and layout sequence patch (covers KFP-08, KFP-15, CE-07, SRA-05, SRA-16)
+Verbatim text added:
+- "• The page MUST expose landmarks in this order in the DOM... Visual CSS re-ordering MUST NOT change reading/tab order."
+- "• Visual layering (z-index) MUST NOT determine reading order; DOM order controls sequential navigation order."
+What/why:
+- Aligns keyboard/screen-reader order with intended flow.
+
+6) Skip link patch (covers KFP-09)
+Verbatim text added:
+- "• A visible-on-focus skip link MUST be the first focusable element and move focus to the start of main interaction content."
+What/why:
+- Adds bypass mechanism.
+
+7) Reset focus outcome patch (covers KFP-13)
+Verbatim text added:
+- "• Reset action MUST place focus on the primary heading or first main interactive control after reset."
+What/why:
+- Avoids focus loss after reset.
+
+8) Tooltip accessibility patch (covers KFP-14, SRA-11)
+Verbatim text added:
+- "• Tooltip trigger accessible name MUST describe its purpose... Tooltip content MUST be associated via `aria-describedby`; tooltip MUST be dismissible and keyboard reachable without trapping focus."
+What/why:
+- Defines name, relationship, and keyboard behaviour for tooltip pattern.
+
+9) Chat/log semantics patch (covers SRA-01, SRA-10, SRA-12)
+Verbatim text added:
+- "• Chat transcript MUST be a programmatic list/log of messages; each message MUST include an exposed sender label (\"User\" or \"Assistant\")..."
+- "• Referral output content headings ... MUST be marked up as semantic headings with list content as real lists."
+What/why:
+- Ensures message structure and source attribution are programmatically available.
+
+10) Dynamic status/live-region patch (covers SRA-02, SRA-13, SRA-14, SRA-15)
+Verbatim text added:
+- "• Thinking indicator MUST expose an accessible status text... Decorative dots MUST be hidden from assistive tech."
+- "• Typing updates and completion events MUST be announced via polite live region; final error/success/system notices ..."
+What/why:
+- Makes asynchronous updates perceivable to assistive technology.
+
+11) Prompt label/read-only patch (covers CE-06, SRA-06)
+Verbatim text added:
+- "• Prompt box MUST have a persistent visible label ... Placeholder text is optional and MUST NOT be the only label."
+- "• Prompt box is read-only for manual typing... MUST expose read-only state programmatically."
+What/why:
+- Removes placeholder-only labelling risk and clarifies control semantics.
+
+12) Wording patch for instruction clarity (covers CE-03, SRA-09)
+Verbatim text changed:
+- From: "Helper text: “Click copy to add or remove fields from your prompt”."
+- To:   "Helper text: “Use Copy/Remove controls (mouse, touch, Enter, or Space) to add or remove fields from your prompt”."
+- From: "Click copy to add or remove fields from your prompt"
+- To:   "Use Copy/Remove controls (mouse, touch, Enter, or Space) to add or remove fields from your prompt"
+What/why:
+- Removes mouse-only implication and keeps behaviour unchanged.
+
+13) Error suggestion patch (covers CE-08)
+Verbatim text changed:
+- From: "...Could you paste it in, and then I can write a referral for you?"
+- To:   "...Please add the missing medical fields using the Copy controls, then send again."
+What/why:
+- Aligns corrective guidance with actual interaction constraints.
+
+14) Redundant-entry patch (covers CE-01, CE-02, CE-11)
+Verbatim text added:
+- "• On failed send (missing required medical fields), previously selected fields MUST remain selected by default; the system MUST indicate which required medical fields are still missing. Users MUST NOT be forced to re-enter unchanged selections."
+What/why:
+- Prevents unnecessary re-entry within same process.
+
+15) Language/title/heading patch (covers CE-05, CE-09, SRA-07)
+Verbatim text added:
+- "• The root HTML element MUST set `lang=\"en\"`."
+- "• The page `<title>` MUST be: “HITL – Keeping personal data anonymous”."
+- "• Header text “Keeping personal data anonymous” MUST be the page H1."
+What/why:
+- Makes page language and purpose explicit, plus heading hierarchy.
+
+16) Non-colour state distinction patch (covers CE-10)
+Verbatim text added:
+- "• Copy/Remove selected state MUST use at least one non-colour visual cue in addition to colour..."
+What/why:
+- Prevents colour-only state communication.
+
+
+16b) Uppercase authoring safety patch (covers CE-04)
+Verbatim text added:
+- "• Patient Data label source text MUST be authored in normal word case (e.g., “Name”), with uppercase appearance applied via styling only; do not hardcode all-caps letters in source content. (CE-04)"
+What/why:
+- Preserves visual uppercase while preventing letter-by-letter reading side effects in assistive tech.
+17) Zoom/reflow/scroll/text-spacing patch (covers LRZ-01 to LRZ-09, plus MTI-06 in part)
+Verbatim text added:
+- "• Content MUST remain usable at 200% zoom and at 320 CSS px width without loss of information or functionality..."
+- "• Main container MUST allow page-level vertical scroll when required (do not clip critical content with global overflow hidden)."
+- "• Prompt box with max-height MUST support internal scroll, keyboard scrolling, and visible indication that additional content exists when overflowed."
+- "• Text must remain readable under text-resize and custom spacing..."
+What/why:
+- Adds testable resilience requirements for reflow, clipping, and enlarged text/spacing.
+
+18) Motion/animation control patch (covers MTI-01, MTI-02, MTI-03, MTI-04, MTI-05, MTI-06)
+Verbatim text added:
+- "• Auto-scroll behaviour in chat MUST pause when user focus is inside older transcript content; provide a “Jump to latest” control to resume."
+- "• Any animation lasting more than 5 seconds ... MUST be pausable or suppressible with an in-UI control in addition to honoring reduced-motion preference."
+- "• Non-essential motion ... MUST be disabled when reduced-motion is requested..."
+What/why:
+- Makes long-running motion and auto-scroll controllable and predictable.
+
+19) Contrast/state indicator patch (covers SRA-08)
+Verbatim text added:
+- "• Icons and state indicators ... MUST meet 3:1 non-text contrast against adjacent backgrounds in all states..."
+What/why:
+- Adds explicit non-text contrast requirement.
+
+20) Pointer-gesture independence patch (covers KFP-12)
+Verbatim text added:
+- "• Functionality MUST NOT depend on drag/gesture path; all interactions are single-point activation compatible."
+What/why:
+- Ensures alternative non-gesture activation is always available.
+
+Unpatched / issues
+- None. Every listed Risk ID is now explicitly covered by at least one normative requirement.

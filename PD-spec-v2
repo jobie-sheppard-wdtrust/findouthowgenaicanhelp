@@ -73,7 +73,7 @@ Feedback modal controls: “Retry” and “Finish”.
 Informational components
 Header text: “Keeping personal data anonymous”.
 Tooltip text: “Learn to protect patient data when using GenAI tools. Only share medical details needed for care.”
-Helper text: “Click copy to add or remove fields from your prompt”.
+Helper text: “Use Copy/Remove controls (mouse, touch, Enter, or Space) to add or remove fields from your prompt”.
 Prompt box (focusable; text can be selected and copied; only accepts patient data via copy buttons; no custom text entry) showing the base prompt and any selected field lines. Placeholder text exists: “Your prompt will appear here...”.
 Chat transcript area, containing bot/user messages plus a bot “thinking” indicator and a typing effect.
 Feedback modal content (success/failure messages).
@@ -153,7 +153,7 @@ Header text: Keeping personal data anonymous
 Helper text / instructions:
 Learn to protect patient data when using GenAI tools. Only share necessary medical details needed, leave out PID
 
-Click copy to add or remove fields from your prompt
+Use Copy/Remove controls (mouse, touch, Enter, or Space) to add or remove fields from your prompt
 Buttons/labels
 Retry
 Finish
@@ -185,7 +185,7 @@ o	Bisoprolol 2.5mg once daily
 o	No known drug allergies
 o	Recent ECG: sinus rhythm with occasional PACs. Thyroid function normal.
 Error message (bot)
-Oops! You've asked me to write a referral but you haven't included all of the medical information I need. Could you paste it in, and then I can write a referral for you?
+Oops! You've asked me to write a referral but you haven't included all of the medical information I need. Please add the missing medical fields using the Copy controls, then send again.
 
 Lines appended into the prompt box and into the user’s sent chat message (when fields are selected)
 •	Name: L. Morgan
@@ -288,9 +288,9 @@ Selection completes and prompt builds (in order of clicks. If user clicks medica
 Send becomes enabled (and visually “glowing”), WITHIN immediate.
 User clicks Send. Send button bulges, WITHIN immediate.
 User message posts, prompt box becomes blank, and a “thinking” indicator appears, WITHIN 700ms.
-Bot types out “Oops! You've asked me to write a referral but you haven't included all of the medical information I need. Could you paste it in, and then I can write a referral for you?” response
-WHEN typing finishes, patient data selections are cleared; user prompt resets to base prompt; Send returns to disabled.
-User may begin a new attempt from here
+Bot types out “Oops! You've asked me to write a referral but you haven't included all of the medical information I need. Please add the missing medical fields using the Copy controls, then send again.” response
+WHEN typing finishes, previously selected patient data fields remain selected; user prompt remains populated with selected fields plus base prompt; Send remains enabled when at least 1 field is selected.
+System indicates which required medical fields are still missing. User may adjust selections and re-send.
 Included medical information and success journey
 Starting state: chat shows “How can I help?”, prompt shows the base prompt, Send disabled.
 User clicks all of the necessary medical fields (HISTORY, MEDICATION, ALLERGIES, INVESTIGATIONS), but none of the patient data fields (NAME, AGE, ADDRESS, NATIONALITY, ETHNICITY)
@@ -315,7 +315,69 @@ Negative / failure feedback modal appears, WITHIN 500ms after the referral finis
 User clicks Retry (full reset) or Finish (close modal and show alert), WITHIN immediate.
 9.	Edge Cases
 Rapid clicking multiple Patient Data copy/remove buttons: during the 600ms selection window, copy/remove buttons are non-interactive, so additional clicks have no effect until it completes.
-If the user repeatedly hits Send without including all required medical fields, the chat will accumulate multiple failed attempts (each adds a new user message + error response), while fields keep getting reset each time.
+If the user repeatedly hits Send without including all required medical fields, the chat will accumulate multiple failed attempts (each adds a new user message + error response), while previously selected fields persist unless the user changes them.
 After a successful send, the prompt box is blank and stays blank until Retry; selected fields remain locked (cannot be changed), and Send stays disabled.
 Finish always allows progress (shows the same alert) even when the feedback state is failure.
 
+
+
+10.	Accessibility requirements (normative)
+
+Document and language
+• The root HTML element MUST set `lang="en"`. (CE-09)
+• The page `<title>` MUST be: “HITL – Keeping personal data anonymous”. (CE-05)
+
+Landmarks, structure, and reading order
+• The page MUST expose landmarks in this order in the DOM: skip link target region, header/banner, main, chat section, patient data section. Visual CSS re-ordering MUST NOT change reading/tab order. (KFP-15, CE-07, SRA-05, SRA-16)
+• A visible-on-focus skip link MUST be the first focusable element and move focus to the start of main interaction content. (KFP-09)
+• Header text “Keeping personal data anonymous” MUST be the page H1. (SRA-07)
+• Chat transcript MUST be a programmatic list/log of messages; each message MUST include an exposed sender label (“User” or “Assistant”) that is available to assistive technology. (SRA-01, SRA-12)
+• Referral output content headings (Patient details, Reason for referral, etc.) MUST be marked up as semantic headings with list content as real lists. (SRA-10)
+
+Interactive controls and target size
+• All interactive controls (Reset, info trigger, Copy/Remove controls, Send, Retry, Finish) MUST use native `<button>` elements or equivalent semantics with role, keyboard operation, and disabled-state support. (KFP-03, KFP-04, SRA-03, SRA-04)
+• Activation for all buttons MUST support keyboard Enter and Space in addition to pointer/touch. (KFP-03, KFP-04)
+• Minimum pointer target size for all controls MUST be at least 24x24 CSS px; if any visible glyph is smaller, add internal padding to meet this minimum. (KFP-10)
+• Copy/Remove selected state MUST use at least one non-colour visual cue in addition to colour (for example icon shape change plus explicit text state). (CE-10)
+• Patient Data label source text MUST be authored in normal word case (e.g., “Name”), with uppercase appearance applied via styling only; do not hardcode all-caps letters in source content. (CE-04)
+
+Focus visibility and focus management
+• All keyboard-focusable controls MUST have a visible focus indicator with 3:1 minimum contrast against adjacent colours; use the Ring colour token for default focus outline unless overridden by equivalent-contrast styling. (KFP-05)
+• Focus MUST never be hidden by overlays; when modal is open, focus MUST remain within modal controls/content until closed. (KFP-01, KFP-05)
+• On modal open, focus MUST move to the modal title (or first focusable control). On close, focus MUST return to the control that opened the modal, unless removed, in which case focus goes to the nearest logical next control in main flow. (KFP-01, KFP-06, KFP-11)
+• Reset action MUST place focus on the primary heading or first main interactive control after reset. (KFP-13)
+
+Modal, tooltip, status messages, and live regions
+• Feedback modal MUST use `role="dialog"`, `aria-modal="true"`, and programmatic name/description linked to visible title/body text. Escape key MUST close only if an equivalent visible close path exists (Retry/Finish remain required). (KFP-01, SRA-04)
+• Tooltip trigger accessible name MUST describe its purpose (for example “About this exercise”). Tooltip content MUST be associated via `aria-describedby`; tooltip MUST be dismissible and keyboard reachable without trapping focus. (KFP-14, SRA-11)
+• Thinking indicator MUST expose an accessible status text (for example “Assistant is generating a response”). Decorative dots MUST be hidden from assistive tech. (SRA-02, SRA-14)
+• Typing updates and completion events MUST be announced via polite live region; final error/success/system notices that require awareness MUST use `role="status"` or `role="alert"` as appropriate. (SRA-02, SRA-13, SRA-15, SRA-17, KFP-06)
+• Finish confirmation text MUST be rendered as in-page status message (`role="status"` or `role="alert"`), not browser `window.alert()`. After it appears, focus MUST move to that message or next logical section link. (KFP-06, SRA-17)
+
+Prompt box semantics and instructions
+• Prompt box MUST have a persistent visible label (for example “Prompt to send”) programmatically associated to the control. Placeholder text is optional and MUST NOT be the only label. (CE-06, SRA-06)
+• Prompt box is read-only for manual typing. If implemented with textarea/input semantics, it MUST expose read-only state programmatically. (SRA-06)
+• Helper/instruction text MUST not rely on “click” wording alone; it MUST reference keyboard and touch activation equivalently. (CE-03, SRA-09)
+
+Selection lock, disabled states, and order
+• During the 600ms lock window, Copy/Remove controls MUST expose disabled state programmatically (`disabled` or `aria-disabled="true"`) and visually. Attempts to activate disabled controls MUST provide no state change. (KFP-07)
+• Visual layering (z-index) MUST NOT determine reading order; DOM order controls sequential navigation order. Tooltip and modal containers may be portaled visually but keyboard order must remain logical. (KFP-08)
+
+Error handling and redundant entry
+• On failed send (missing required medical fields), previously selected fields MUST remain selected by default; the system MUST indicate which required medical fields are still missing. Users MUST NOT be forced to re-enter unchanged selections. (CE-01, CE-02, CE-11)
+• Failed-send error suggestion text MUST be actionable and consistent with read-only prompt behaviour: instruct users to use Copy/Remove controls to add required fields. (CE-08)
+
+Motion, timing, zoom/reflow, and obscuration
+• Auto-scroll behaviour in chat MUST pause when user focus is inside older transcript content; provide a “Jump to latest” control to resume. (MTI-06)
+• Any animation lasting more than 5 seconds (including infinite pulses) MUST be pausable or suppressible with an in-UI control in addition to honoring reduced-motion preference. (MTI-01, MTI-02, MTI-05)
+• Non-essential motion (chat entrances, sweeps, bulges, modal entrance) MUST be disabled when reduced-motion is requested; this already applies and remains required. (MTI-03, MTI-04)
+• Content MUST remain usable at 200% zoom and at 320 CSS px width without loss of information or functionality; horizontal scrolling should be avoided except where medically necessary data tokens cannot wrap. (LRZ-01, LRZ-04, LRZ-05, LRZ-08, LRZ-09)
+• Main container MUST allow page-level vertical scroll when required (do not clip critical content with global overflow hidden). Nested scroll regions are allowed only where focus order and reading order remain clear. (LRZ-02)
+• Prompt box with max-height MUST support internal scroll, keyboard scrolling, and visible indication that additional content exists when overflowed. (LRZ-03)
+• Text must remain readable under text-resize and custom spacing: no clipping/overlap at 200% text size and with line-height 1.5, paragraph spacing 2x font size, letter spacing 0.12em, word spacing 0.16em. (LRZ-06, LRZ-07)
+
+Colour and non-text contrast
+• Icons and state indicators (including Send, Copy/Remove, modal actions, thinking/status glyphs) MUST meet 3:1 non-text contrast against adjacent backgrounds in all states, including disabled and focus styles. (SRA-08)
+
+Input alternatives
+• Functionality MUST NOT depend on drag/gesture path; all interactions are single-point activation compatible. (KFP-12)
