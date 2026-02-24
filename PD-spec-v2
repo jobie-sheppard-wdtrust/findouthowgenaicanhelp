@@ -1,0 +1,321 @@
+
+1.	Interaction Overview
+
+This is a single-page, two-column chatbot simulation about keeping patient data anonymous when using GenAI tools. The user can “copy” specific Patient Data fields into a prompt box (only accepts patient data via copy buttons, no custom text entry), then press Send to submit that prompt as a user chat message. Depending on whether the simulation decides the prompt is missing required medical fields, the bot either types an error message or types a full referral message.
+
+After a successful referral response, a feedback modal appears. The feedback is “✅ Excellent work!” if none of the following were included in the sent prompt: Name, Age, 
+Address, Nationality, Ethnicity; otherwise it is “❌ Not quite right”. The user can then Retry (full reset) or Finish (close modal and show an alert message).
+
+2.	Screen Map and Layout
+
+Regions and scroll areas
+Viewport-height app: total height 100vh, vertical stack.
+Header: fixed height by content; does not shrink.
+Main area: fills remaining height; split into 2 columns (50% / 50%); overflow-hidden overall.
+Responsive reflow: at narrow viewport widths, the 2 columns stack vertically (chat / GenAI bot pane above; Patient Data pane below). In this stacked layout, both panes remain vertically scrollable.
+Left column: chat messages list scrolls vertically.
+Right column: Patient Data list scrolls vertically.
+
+Major components and where they appear
+Header: page heading text plus a button to reset the interaction
+Left column: chat transcript area + a prompt box area containing a prompt which can be edited only by copying preset patient data fields (no custom text entry) and a Send control.
+Right column: a list of Patient Data rows, each with a copy/remove button used to add/remove that field from the prompt. From left to right, each row is arranged: Copy/Remove button, Row label, Row data
+Key size/constraint rules
+Chat bubble max width: 85%.
+Prompt box min height: 84px; max height: 220px.
+Tooltip content width: 220px; offset below icon: 100% + 8px; border radius: 0.5rem; padding: 0.5rem 0.75rem; font size: 0.875rem.
+Header blur: 12px.
+Modal overlay padding: 1rem; modal content max width: 32rem.
+Z-order: tooltip content layer value 20; feedback overlay above everything (layer value 50).
+
+3. Typography and colour defaults 
+Base font family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, sans-serif.
+Prompt box + chat bubbles: font size 0.875rem; line height 1.625 (relaxed).
+Patient field label: font size 0.75rem, uppercase, letter spacing 0.025em.
+Modal title: font size 1.25rem, weight 700.
+Colour palette defaults (HSL + hex):
+Background: 220 20% 97% (hex #f6f7f9)
+Foreground: 220 20% 10% (hex #14181f)
+Card background: 0 0% 100% (hex #ffffff)
+Primary: 217 91% 60% (hex #3b82f6)
+Muted: 220 14% 93% (hex #eceff3)
+Muted foreground: 220 10% 45% (hex #6b7280)
+Border: 220 13% 90% (hex #e5e7eb)
+Ring: same as primary
+Accent (chat bot): 217 91% 60% (hex #3b82f6)
+User bubble background: 0 0% 100% (hex #ffffff)
+Bot bubble background: 217 91% 60% (hex #3b82f6)
+Success green: 142 76% 36% (hex #16a34a)
+Danger red: 0 84% 60% (hex #ef4444)
+Shadow: subtle: 0 1px 2px rgba(0,0,0,0.05); elevated: 0 4px 12px rgba(0,0,0,0.1)
+Radius and spacing defaults
+Radius: base 0.75rem; patient row corner radius 0.75rem minus 2px; “small” radius variant 0.75rem minus 4px; prompt box radius 1rem; send button radius 0.75rem; tooltip radius 0.5rem; modal card radius 1rem.
+Common paddings/gaps used: 1.5rem, 1rem, 0.75rem, 0.5rem, 0.375rem, 0.25rem.
+3.	Components
+
+Interactive components
+
+Reset icon. Accessible label text: “Reset this game to the beginning”.
+Patient Data copy/remove buttons (one per field). Accessible label text pairs:
+Activation: each Patient Data copy/remove button can be activated by mouse, touch, Enter, or Space.
+“Copy Name” / “Remove Name”
+“Copy Age” / “Remove Age”
+“Copy Address” / “Remove Address”
+“Copy Nationality” / “Remove Nationality”
+“Copy Ethnicity” / “Remove Ethnicity”
+“Copy History” / “Remove History”
+“Copy Medication” / “Remove Medication”
+“Copy Allergies” / “Remove Allergies”
+“Copy Investigations” / “Remove Investigations”
+
+Send control (icon-only). Accessible label text: “Send prompt”.
+Feedback modal controls: “Retry” and “Finish”.
+Informational components
+Header text: “Keeping personal data anonymous”.
+Tooltip text: “Learn to protect patient data when using GenAI tools. Only share medical details needed for care.”
+Helper text: “Click copy to add or remove fields from your prompt”.
+Prompt box (focusable; text can be selected and copied; only accepts patient data via copy buttons; no custom text entry) showing the base prompt and any selected field lines. Placeholder text exists: “Your prompt will appear here...”.
+Chat transcript area, containing bot/user messages plus a bot “thinking” indicator and a typing effect.
+Feedback modal content (success/failure messages).
+Alert text shown after Finish: “Great job! Continue to the next section of the module.”
+4.	States
+
+Initial state
+Chat shows “How can I help?”
+Prompt box shows the base referral request text
+No Patient Data rows selected
+Send disabled
+Field-selection “lock” state (600ms window)
+On activating a Patient Data copy/remove button: clicked row becomes visually highlighted and copy/remove buttons become temporarily non-interactive.
+After 600ms: add/remove completes; highlight removed; prompt box rebuilt.
+Field selected / field unselected
+Selected fields appear as appended “Label: Value” lines in the prompt (after the 600ms selection completes).
+If no fields selected: prompt shows only the base prompt (after the 600ms selection completes).
+Send enabled / Send disabled
+Enabled when at least 1 field is selected and a successful send has not happened yet (and visually “glowing”).
+Disabled at initial load and after various reset paths.
+Sending animation state (successful-send path)
+Send button plays a “bulge” animation.
+Thinking indicator visible / hidden
+Shown in both error and success flows immediately after Send is clicked (with different follow-up timings).
+Bot typing state
+Bot types either the error message or the referral message (typed over a computed duration).
+Feedback modal visible / hidden
+Appears after successful referral, then can be dismissed via Finish or reset via Retry.
+Feedback result: success / failure
+Success vs failure determined by whether Name, Age, Address, Nationality, Ethnicity were included in the sent prompt.
+Post-success locked state
+After successful send: prompt box is blank and stays blank until Retry; selected fields remain locked; Send stays disabled.
+
+5.	Interaction Rules
+WHEN the page loads, THEN the chat shows “How can I help?”, WITHIN immediate.
+WHEN the page loads, THEN the prompt box shows the pre-filled referral request text, WITHIN immediate.
+WHEN the page loads, THEN Patient Data rows show unselected state and Send is disabled, WITHIN immediate
+WHEN the user clicks the reset interaction button, the interaction reverts back to its initial state, WITHIN immediate
+WHEN the user activates a Patient Data copy/remove button (and the app is not already in the middle of a field-selection animation, and a successful send has not happened yet), THEN that row becomes visually highlighted and the copy/remove buttons become temporarily non-interactive, WITHIN immediate.
+WHEN a Patient Data copy/remove button was activated, THEN the add/remove action completes (icon + colour change for that row’s copy/remove button, highlight removed), and the prompt box is rebuilt to reflect the selected fields, WITHIN 600ms.
+WHEN a Patient Data row is selected, THEN the prompt box includes that field as a new line in the format Label: Value (with a blank line separating the base prompt from the field list), WITHIN immediate after the 600ms selection completes.
+WHEN all selected fields are removed (so none are selected), THEN the prompt box reverts to showing only the base prompt, WITHIN immediate after the 600ms selection completes.
+WHEN at least 1 field is selected and a successful send has not happened yet, THEN Send becomes enabled (and visually “glowing”), WITHIN immediate.
+WHEN Send is enabled and clicked, and required medical fields are missing, THEN the current prompt is posted into the chat as a user message, and a bot “thinking” indicator appears, WITHIN immediate.
+WHEN a bot “thinking” indicator first appears (in either error or success flow), THEN assistive technology announces: “GenAI is writing its response”, WITHIN immediate.
+WHEN the bot finishes typing and the full bot message appears (error message or referral), THEN assistive technology announces: “GenAI response complete.”, WITHIN immediate.
+WHEN Send is enabled and clicked, and required medical fields are missing, THEN the bot starts typing the error message after a pause, WITHIN 800ms.
+WHEN the error message typing finishes, THEN the full error message appears as a bot message, THEN the field selections are cleared, THEN the prompt resets to the base prompt, THEN Send returns to disabled, WITHIN the computed typing time.
+WHEN Send is enabled and clicked, and all required medical fields are present, THEN the Send button plays a bulge animation, WITHIN immediate.
+WHEN Send is enabled and clicked, and all required medical fields are present, THEN the user prompt is posted into the chat as a user message, THEN the prompt box becomes blank, THEN a bot “thinking” indicator appears, WITHIN 700ms.
+WHEN the successful-send thinking begins, THEN the bot starts typing the referral after a pause, WITHIN 2000ms after thinking begins.
+WHEN referral typing finishes, THEN the full referral appears as a bot message, WITHIN the computed typing time.
+WHEN the referral finishes, THEN the feedback modal appears, WITHIN 500ms after the referral finishes.
+WHEN the feedback modal appears, THEN keyboard focus moves into the modal (to the modal title, or if the title is not focusable then the first focusable control in the modal), WITHIN immediate.
+WHILE the feedback modal is visible, THEN focus is trapped within the modal (Tab/Shift+Tab cycles through focusable elements inside the modal only), WITHIN immediate.
+WHEN the feedback modal closes (via Retry or Finish), THEN focus returns to the element that had focus immediately before the modal appeared; if that element is no longer focusable, THEN focus moves to the header reset interaction button, WITHIN immediate.
+WHEN the referral is produced, THEN the feedback result is:
+✅ success (“Excellent work!” / “You've protected the patient's identity”) IF none of these were included: Name, Age, Address, Nationality, Ethnicity
+❌ failure (“Not quite right” / “The patient's data is at risk”) IF any of those were included
+WITHIN immediate once feedback is shown.
+WHEN feedback is visible, THEN clicking Retry resets the entire experience to the initial state (only the welcome chat message, no selected fields, base prompt restored, Send disabled), WITHIN immediate.
+WHEN feedback is visible, THEN clicking Finish closes the modal and shows the alert text “Great job! Continue to the next section of the module.”, WITHIN immediate.
+WHEN any chat message is added OR the thinking/typing indicator updates, THEN the chat does not automatically scroll (no auto-scroll); the scroll position remains unchanged, WITHIN immediate.
+WHEN the user attempts manual typing (including Enter or Shift+Enter) in the prompt box, THEN nothing is entered and no message is sent (the prompt box allows focus and text selection/copy, but only accepts patient data via copy buttons; no custom text entry), WITHIN immediate.
+WHEN considering attachment behaviour, THEN none (no attachment UI or states). WITHIN immediate.
+WHEN considering preset prompt clicks, THEN none (no preset chips; selecting Patient Data fields is the only way to change the prompt). WITHIN immediate.
+Typing duration rule (for error message and referral message)
+Reduced motion exception: if reduced motion preference is enabled, the typing duration rule is not applied (the full bot message appears immediately).
+Total typing duration = (number of whitespace-split segments ÷ 16) × 1000ms
+Per-character interval = total typing duration ÷ number of characters
+
+6.	Content and Copy (high fidelity)
+
+Header
+Page title: HITL – Keeping personal data anonymous
+Header text: Keeping personal data anonymous
+Helper text / instructions:
+Learn to protect patient data when using GenAI tools. Only share necessary medical details needed, leave out PID
+
+Click copy to add or remove fields from your prompt
+Buttons/labels
+Retry
+Finish
+Send prompt
+Reset this game to the beginning
+Your prompt will appear here...
+How can I help?
+Base prompt text shown in prompt box
+Write a referral letter in plain English based on the information below. Use headings and bullet points. Include only medical information needed for care. Do not include personal details.
+Patient Data fields (labels and values shown in the patient data panel)
+•	Labels appear visually in ALL CAPS in the list (due to styling):
+o	NAME:
+o	AGE:
+o	ADDRESS:
+o	NATIONALITY:
+o	ETHNICITY:
+o	HISTORY:
+o	MEDICATION:
+o	ALLERGIES:
+o	INVESTIGATIONS:
+•	Values:
+o	L. Morgan
+o	47
+o	8 Fernbrook Close, Bristol, BS9 2LP
+o	Scottish
+o	White
+o	Intermittent palpitations for ~6 months, family history of premature coronary artery disease (first-degree relative MI <55). No known structural heart disease.
+o	Bisoprolol 2.5mg once daily
+o	No known drug allergies
+o	Recent ECG: sinus rhythm with occasional PACs. Thyroid function normal.
+Error message (bot)
+Oops! You've asked me to write a referral but you haven't included all of the medical information I need. Could you paste it in, and then I can write a referral for you?
+
+Lines appended into the prompt box and into the user’s sent chat message (when fields are selected)
+•	Name: L. Morgan
+•	Age: 47
+•	Address: 8 Fernbrook Close, Bristol, BS9 2LP
+•	Nationality: Scottish
+•	Ethnicity: White
+•	History: Intermittent palpitations for ~6 months, family history of premature coronary artery disease (first-degree relative MI <55). No known structural heart disease.
+•	Medication: Bisoprolol 2.5mg once daily
+•	Allergies: No known drug allergies
+•	Investigations: Recent ECG: sinus rhythm with occasional PACs. Thyroid function normal.
+•	
+
+Referral message (bot)
+Referral chatbot message (shown after a successful send; PID slots may show real values or “[redacted]” depending on what was included):
+o	Patient details
+	Name: [redacted]
+	Age: [redacted]
+	Address: [redacted]
+	Nationality: [redacted]
+	Ethnicity: [redacted]
+o	Reason for referral
+	Routine cardiology assessment for intermittent palpitations and cardiovascular risk review in the context of a family history of premature coronary artery disease.
+o	Relevant background
+	Reports episodic palpitations over the past six months, self-limiting and not associated with syncope or chest pain. Family history of myocardial infarction in a first-degree relative aged under 55. No known structural heart disease.
+o	Current management
+	Bisoprolol 2.5 mg once daily. No lipid-lowering therapy currently prescribed.
+o	Allergies
+	No known drug allergies.
+o	Relevant investigations
+	Recent ECG in primary care demonstrated sinus rhythm with occasional premature atrial complexes. Thyroid function tests within normal range.
+o	Additional information
+	This is a routine referral for outpatient cardiology review, submitted via eRS.
+o	Kind regards
+	[Referring clinician name]
+	[Practice name]
+	[Contact details]
+
+Feedback modal text
+✅ Excellent work!
+You've protected the patient's identity by not entering any PID into GenAI. Scroll down to the next section of the module when you’re ready.
+❌ Not quite right
+The patient's data is at risk because you’ve entered PID into GenAI. Click retry when you’re ready to have another go, glance back at the guidance above on what counts as PID if you need help.
+Alert text shown after Finish
+Great job! Continue to the next section of the module.
+7.	Animations and Transitions (exact)
+Reduced motion preference (global)
+IF the user has a system/browser preference for reduced motion, THEN:
+•	All animations listed in this section do not play (including infinite pulsing/glow, entrance motion, highlight sweeps, and bulge).
+•	The thinking indicator is shown without pulsing/animation.
+•	Bot messages do not reveal per-character; the full message appears immediately (no typing animation).
+Infinite animation stop rule: any animation marked “infinite” only runs while its trigger condition remains true, and stops immediately when the trigger condition is no longer true (e.g., Send button glow stops when Send is disabled; thinking dots pulse stops when the thinking indicator is hidden).
+Chat message entrance
+Element: newly appearing chat rows (messages and indicators that appear as chat rows)
+Trigger: when a new chat row is added (all except the very first “How can I help?” row)
+Duration / easing: 0.3s, ease-out, forwards
+Keyframes: opacity 0 → 1; vertical offset +10px → 0px
+Text highlight sweep on a selected Patient Data row
+Element: field value area (moving highlight band behind the text)
+Trigger: immediately after activating a Patient Data copy/remove button (during the 600ms selection “lock” phase)
+Duration / easing: 0.6s, ease-out, forwards
+Keyframes: background position -100% 0 → 200% 0
+Highlight band definition: horizontal gradient at 90deg: transparent 0%, primary color at 0.3 opacity at 50%, transparent 100%; background size 200% 100%
+Patient Data row visual transition
+Element: Patient Data row (border/background/shadow and the value text styling when entering/leaving highlighted state)
+Trigger: highlight on click; highlight removed after 600ms
+Duration: 300ms (general property transition)
+Easing: MISSING INFO
+Send button glow (enabled state)
+Element: Send control
+Trigger: Send becomes enabled (at least 1 field selected, not already sent, and not currently generating/sending)
+Duration / easing: 2s, ease-in-out, infinite
+Keyframes:
+0% and 100%: box-shadow 0 0 0 0 using primary color at 0.4 opacity
+50%: box-shadow 0 0 0 8px using primary color at 0 opacity
+Send button bulge (on send)
+Element: Send control
+Trigger: clicking Send in the successful-send path
+Duration / easing: 0.7s, ease-in-out
+Keyframes: scale 1 → 1.3 → 1
+Thinking dots pulse
+Element: thinking indicator dots
+Trigger: while the thinking indicator is visible
+Duration / easing: 1s, ease-in-out, infinite
+Keyframes: opacity 0.4 → 1 → 0.4
+Stagger: dot 1 delay 0s; dot 2 delay 0.2s; dot 3 delay 0.4s
+Feedback modal entrance
+Element: feedback overlay/card
+Trigger: feedback modal appears
+Duration / easing: 0.4s, ease-out, forwards
+Keyframes: opacity 0 → 1; vertical offset +20px → 0px
+Additional transition timing (not an animation)
+Send button state/style transitions duration: 200ms
+8.	Complete User Journeys
+Did not include all medical information journey
+Starting state: chat shows “How can I help?”, prompt shows the base prompt, Send disabled.
+User does not click all of the necessary medical fields (HISTORY, MEDICATION, ALLERGIES, INVESTIGATIONS)
+Each row highlights once activated, and corresponding copy/remove button becomes temporarily non-interactive, WITHIN immediate.
+Selection completes and prompt builds (in order of clicks. If user clicks medication, then allergies, then history, the relevant prompt text is filled in in the same order), WITHIN 600ms.
+Send becomes enabled (and visually “glowing”), WITHIN immediate.
+User clicks Send. Send button bulges, WITHIN immediate.
+User message posts, prompt box becomes blank, and a “thinking” indicator appears, WITHIN 700ms.
+Bot types out “Oops! You've asked me to write a referral but you haven't included all of the medical information I need. Could you paste it in, and then I can write a referral for you?” response
+WHEN typing finishes, patient data selections are cleared; user prompt resets to base prompt; Send returns to disabled.
+User may begin a new attempt from here
+Included medical information and success journey
+Starting state: chat shows “How can I help?”, prompt shows the base prompt, Send disabled.
+User clicks all of the necessary medical fields (HISTORY, MEDICATION, ALLERGIES, INVESTIGATIONS), but none of the patient data fields (NAME, AGE, ADDRESS, NATIONALITY, ETHNICITY)
+Each row highlights once activated, and corresponding copy/remove button becomes temporarily non-interactive, WITHIN immediate.
+Selection completes and prompt builds (in order of clicks. If user clicks medication, then allergies, then history, the relevant prompt text is filled in in the same order), WITHIN 600ms.
+Send becomes enabled (and visually “glowing”), WITHIN immediate.
+User clicks Send. Send button bulges, WITHIN immediate.
+User message posts, prompt box becomes blank, and a “thinking” indicator appears, WITHIN 700ms.
+Bot starts typing the referral, WITHIN 2000ms after thinking begins; typing time uses the defined typing duration rule.
+Positive / success feedback modal appears, WITHIN 500ms after the referral finishes.
+User clicks Retry (full reset) or Finish (close modal and show alert), WITHIN immediate.
+Included medical information and failure journey
+Starting state: chat shows “How can I help?”, prompt shows the base prompt, Send disabled.
+User clicks all of the necessary medical fields (HISTORY, MEDICATION, ALLERGIES, INVESTIGATIONS), but includes one or more of the patient data fields (NAME, AGE, ADDRESS, NATIONALITY, ETHNICITY)
+Each row highlights once activated, and corresponding copy/remove button becomes temporarily non-interactive, WITHIN immediate.
+Selection completes and prompt builds (in order of clicks. If user clicks medication, then allergies, then history, the relevant prompt text is filled in in the same order), WITHIN 600ms.
+Send becomes enabled (and visually “glowing”), WITHIN immediate.
+User clicks Send. Send button bulges, WITHIN immediate.
+User message posts, prompt box becomes blank, and a “thinking” indicator appears, WITHIN 700ms.
+Bot starts typing the referral, WITHIN 2000ms after thinking begins; typing time uses the defined typing duration rule.
+Negative / failure feedback modal appears, WITHIN 500ms after the referral finishes.
+User clicks Retry (full reset) or Finish (close modal and show alert), WITHIN immediate.
+9.	Edge Cases
+Rapid clicking multiple Patient Data copy/remove buttons: during the 600ms selection window, copy/remove buttons are non-interactive, so additional clicks have no effect until it completes.
+If the user repeatedly hits Send without including all required medical fields, the chat will accumulate multiple failed attempts (each adds a new user message + error response), while fields keep getting reset each time.
+After a successful send, the prompt box is blank and stays blank until Retry; selected fields remain locked (cannot be changed), and Send stays disabled.
+Finish always allows progress (shows the same alert) even when the feedback state is failure.
+
