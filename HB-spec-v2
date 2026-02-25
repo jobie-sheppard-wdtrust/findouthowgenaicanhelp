@@ -1,0 +1,660 @@
+Rebuild Spec
+
+1) Interaction Overview
+A single-screen training interaction where the user acts as “Human In The Loop” (HITL) by assembling an email from a GenAI draft, choosing either Copy-paste (insert as-is) or Check content (insert, then apply an animated “correction” to remove hallucinations/bias).
+
+
+After sending, the UI switches to a feedback view that grades the user’s choices as success/failure and explains what was done well or missed.
+
+
+2) Screen Map and Layout
+•	Regions and scroll areas
+o	Top header bar (fixed region at top).
+
+o	Main area below header: two side-by-side panels (left draft, right email client). Each panel is independently scrollable (overflow: auto).
+
+o	In the post-send feedback view: the email panel disappears; remaining area becomes full-width, showing draft content (left) and feedback panel (right).
+
+
+•	Major components and where they appear
+o	Header bar: shows the header text “Being a HITL - defend against hallucination and bias”.
+
+o	Left panel: an avatar + title/subtitle (“AI Assistant” / “Draft generated”), then a rounded “bubble” containing 6 selectable draft blocks stacked vertically.
+o	Right divider border: 1px solid hsl(220 13% 91%)
+
+	
+o	Right panel: “New Message” header block with To/Subject, an email body area that starts empty with helper text, and a footer/actions area with 2 disabled icon buttons plus a Send button.
+
+
+•	Key size/constraint rules
+o	Header height: 3.5rem; horizontal padding: 0 1.5rem; bottom border: 1px solid hsl(220 13% 91%)
+o	Header background: hsl(0 0% 100%)
+
+o	Main area height: calc(100vh - 3.5rem).
+
+o	Two panels: each 50% width; each padding: 0.5rem.
+
+o	Draft bubble: border radius 0.75rem; padding 1rem; gap between blocks 0.75rem.
+
+o	Post-send feedback layout: gap 2rem; each column width calc(50% - 1rem); left column margin-top 20vh; feedback panel max width 600px; feedback cards gap 1.5rem; “Try again” has margin-top 2rem and width 100%.
+
+•	Typography and colour defaults
+o	Global font family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif
+
+o	Draft bubble text: font size 0.875rem; line height 1.4
+
+o	Email client labels area: font size 0.875rem
+
+o	Modal title (“Feedback”): font size 1.125rem
+
+o	Post-send feedback panel title (“Feedback”): font size 1.875rem; font weight 700
+
+o	Post-send feedback panel subheading: font size 1.125rem
+
+o	Feedback card body text: font size 0.875rem; line height 1.5
+
+o	Colour palette defaults (exact):
+	Header background: hsl(0 0% 100%)
+	Right divider border: 1px solid hsl(220 13% 91%)
+	Background: hsl(220 14% 96%)
+	Foreground: hsl(222 47% 11%)
+	Card background: hsl(0 0% 100%)
+	Primary: hsl(217 91% 60%)
+	Primary foreground: hsl(0 0% 100%)
+	Muted foreground: hsl(220 9% 46%)
+	Border: hsl(220 13% 91%)
+	Success: hsl(142 71% 45%)
+	Warning: hsl(38 92% 50%)
+	Destructive: hsl(0 84% 60%)
+	Draft bubble background: hsl(217 91% 97%)
+	Draft bubble border: hsl(217 91% 90%)
+	Hover highlight: hsl(217 91% 60% / 0.15)
+	Full-screen overlay tint: hsl(222 47% 11% / 0.6)
+	Avatar circle background: #90278e
+	Avatar icon stroke: #fff
+•	Borders/radius/shadows/spacing defaults
+o	Draft block: padding 0.5rem; border radius 0.375rem; margin -0.25rem -0.5rem; hover background hsl(217 91% 60% / 0.15); transition all 0.2s.
+o	Draft bubble: border radius 0.75rem; padding 1rem; background hsl(217 91% 97%); border 1px solid hsl(217 91% 90%).
+o	Email header block: background hsl(0 0% 100%); border radius 0.5rem 0.5rem 0 0; border 1px solid hsl(220 13% 91%); padding 1rem.
+o	Email body block: background hsl(0 0% 100%); border 1px solid hsl(220 13% 91%); padding 1rem; overflow auto.
+o	Footer/actions: background hsl(0 0% 100%); border radius 0 0 0.5rem 0.5rem; border 1px solid hsl(220 13% 91%); padding 1rem.
+o	Context menu: position fixed; min width 160px; padding 0.5rem; gap 0.5rem; border radius 0.5rem; border 1px solid hsl(220 13% 91%); shadow 0 15px 30px -12px rgb(0 0 0 / 0.25).
+o	Modal card: border radius 0.75rem; padding 2rem; max width 32rem; margin 1rem; shadow 0 25px 50px -12px rgb(0 0 0 / 0.25). Overlay blur 4px and tint hsl(222 47% 11% / 0.6).
+o	Buttons: base padding 0.75rem 1.5rem; border radius 0.5rem; font weight 500; transition all 0.2s. Primary: background hsl(217 91% 60%); text hsl(0 0% 100%); hover opacity 0.9; disabled opacity 0.5. Send button padding 0.75rem 2rem.
+
+3) Components
+Interactive and informational components:
+•	Page/browser title (not necessarily visible in UI chrome): “HITL Training - Checking for Hallucinations and Bias”.
+
+•	Top header bar with header text: “Being a HITL - defend against hallucination and bias”.
+
+•	Left panel (Draft)
+o	Avatar circle (background #90278e) with an icon stroke #fff (icon shape MISSING INFO).
+
+o	Title: “AI Assistant” and subtitle: “Draft generated”.
+
+o	Draft bubble container with 6 selectable draft blocks (each block is clickable unless deactivated).
+
+
+•	Context menu (appears on draft block click)
+o	Button: “Copy-paste”
+o	Button: “Check content”】
+
+
+•	Right panel (Email client)
+o	Header label: “New Message”.
+
+o	Labels/values:
+	“To:” → “cardiology.referrals@nhs.net”
+	“Subject:” → “eRS Referral - Cardiology”
+
+o	Email body:
+	Empty-state helper text: “Choose "Copy-paste" or "Check content" from the draft to fill this email.”
+
+	Content state: a vertical stack of up to 6 inserted blocks (one per draft block), each preserving line breaks (white-space: pre-wrap behaviour is implied by fact pack copy format).
+
+o	Footer/actions:
+	the “Send” button.
+
+
+•	Per-block feedback modal (only for 2 specific blocks when using “Check content”)
+o	Modal title: “Feedback”
+o	Helper line: “The section will be corrected when you continue”
+o	Button: “Continue”
+o	Block-specific messages (see Section 6).
+
+
+•	Post-send feedback view (replaces the email panel)
+o	Panel title: “Feedback”
+o	Subheading: success or failure variant (exact strings in Section 6)
+o	Feedback cards (one per section name)
+o	Button: “Try again”.
+
+
+4) States
+Observable states and what changes in each:
+1.	Initial / Draft + empty email state
+o	Two-panel layout visible.
+o	Email body shows helper text; Send disabled.
+
+
+2.	Context menu open
+o	After clicking an eligible draft block, a small menu appears at click location with “Copy-paste” and “Check content”.
+
+3.	Animating (drag highlight / correction)
+o	While an animation is running, draft block clicks do not open the context menu.
+
+o	A highlight cursor appears during highlight-drag animations; it fades in/out with an opacity transition 0.1s ease.
+
+4.	Email has content state
+o	Helper text hides; email content area shows; Send becomes enabled once at least one non-empty block exists.
+o	Email content ordering (canonical order)
+
+The email body renders inserted blocks in the fixed canonical order of the draft (top-to-bottom in the left panel), regardless of the order in which the user clicks/chooses actions.
+
+
+5.	Per-block Feedback modal open (only for “Medical details” and “Email sign-off” when using “Check content”)
+o	Full-screen overlay with blur and centered card.
+o	Shows title “Feedback”, a specific message, the helper line, and “Continue”.
+
+6.	Correction-typing state (as part of “Check content”)
+o	A visible cursor appears.
+o	Cursor blinks on a 1s step-end infinite cycle when not actively typing; becomes steady while typing is actively happening.
+
+7.	Draft block deactivated (“completed”)
+o	After Copy-paste insertion, or after Check content completes, the draft block becomes visually deactivated (opacity 0.6, muted text), cannot be selected again, and cursor becomes not-allowed.
+
+
+
+8.	Post-send feedback view (success)
+o	Email panel disappears; screen is filled with single full-width feedback panel. This panel has email draft on the left, and success subheading with feedback cards on the right. Single scroll container
+o	Hover linking enables glow/highlight pairing between draft blocks and feedback cards.
+
+9.	Post-send feedback view (failure)
+o	Same layout as success, but failure subheading and (some) feedback card content differs.
+
+10.	Reset state (after “Try again”)
+•	Feedback view removed; returns to two-panel draft/email layout; all draft blocks selectable again; email cleared to empty helper text; Send disabled.
+
+
+5) Interaction Rules
+•	WHEN the page loads, THEN the screen shows a 2-panel layout (draft on the left, email client on the right), WITHIN immediate.
+
+•	WHEN the email body is empty, THEN the helper text “Choose "Copy-paste" or "Check content" from the draft to fill this email.” is shown and the Send button is disabled, WITHIN immediate.
+
+•	WHEN at least one non-empty block of email content exists, THEN the helper text hides, the email content area shows, and the Send button becomes enabled, WITHIN immediate.
+
+
+Draft block click → context menu
+•	WHEN the user clicks a draft block that has not already been added/checked, THEN a small context menu appears at the click location with “Copy-paste” and “Check content”, WITHIN immediate.
+
+•	WHEN the user clicks anywhere outside the context menu, THEN the context menu closes, WITHIN immediate.
+
+•	WHEN any modal overlay is open, THEN clicking draft blocks does not open the context menu, WITHIN immediate.
+
+•	WHEN an animation is currently running, THEN clicking draft blocks does not open the context menu, WITHIN immediate.
+
+•	WHEN the user clicks a draft block that has already been added/checked, THEN nothing happens (no context menu), WITHIN immediate.
+
+Email content ordering:
+•	WHEN a block is inserted into the email (via either “Copy-paste” or “Check content”), THEN it appears in its canonical position relative to any already-inserted blocks (i.e., the email is always ordered 1→6 in a sensible email flow).
+•	WHEN a block earlier in the canonical order is inserted after later blocks already exist, THEN it is inserted above them and the existing blocks shift down (existing blocks do not re-animate)
+•	Blocks that have not been inserted are omitted from the email (no placeholders).
+
+
+“Copy-paste”
+•	WHEN the user chooses “Copy-paste” for a draft block, THEN the draft block text is “drag-highlighted” for 500 ms total, then the original (uncorrected) text is inserted into the matching position in the email, WITHIN the sequence above.
+
+
+•	WHEN a block is inserted via “Copy-paste”, THEN:
+o	the draft block becomes visually deactivated and cannot be selected again, WITHIN immediate after insertion, AND
+o	the inserted email block briefly uses the 0.3s fade-in effect, WITHIN 300 ms.
+
+
+“Check content” (two different behaviours)
+•	WHEN the user chooses “Check content” for the Medical details block OR the Email sign-off block, THEN a “Feedback” modal opens (full-screen overlay + centered card), WITHIN immediate.
+
+•	WHEN that modal opens, THEN it shows: Title “Feedback”; the block-specific feedback message; the line “The section will be corrected when you continue”; a full-width “Continue” button, WITHIN immediate.
+
+
+•	WHEN the user clicks “Continue”, THEN the modal closes and the block is processed as a “Check content” action (highlight → insert → correction), WITHIN immediate after dismissal.
+
+•	WHEN the user clicks outside the modal card (on the dark overlay) OR presses Escape, THEN the block is processed as a “Check content” action (highlight → insert → correction), WITHIN immediate after dismissal.
+
+•	WHEN the user chooses “Check content” for any other draft block, THEN it immediately runs the “Check content” action (no modal), WITHIN immediate.
+
+“Check content” action sequence (highlight → insert → correct)
+•	WHEN a “Check content” action starts, THEN:
+o	the draft block text is “drag-highlighted” for 500 ms total, with per-character duration equal to total duration divided by the number of characters in the block 
+o	300 ms: Fade-in duration applied to each newly inserted email block (the block briefly animates in, then the fade effect is removed). 
+o	Correction animation timings (used when “Check content” changes text):
+	900 ms: Total duration of the “drag highlight” effect across each text span that will be removed during correction.
+	Per-character highlight interval during the 900 ms delete-highlight: Total duration divided by the number of characters in the highlighted span, with a minimum of 1 ms per step.
+	1000 ms: Pause (with a visible cursor) before the first correction highlight begins.
+	500 ms: Pause after the delete-highlight finishes, before the deletion happens.
+	650 ms: Pause after the deletion happens (cursor remains visible) before continuing.
+	80 ms per character: Typing speed for inserted characters during correction.
+	300 ms: Extra pause while typing when a whitespace character is typed (space/newline), under the condition that it’s not the final character and the previous character wasn’t whitespace.
+	900 ms: Pause between multiple correction “blocks” (when the correction requires multiple separate delete/insert operations)
+o	Cursor timing (used for blinking cursor during animated text corrections in email pane)
+	1s: Blinking cursor cycle (step-end, infinite) when the cursor is shown but not actively “typing”.
+	Cursor becomes steady (no blinking) while the correction typing is actively happening.
+
+•	WHEN correction begins, THEN:
+o	a cursor appears and waits 1000 ms before the first highlight, WITHIN the correction sequence, AND
+o	the portion to be removed is highlighted over 900 ms total, then waits 500 ms, then deletes, AND
+o	after deletion, waits 650 ms, WITHIN the correction sequence timing rules, AND
+o	inserted text types in at 80 ms per character, with extra 300 ms pauses at whitespace boundaries (under the stated condition), AND
+o	if multiple correction chunks exist, there is a 900 ms pause between them.
+
+
+•	WHEN the correction cursor is visible and correction typing is not actively happening, THEN the cursor blinks, WITHIN continuous (1s repeating cycle).
+
+•	WHEN the correction typing is actively happening, THEN the cursor becomes steady (no blinking), WITHIN immediate as typing starts, and stays steady while typing continues.
+
+•	WHEN the experience is not in the correction-typing state, THEN there is no separate chatbot typing indicator (no animated “typing dots” element), WITHIN immediate.
+•	WHEN the “Check content” action completes, THEN the draft block becomes visually deactivated and cannot be selected again, WITHIN immediate after completion.
+
+Scroll-related behaviour during highlighting/correction
+•	WHEN the “drag highlight” runs in the draft, THEN the scroll position of the scrollable area is held constant (highlight can include text out of view), WITHIN the highlight action.
+•	No auto-scroll ever
+
+Send button state
+•	WHEN the Send button is disabled, THEN it appears with opacity 0.5 and cannot be clicked, WITHIN immediate.
+
+•	WHEN the Send button is enabled, THEN it can be clicked, WITHIN immediate.
+
+Success vs failure evaluation on Send
+•	WHEN the user clicks “Send”, THEN the experience evaluates success/failure based on what was included and what was checked, WITHIN immediate.
+
+•	WHEN either the GenAI preamble content OR the GenAI follow-up content was included in the email by copy-paste, THEN the outcome is failure, WITHIN immediate.
+
+•	WHEN all of the following are true, THEN the outcome is success, WITHIN immediate:
+o	Patient info is included AND was added via “Check content” (not just “Copy-paste”),
+o	Additional info is included (by either method),
+o	Medical details is included AND was added via “Check content” (not just “Copy-paste”),
+o	Email sign-off is included AND was added via “Check content” (not just “Copy-paste”),
+o	GenAI preamble is NOT included OR “check content” (which adds it and then deletes it)
+o	GenAI follow-up is NOT included OR “check content” (which adds it and then deletes it)
+
+•	WHEN any of the above success requirements are not met, THEN the outcome is failure, WITHIN immediate.
+
+Post-send feedback view (side-by-side)
+•	WHEN Send is clicked (success or failure), THEN the UI switches to a feedback view, WITHIN immediate after click.
+
+•	WHEN the feedback view appears, THEN:
+o	the email panel disappears, and
+o	the remaining area becomes a side-by-side layout: draft content on the left, feedback panel on the right, scrolling together if needed (no separate scrolls) WITHIN immediate.
+
+•	WHEN the feedback view appears, THEN the feedback panel shows: Title “Feedback”; either the success or failure subheading; a stack of feedback cards (one per section name); a full-width “Try again” button, WITHIN immediate.
+
+•	WHEN in feedback view, THEN the draft blocks cannot open the context menu (they are display-only), WITHIN immediate.
+
+Hover linking between draft blocks and feedback cards (post-send)
+•	WHEN the user hovers a draft block in feedback view, THEN the matching feedback card glows, WITHIN 0.3s.
+
+•	WHEN the user stops hovering the draft block, THEN the glow stops, WITHIN 0.3s.
+
+•	WHEN the user hovers a feedback card, THEN that card glows and the matching draft block gets a highlight background, WITHIN 0.3s for glow and 0.2s for the block background.
+
+•	WHEN the user stops hovering the feedback card, THEN both effects revert, WITHIN the same timings.
+
+Try again (reset)
+•	WHEN the user clicks “Try again”, THEN the feedback view is removed, the two-panel draft/email layout returns, all draft blocks become selectable again, the email content clears back to the empty state, and the Send button becomes disabled again, WITHIN immediate.
+
+Manual typing / Enter / attachments
+•	WHEN the user attempts manual typing, THEN there is no editable text field to type into, WITHIN immediate.
+•	WHEN the user clicks the attachment/trash icon buttons in the email footer, THEN nothing happens because they are disabled, WITHIN immediate.
+
+6) Content and Copy (high fidelity)
+Header
+•	Page title:
+o	HITL Training - Checking for Hallucinations and Bias
+
+•	Header text (top bar):
+o	Being a HITL - defend against hallucination and bias
+
+Buttons/labels
+•	Left panel header text:
+o	AI Assistant
+o	Draft generated
+
+•	Right panel header and labels:
+o	New Message
+o	To:
+o	cardiology.referrals@nhs.net
+o	Subject:
+o	eRS Referral - Cardiology
+
+•	Helper text/instructions (empty email):
+o	Choose "Copy-paste" or "Check content" from the draft to fill this email.
+
+•	Context menu options / button labels:
+o	Copy-paste
+o	Check content
+
+•	Modal buttons/labels:
+o	Continue
+
+•	Send and reset:
+o	Send
+o	Try again
+
+Placeholders
+
+Messages (in order)
+Draft text blocks (left panel, top-to-bottom; also the raw text inserted into email when using “Copy-paste”)
+1.	GenAI preamble block:
+Absolutely — here is an eRS-compatible referral to the cardiologist, based on the notes you shared
+
+2.	Patient info block:
+Referral: Routine Cardiology Outpatient Appointment (eRS)
+Patient details: [to be added]
+Name:
+Age:
+Address:
+NHS Number:
+
+3.	Medical details block (uncorrected):
+Reason for referral
+Urgent routine cardiology assessment for longstanding atrial fibrillation and recent episodes of chest pain on exertion.
+Relevant history
+History of hypertension, type 1 diabetes, asthma, and previous myocardial infarction in 2018 (per patient report). Family history of sudden cardiac death. Non-smoker.
+Current management
+Metformin 1 g twice daily.
+Ramipril 10 mg once daily.
+Salbutamol inhaler PRN.
+Relevant investigations
+Recent ECG showed atrial fibrillation with ST elevation. Echocardiogram performed last month demonstrated normal left ventricular function with severe aortic stenosis.
+
+4.	Additional info block:
+Additional information
+Patient is keen to be seen as soon as possible. I believe cardiology input is required to confirm diagnosis and advise on management.
+
+5.	Email sign-off block (uncorrected):
+Thanks so much for taking a look at this and helping out - Wishing you a very Merry Christmas!
+Kindest regards,
+Sam - GP
+Greenfield Surgery
+
+6.	GenAI follow-up block:
+Would you like me to suggest some possible diagnoses based on these symptoms, or help you choose a medicine for the patient in the meantime?
+
+Per-block feedback modal copy (only shown for 2 blocks, when using “Check content”)
+•	Modal title:
+o	Feedback
+
+•	Modal helper line:
+o	The section will be corrected when you continue
+
+•	Modal message (Medical details block):
+That's what being a HITL is all about!
+GenAI made several mistakes here: Type 1 diabetes patients don't take Metformin (that's for Type 2), the ECG findings are contradictory (AF with ST elevation is unusual), and 'normal LV function with severe aortic stenosis' is clinically inconsistent.
+Clinical details are absolutely essential to check.
+
+•	Modal message (Email sign-off block):
+That's what being a HITL is all about! This sign-off contains subtle bias: 'Merry Christmas' makes assumptions about the recipient's religious beliefs
+
+Post-send feedback panel copy
+•	Panel title:
+o	Feedback
+
+•	Panel subheading (success):
+o	Well done! You succeeded in your role as the Human In The Loop, ensuring the output was appropriate and accurate. Explore the risks you avoided below
+
+•	Panel subheading (failure):
+o	Not quite – you've missed a few details here. Being the Human In The Loop means you need to check the output, ensuring it's as good as what you would write yourself. Check below to see how you can improve
+
+•	Feedback card section names (in this order):
+o	GenAI preamble
+o	Patient info
+o	Medical details
+o	Additional info
+o	Email sign-off
+o	GenAI follow-up
+
+•	Feedback card status emojis:
+o	✅
+o	❌
+
+Feedback card text variants (exact)
+•	GenAI preamble (success)
+o	Good - you didn't include this preamble. Including this would erode trust with colleagues or patients
+•	GenAI preamble (failure)
+o	This preamble shouldn’t be included. It's a GenAI artifact that erodes trust when left in professional communications.
+
+•	Patient info (success)
+o	Good - you remembered to fill in the patient information in your email. Pasting in empty patient details would look unprofessional and delay the urgent patient referral. This is why you need to check as the Human In The Loop.
+•	Patient info (failure 1 – included but copy-paste instead of check content)
+o	You included this header, but forgot to fill it in with patient details. This not only looks unprofessional to the recipient, but could delay the urgent patient referral.
+•	Patient info (failure 2 – not included)
+o	You didn't include this essential referral header in your email
+
+•	Medical details (success)
+o	Perfect! You corrected the hallucinations in this section - changing type 1 to type 2 diabetes, removing asthma, adding the missing beta-blocker, and correcting the ECG and echo findings. This is exactly what being a Human In The Loop involves.
+•	Medical details (failure 1 – included but copy-paste instead of check content)
+o	You included this section but didn't check it for errors. The AI hallucinated several critical details: wrong diabetes type, non-existent asthma, missing medication, and incorrect test results. As the Human In The Loop, it's your responsibility to check all factual details.
+•	Medical details (failure 2 – did not include)
+o	You didn't include this crucial section of the email, even though it also needed hallucinated details correcting
+
+•	Additional info (success)
+o	Good - you included this important context section. While it didn't contain errors, you always need to check as the Human In The Loop
+•	Additional info (failure)
+o	You didn't include this important context for the specialist
+
+•	Email sign-off (success)
+o	Great work! You corrected the inappropriate Christmas greeting. This is subtle bias, because it makes religious assumptions
+•	Email sign-off (failure 1 – included but copypaste instead of check content)
+o	You included this section without checking it. 'Merry Christmas' is subtle bias: it makes religious assumptions about the recipient. As the Human In The Loop, it's your responsibility to check for bias as well.
+•	Email sign-off (failure 1 – did not include)
+o	You missed this closing section of the email, even though it also needed correction (removing the Christmas greeting).
+
+•	GenAI follow-up (success – did not include OR included but checked)
+o	Good - You didn't include this GenAI follow-up. Including this would erode trust with colleagues or patients
+•	GenAI follow-up (failure – included but copypaste instead of check content)
+o	This GenAI follow-up should not have been included. It erodes trust when left in professional communications
+
+Corrected email content (after “Check content”)
+•	Corrected “GenAI preamble” block text: deleted entirely, empty string
+•	Corrected “patient info” block text:
+Referral: Routine Cardiology Outpatient Appointment (eRS) 
+Patient details
+Name: Margaret Ellis
+Age: 67
+Address: 14 Birchwood Close, Tamworth, Staffordshire, B79 7QR
+NHS Number: 485 627 3901
+•	Corrected “Medical details” block text:
+Reason for referral
+Urgent cardiology assessment for longstanding atrial fibrillation and recent episodes of chest pain on exertion.
+Relevant history
+History of hypertension, type 2 diabetes, and previous myocardial infarction in 2018 (per patient report). Family history of sudden cardiac death. Non-smoker.
+Current management
+Metformin 1 g twice daily.
+Ramipril 10 mg once daily.
+Bisoprolol 5 mg once daily.
+Relevant investigations
+Recent ECG showed atrial fibrillation with controlled ventricular rate.
+Echocardiogram performed last month demonstrated mildly reduced left ventricular function with moderate aortic stenosis.
+•	Corrected “Additional info” block text:
+Additional information
+Patient is keen to be seen as soon as possible. I believe cardiology input is required to confirm diagnosis and advise on management.
+
+•	Corrected “Email sign-off” block text:
+Thanks so much for taking a look at this and helping out.
+Kindest regards,
+Sam - GP
+Greenfield Surgery
+
+•	GenAI follow-up corrected outcome when checked: deleted entirely, empty string
+
+7) Animations and Transitions (exact)
+Full-screen modal card entrance
+•	Element: Per-block “Feedback” modal card
+•	Trigger: A modal opens (the per-block “Feedback” modal)
+•	Duration/delay/easing: 0.3s, ease-out
+•	Keyframes: opacity 0 → 1, scale 0.95 → 1
+
+Fade-in (email content reveal)
+•	Element: Newly inserted email content block
+•	Trigger: A block is inserted into the email area
+•	Duration/delay/easing: 0.3s, ease-out
+•	Keyframes: opacity 0 → 1, translateY 10px → 0
+
+Cursor blink
+•	Element: Cursor shown during correction mode when not actively typing
+•	Trigger: Cursor is visible in correction mode and not actively typing
+•	Duration/delay/easing: 1s, step-end, infinite
+•	Keyframes: opacity 1 → 0 → 1 (at 50% it is 0)
+
+
+Hover/transition effects
+•	Draft blocks hover
+o	Duration: 0.2s transition (“all 0.2s”)
+
+•	Context menu buttons hover
+o	Duration: 0.2s transition (“all 0.2s”)
+
+•	Buttons hover
+o	Duration: 0.2s transition (“all 0.2s”)
+
+Feedback cards (post-send)
+•	Element: Feedback card glow shadow
+•	Trigger: Hovering the matching draft block or the matching feedback card
+•	Duration/easing: 0.3s ease (box-shadow) and 0.3s ease (transform; even if transform doesn’t visibly change)
+•	Keyframes described in words: Glow appears/disappears
+•	Glow values:
+o	Success glow: box-shadow 0 0 15px 3px hsla(142, 71%, 45%, 0.6)
+o	Error glow: box-shadow 0 0 15px 3px hsla (0, 84%, 60%, 0.6)
+
+Highlight cursor
+•	Element: Highlight cursor used during highlight-drag animations
+•	Trigger: Appears during highlight-drag animations; disappears after
+•	Duration/easing: opacity transition 0.1s ease
+
+Pulse (unused visual state)
+•	Element: Any element that receives the “pulse” visual state
+•	Trigger: The pulse visual state is applied to an element (not triggered in current flow)
+•	Duration/easing: 0.6s, ease-in-out
+•	Keyframes (box-shadow):
+o	0%: 0 0 0 0, primary colour alpha 0.4
+o	70%: 0 0 0 10px, primary colour alpha 0
+o	100%: 0 0 0 0, primary colour alpha 0
+
+Highlight + typing timing effects (used by “Copy-paste” and “Check content”)
+•	Drag highlight across a selected draft block:
+o	Total duration: 500 ms
+o	Per-character highlight interval: total duration ÷ number of characters.
+
+•	Fade-in on inserted email block:
+o	300 ms fade-in duration (matches the 0.3s ease-out fade/slide description)
+
+•	Correction:
+o	Delete-highlight total: 900 ms, per-character interval total duration ÷ number of characters, minimum 1 ms per step
+o	Pre-highlight pause: 1000 ms
+o	Post-highlight pause before delete: 500 ms
+o	Post-delete pause: 650 ms
+o	Typing speed: 80 ms per character
+o	Extra whitespace pause: 300 ms under stated condition
+o	Pause between correction blocks: 900 ms
+
+
+8) Complete User Journeys
+If a journey step below cannot be verified from the fact pack alone, it is marked.
+
+Including enough content to send email (The user performs at least one of 2, 3, 4, or 5. The user might not perform all of them. 2, 3, 4, 5, 6, or 7 can occur in any order)
+1.	The page loads and shows the two-panel layout with the draft on the left and an empty email on the right showing: “Choose "Copy-paste" or "Check content" from the draft to fill this email.” Send is disabled.
+2.	User clicks the Patient info draft block and chooses either “Copy-paste” or “Check content” from the popup. If the user chooses “Check content”, no modal opens. The draft block highlights for 500 ms, then is inserted into the email. The inserted block fades in (0.3s ease-out), is corrected due to user choice, following correction animation for this block. The draft block becomes deactivated. If the user chooses “Copy-paste”, then no modal opens. The draft block highlights for 500 ms, then is inserted into the email. The inserted block fades in (0.3s ease-out), is not corrected due to user choice. The draft block becomes deactivated. 
+3.	The user clicks the Medical details draft block and, when given popup options of “check content” or “copy-paste”. If the user chooses “Check content”, then a modal opens showing positive “Feedback”, the medical-details feedback message, “The section will be corrected when you continue”, and “Continue”. The user clicks continue. The draft block highlights for 500 ms, then is inserted into the email. The inserted block fades in (0.3s ease-out), is corrected due to user choice, following correction animation for this block. The draft block becomes deactivated. If the user chooses “Copy-paste”, then no modal opens. The draft block highlights for 500 ms, then is inserted into the email. The inserted block fades in (0.3s ease-out), is not corrected due to user choice. The draft block becomes deactivated.
+4.	The user clicks the Additional info draft block and chooses either “Copy-paste” or “Check content” from the popup. Regardless of which option the user chooses, no modal opens. The draft block highlights for 500 ms, then is inserted into the email. The inserted block fades in (0.3s ease-out), is not corrected because there is no correction animation for this block. The draft block becomes deactivated.
+5.	The user clicks the email sign off draft block and is given popup options of “check content” or “copy-paste”. If the user chooses “Check content”, then a modal opens showing positive “Feedback”, the email sign-off feedback message, “The section will be corrected when you continue”, and “Continue”. The user clicks continue. The draft block highlights for 500 ms, then is inserted into the email. The inserted block fades in (0.3s ease-out), is corrected due to user choice, following correction animation for this block. The draft block becomes deactivated. If the user chooses “Copy-paste”, then no modal opens. The draft block highlights for 500 ms, then is inserted into the email. The inserted block fades in (0.3s ease-out), is not corrected due to user choice. The draft block becomes deactivated.
+6.	The user clicks the GenAI follow-up block, and is given a popup of “check content” or “copy-paste”. If the user chooses “Check content”, then no modal opens. The draft block highlights for 500 ms, then is inserted into the email. The inserted block fades in (0.3s ease-out), is corrected due to user choice, following correction animation for this block. The draft block becomes deactivated. If the user chooses “Copy-paste”, then no modal opens. The draft block highlights for 500 ms, then is inserted into the email. The inserted block fades in (0.3s ease-out), is not corrected due to user choice. The draft block becomes deactivated.
+7.	The user clicks the GenAI preamble block, and is given a popup of “check content” or “copy-paste”. If the user chooses “Check content”, then no modal opens. The draft block highlights for 500 ms, then is inserted into the email. The inserted block fades in (0.3s ease-out), is corrected due to user choice, following correction animation for this block. The draft block becomes deactivated. If the user chooses “Copy-paste”, then no modal opens. The draft block highlights for 500 ms, then is inserted into the email. The inserted block fades in (0.3s ease-out), is not corrected due to user choice. The draft block becomes deactivated.
+8.	The email now includes at least one non-empty block, so helper text is hidden and Send becomes enabled.
+9.	The user clicks “Send”. The interaction evaluates block success individually for each block. The user is only successful overall if all blocks are successful. The success criteria for each block are as follows:
+•	GenAI preamble: Either not including this at all, or checking content. Copy paste is failure.
+•	Patient info. Must check content. Copy paste or not including are each failure, each with separate feedback.
+•	Medical details. Must check content. Copy paste or not including are each failure, each with separate feedback.
+•	Additional information. Either copy-paste, or checking content, each with separate feedback. Not including is failure.
+•	Email sign off. Must check content. Copy paste or not including are each failure, each with separate feedback.
+•	GenAI follow-up Either not including this at all, or checking content, each with separate feedback. Copy paste is failure.
+10.	The UI switches immediately to the post-send feedback view. This means the email panel disappears; two panel view is replaced by single panel view filling the entire width of the screen. This single panel is arranged into two side-by-side sections, which scroll together (no separate scrolling). On the left, user sees the draft referral with blocks highlighting on hover. As each block highlights, the corresponding feedback card glows red or green also (depending on success or failure) (0.3s glow; 0.2s block background) to visually link them to the part of the referral draft. When the user removes hover from a referral block, the glow removes from the referral block and the corresponding feedback card. This can be triggered either by hovering over a block in the draft referral, or by hovering over a feedback card. 
+11.	The On the right, there is title “Feedback”, the success or failure subheading, and a vertical list of feedback cards, and “Try again” button.
+
+Not including enough content to send email, and correctly spotting all hallucination and bias journey (2, 3, 4, 5 and 6 can occur in any order)
+1.	The page loads and shows the two-panel layout with the draft on the left and an empty email on the right showing: “Choose "Copy-paste" or "Check content" from the draft to fill this email.” Send is disabled.
+2.	The user does not click copy-paste, or check content, for any blocks. Therefore, the email pane remains empty, and the send button remains deactivated. 
+
+9) Edge Cases
+•	Clicking near the viewport edges should not place the context menu partially off-screen (check for positioning before rendering the context menu).
+•	If the user only “Check content” on the GenAI follow-up (which corrects to empty) and no other content exists, the email should briefly show content and then return to the empty state once content deleted (and Send re-disables).
+•	During the draft “drag highlight”, the scroll position is held constant; long text can be highlighted even if some is out of view. No auto-scroll ever.
+•	The per-block feedback modal can be dismissed by clicking outside the card; this still triggers the correction flow (same as “Continue”).
+
+10) Accessibility Requirements (WCAG 2.2 A/AA)
+These requirements are mandatory.
+Language of page
+- The page language is programmatically set to English (UK).
+Semantic controls, names, roles, states
+- All interactive elements are implemented as semantic controls that expose correct name, role, and state to assistive technologies.
+- Icon-only controls have an accessible name that describes their purpose.
+- Disabled controls are not focusable.
+Programmatic structure and headings
+- The experience is structured with programmatic regions (header and main content).
+- Headings/labels are programmatically determinable for the main areas (draft area and email/feedback area).
+Draft block labelling + draft↔feedback association
+- Each of the 6 draft blocks has a programmatic label that includes its section name (in this order): GenAI preamble; Patient info; Medical details; Additional info; Email sign-off; GenAI follow-up.
+- In the post-send feedback view, each feedback card is programmatically associated with its corresponding draft block (and vice versa), so assistive technology users can determine the pairing without relying on hover/glow.
+Keyboard operability and focus order
+- All functionality is operable using keyboard-only.
+- Focus order follows the visual order. Main view: header → draft blocks → email client → email client text → send controls. Feedback view: header → draft blocks → feedback cards → Try again.
+Context menu (keyboard access, dismissal, focus return)
+- Draft blocks are focusable.
+- Enter/Space on a draft block opens the context menu for that draft block.
+- When the context menu opens, focus moves to the first option in the menu, WITHIN immediate.
+- Escape closes the context menu, and focus returns to the draft block that opened it, WITHIN immediate.
+- The context menu closes when the user activates an option, or when focus moves outside the menu, or when the user clicks outside it.
+Per-block Feedback modal (keyboard access, focus management)
+- When the per-block “Feedback” modal opens, focus moves to the modal title “Feedback”, WITHIN immediate.
+- While the modal is open, keyboard focus is contained within the modal until it is closed.
+- When the modal closes, focus returns to a logical element (preferably the control that opened it). If that element is no longer available (e.g. disabled/removed), focus moves to the next logical available control, WITHIN immediate.
+Visible focus (including hover-linked glow parity)
+- All focusable interactive elements have a clearly visible focus indicator.
+- Any hover-only visual linking behaviour (draft block ↔ feedback card glow/highlight) is also triggered by keyboard focus on either element, using the same timing values already specified (0.2s block background; 0.3s glow).
+Focus not obscured
+- At all viewport sizes and zoom levels, the focused element is not hidden by the fixed header or any overlay.
+- If scrolling is needed to reveal focus, it happens only as a result of user focus movement (not due to highlight/correction animations).
+Status messages for dynamic changes (announce once per event)
+- Meaningful state changes are announced to assistive technologies as status messages (announced once per event, without re-announcing large regions).
+- Required announcements (exact):
+- “Context menu opened for [Section name].”
+- “Context menu closed.”
+- After Copy-paste completes: “[Section name] added to email.”
+- After Check content completes: “[Section name] added to email and corrected.”
+- When a draft block becomes deactivated: “[Section name] completed.”
+- When Send becomes enabled: “Send enabled.”
+- When Send becomes disabled: “Send disabled.”
+- When the UI switches to the post-send feedback view: “Feedback displayed.”
+- When “Try again” resets the experience: “Reset. Draft and email cleared.”
+- When “Skip animation” is used: “Animation skipped. [Section name] updated.”
+- Do not announce intermediate animation steps (highlighting, cursor blinking, typing simulation).
+View transitions: focus destination
+- When Send is clicked and the UI switches to the post-send feedback view, focus moves to the feedback panel title “Feedback”, WITHIN immediate.
+- When “Try again” is activated and the UI returns to the two-panel layout, focus moves to the top header text “Being a HITL - defend against hallucination and bias”, WITHIN immediate.
+Reflow at small widths / high zoom
+- At 320px width and at 400% zoom, the layout reflows to a single column with no horizontal scrolling.
+- Main view reflow order: draft content above email content.
+- Feedback view reflow order: draft content above feedback content.
+- Avoid two-dimensional scrolling (only one vertical scroll direction is required).
+Text spacing
+- Content remains readable and functional when users increase text spacing (line height, paragraph spacing, word spacing, letter spacing) without clipping or overlap that prevents reading or interaction.
+Use of colour
+- Success/failure meaning is never conveyed by colour alone.
+- Feedback cards include the status emoji (✅ or ❌) AND an accessible text equivalent (“Success” / “Needs improvement”) as part of the feedback card’s accessible name.
+Pointer target size
+- All pointer targets required to complete the task (draft blocks, context menu options, Continue, Send, Try again) meet a minimum target size of 24×24 CSS pixels (or equivalent target area).
+Pointer cancellation
+- Primary actions do not trigger on pointer down.
+- Actions trigger on pointer up / click, allowing cancellation by moving the pointer away before release.
+Reduced motion and long animations
+- If the user has a reduced-motion preference enabled, non-essential animations are removed (no highlight sweeps, no fade/slide-in, no cursor blinking/typing simulation); final states appear immediately.
+
