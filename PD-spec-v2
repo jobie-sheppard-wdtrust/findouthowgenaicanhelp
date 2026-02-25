@@ -125,7 +125,7 @@ WHEN Send is enabled and clicked, and required medical fields are missing, THEN 
 WHEN a bot “thinking” indicator first appears (in either error or success flow), THEN assistive technology announces: “GenAI is writing its response”, WITHIN immediate.
 WHEN the bot finishes typing and the full bot message appears (error message or referral), THEN assistive technology announces: “GenAI response complete.”, WITHIN immediate.
 WHEN Send is enabled and clicked, and required medical fields are missing, THEN the bot starts typing the error message after a pause, WITHIN 800ms.
-WHEN the error message typing finishes, THEN the full error message appears as a bot message, THEN previously selected fields remain selected, THEN the prompt content remains intact (base prompt + currently selected field lines) unless the user changes selections via Copy/Remove controls, THEN Send state reflects current selection state (enabled when at least 1 field remains selected), WITHIN the computed typing time.
+WHEN the error message typing finishes, THEN the full error message appears as a bot message, THEN previously selected fields remain selected, THEN the prompt content remains intact (base prompt + currently selected field lines) unless the user changes selections via Copy/Remove controls, THEN Send state reflects current selection state (enabled when at least 1 field remains selected), and THEN the system MUST NOT clear selections or reset the prompt automatically on failed send, WITHIN the computed typing time.
 WHEN Send is enabled and clicked, and all required medical fields are present, THEN the Send button plays a bulge animation, WITHIN immediate.
 WHEN Send is enabled and clicked, and all required medical fields are present, THEN the user prompt is posted into the chat as a user message, THEN the prompt box becomes blank, THEN a bot “thinking” indicator appears, WITHIN 700ms.
 WHEN the successful-send thinking begins, THEN the bot starts typing the referral after a pause, WITHIN 2000ms after thinking begins.
@@ -192,7 +192,8 @@ o	Bisoprolol 2.5mg once daily
 o	No known drug allergies
 o	Recent ECG: sinus rhythm with occasional PACs. Thyroid function normal.
 Error message (bot)
-Oops! You’ve asked me to write a referral but you’re missing required medical fields: [missing field names, e.g., History, Medication]. Please use the Copy/Remove controls to add only the missing required fields, then send again.
+Oops! You’ve asked me to write a referral but you’re missing required medical fields: History, Medication. Please use the Copy/Remove controls to add only the missing required fields, then send again.
+Implementation note: the missing field names MUST be inserted inline in this sentence at runtime as a dynamic comma-separated list of whichever required fields are currently missing.
 
 Lines appended into the prompt box and into the user’s sent chat message (when fields are selected)
 •	Name: L. Morgan
@@ -293,8 +294,9 @@ User does not click all of the necessary medical fields (HISTORY, MEDICATION, AL
 Each row highlights once activated, and corresponding copy/remove button becomes temporarily non-interactive, WITHIN immediate.
 Selection completes and prompt builds (in order of clicks. If user clicks medication, then allergies, then history, the relevant prompt text is filled in in the same order), WITHIN 600ms.
 Send becomes enabled (and visually “glowing”), WITHIN immediate.
-User clicks Send. Send button bulges, WITHIN immediate.
-User message posts, prompt box becomes blank, and a “thinking” indicator appears, WITHIN 700ms.
+User clicks Send, WITHIN immediate.
+User message posts and a “thinking” indicator appears, WITHIN 700ms.
+During this failed-send path, prompt content remains populated (base prompt + selected field lines) and previously selected fields remain selected by default.
 Bot types out “Oops! You’ve asked me to write a referral but you’re missing required medical fields: [missing field names, e.g., History, Medication]. Please use the Copy/Remove controls to add only the missing required fields, then send again.” response
 WHEN typing finishes, previously selected patient data fields remain selected; user prompt remains populated with selected fields plus base prompt; Send remains enabled when at least 1 field is selected.
 System indicates which required medical fields are still missing using explicit field names (or equivalent specific identifiers). User may adjust selections and re-send.
