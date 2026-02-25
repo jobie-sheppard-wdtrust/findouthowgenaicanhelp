@@ -15,6 +15,8 @@ Main area: fills remaining height; split into 2 columns (50% / 50%); overflow-hi
 Responsive reflow: at narrow viewport widths, the 2 columns stack vertically (chat / GenAI bot pane above; Patient Data pane below). In this stacked layout, both panes remain vertically scrollable.
 Left column: chat messages list scrolls vertically.
 Right column: Patient Data list scrolls vertically.
+Header offset requirement for in-page focus targets: the layout MUST include a focus-safe top offset mechanism (for example, scroll-margin-top on targets, scroll-padding-top on scroll containers, or an equivalent pattern) so that keyboard-focused items at the top of the chat pane and Patient Data pane are never fully hidden behind a fixed/sticky header.
+Testability rule: using keyboard-only traversal (Tab / Shift+Tab and any built-in sequential focus navigation), when focus moves to the first focusable item near the top edge of each pane, the focused item MUST remain at least partially visible below the header.
 
 Major components and where they appear
 Header: page heading text plus a button to reset the interaction
