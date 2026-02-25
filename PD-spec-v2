@@ -368,7 +368,7 @@ Error handling and redundant entry
 • Failed-send error suggestion text MUST be actionable and consistent with read-only prompt behaviour: instruct users to use Copy/Remove controls to add required fields. (CE-08)
 
 Motion, timing, zoom/reflow, and obscuration
-• Auto-scroll behaviour in chat MUST pause when user focus is inside older transcript content; provide a “Jump to latest” control to resume. (MTI-06)
+• No Auto-scroll behaviour in chat; instead provide a “Jump to latest” control to resume. (MTI-06)
 • Any animation lasting more than 5 seconds (including infinite pulses) MUST be pausable or suppressible with an in-UI control in addition to honoring reduced-motion preference. (MTI-01, MTI-02, MTI-05)
 • Non-essential motion (chat entrances, sweeps, bulges, modal entrance) MUST be disabled when reduced-motion is requested; this already applies and remains required. (MTI-03, MTI-04)
 • Content MUST remain usable at 200% zoom and at 320 CSS px width without loss of information or functionality; horizontal scrolling should be avoided except where medically necessary data tokens cannot wrap. (LRZ-01, LRZ-04, LRZ-05, LRZ-08, LRZ-09)
