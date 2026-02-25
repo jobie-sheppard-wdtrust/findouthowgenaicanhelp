@@ -11,8 +11,10 @@ Address, Nationality, Ethnicity; otherwise it is “❌ Not quite right”. The 
 Regions and scroll areas
 Viewport-height app: total height 100vh, vertical stack.
 Header: fixed height by content; does not shrink.
-Main area: fills remaining height and splits into 2 columns (50% / 50%). The main/page container MUST allow vertical scrolling (overflow-y: auto/visible) so all content remains reachable at 320px width and 200% zoom.
-Horizontal clipping is allowed only on explicitly decorative wrappers (if present) using overflow-x: hidden; interactive/content containers (main area, chat pane, patient data pane, prompt region) MUST NOT clip vertically.
+Main area: fills remaining height and splits into 2 columns (50% / 50%).
+Page-level vertical scrolling MUST be provided by the root app/page container (the outer container that wraps header + main area) using overflow-y: auto/visible so all required content remains reachable at 320 CSS px width and 200% zoom.
+The two inner panes (chat/prompt pane and Patient Data pane) may use nested vertical scrolling for long content, but this MUST NOT replace page-level vertical scroll when reflow/zoom increases content height.
+Required interactive or focusable content MUST NOT be clipped by overflow hidden at any level; do not apply global overflow hidden to app/page containers. Decorative wrappers may use overflow-x: hidden only when they cannot contain required content.
 Responsive reflow: at narrow viewport widths, the 2 columns stack vertically (chat / GenAI bot pane above; Patient Data pane below). In this stacked layout, both panes remain vertically scrollable.
 Left column: chat messages list scrolls vertically.
 Right column: Patient Data list scrolls vertically.
@@ -385,7 +387,7 @@ Motion, timing, zoom/reflow, and obscuration
 • Any animation lasting more than 5 seconds (including infinite pulses) MUST be pausable or suppressible with an in-UI control in addition to honoring reduced-motion preference. (MTI-01, MTI-02, MTI-05)
 • Non-essential motion (chat entrances, sweeps, bulges, modal entrance) MUST be disabled when reduced-motion is requested; this already applies and remains required. (MTI-03, MTI-04)
 • Content MUST remain usable at 200% zoom and at 320 CSS px width without loss of information or functionality; horizontal scrolling should be avoided except where medically necessary data tokens cannot wrap. (LRZ-01, LRZ-04, LRZ-05, LRZ-08, LRZ-09)
-• Main container MUST allow page-level vertical scroll when required (do not clip critical content with global overflow hidden). Nested scroll regions are allowed only where focus order and reading order remain clear. (LRZ-02)
+• Root app/page container MUST allow page-level vertical scroll when required (do not clip required interactive/focusable content with global overflow hidden). Nested scroll regions are allowed only where focus order and reading order remain clear. (LRZ-02)
 • Prompt box with max-height MUST support internal scroll, keyboard scrolling, and visible indication that additional content exists when overflowed. (LRZ-03)
 • Text must remain readable under text-resize and custom spacing: no clipping/overlap at 200% text size and with line-height 1.5, paragraph spacing 2x font size, letter spacing 0.12em, word spacing 0.16em. (LRZ-06, LRZ-07)
 
