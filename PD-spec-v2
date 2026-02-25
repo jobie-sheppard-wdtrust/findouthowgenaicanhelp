@@ -361,8 +361,8 @@ Interactive controls and target size
 • Pointer activation for Reset, Send, all Copy/Remove controls, Retry, and Finish MUST complete on pointer up-event (not irreversibly on pointer down-event alone), unless an equivalent abort/reversal behavior is provided. Accidental pointer down-events MUST be cancellable by moving off target before release. (KFP-12)
 • Minimum pointer target size for all controls MUST be at least 24x24 CSS px; if any visible glyph is smaller, add internal padding to meet this minimum. (KFP-10)
 • Copy/Remove selected state MUST use at least one non-colour visual cue in addition to colour (for example icon shape change plus explicit text state). (CE-10)
-• Each Patient Data toggle MUST expose selected/not-selected state programmatically (for example a toggle button with `aria-pressed="true"/"false"`, or an equivalent role/state pattern that communicates the same binary state to assistive technology). (SRA-03, SRA-04)
-• For each Patient Data toggle, the visible text, accessible name, and programmatic state MUST stay synchronized after every toggle action and after reset/retry/error flows so assistive technology and visual UI always report the same state. (CE-02, SRA-03, SRA-04)
+• Each Patient Data Copy/Remove toggle MUST expose selected/not-selected state programmatically (for example a toggle button with `aria-pressed="true"/"false"`, or an equivalent role/state model that communicates the same binary selected state to assistive technology). (SRA-03, SRA-04)
+• For each Patient Data Copy/Remove toggle, the visible text, accessible name, and programmatic state MUST stay synchronized after every toggle action and across all state transitions: retry, reset, failed-send, and post-success lock. At no point may the visual selected state diverge from the exposed accessibility state. (CE-02, SRA-03, SRA-04)
 • Patient Data label source text MUST be authored in normal word case (e.g., “Name”), with uppercase appearance applied via styling only; do not hardcode all-caps letters in source content. (CE-04)
 
 Focus visibility and focus management
