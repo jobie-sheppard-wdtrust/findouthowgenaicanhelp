@@ -6,17 +6,19 @@ This is a single-page, two-column chatbot simulation about keeping patient data 
 After a successful referral response, a feedback modal appears. The feedback is “✅ Excellent work!” if none of the following were included in the sent prompt: Name, Age, 
 Address, Nationality, Ethnicity; otherwise it is “❌ Not quite right”. The user can then Retry (full reset) or Finish (close modal and show an alert message).
 
-2.	Screen Map and Layout
+2.	Layout and Structure
 
 Regions and scroll areas
 Viewport-height app: total height 100vh, vertical stack.
 Header: fixed height by content; does not shrink.
-Main area: fills remaining height; split into 2 columns (50% / 50%); overflow-hidden overall.
+Main area: fills remaining height and splits into 2 columns (50% / 50%). The main/page container MUST allow vertical scrolling (overflow-y: auto/visible) so all content remains reachable at 320px width and 200% zoom.
+Horizontal clipping is allowed only on explicitly decorative wrappers (if present) using overflow-x: hidden; interactive/content containers (main area, chat pane, patient data pane, prompt region) MUST NOT clip vertically.
 Responsive reflow: at narrow viewport widths, the 2 columns stack vertically (chat / GenAI bot pane above; Patient Data pane below). In this stacked layout, both panes remain vertically scrollable.
 Left column: chat messages list scrolls vertically.
 Right column: Patient Data list scrolls vertically.
 Header offset requirement for in-page focus targets: the layout MUST include a focus-safe top offset mechanism (for example, scroll-margin-top on targets, scroll-padding-top on scroll containers, or an equivalent pattern) so that keyboard-focused items at the top of the chat pane and Patient Data pane are never fully hidden behind a fixed/sticky header.
 Testability rule: using keyboard-only traversal (Tab / Shift+Tab and any built-in sequential focus navigation), when focus moves to the first focusable item near the top edge of each pane, the focused item MUST remain at least partially visible below the header.
+Conformance note: See Section 10 “Motion, timing, zoom/reflow, and obscuration” for normative reflow/resize behaviour requirements.
 
 Major components and where they appear
 Header: page heading text plus a button to reset the interaction
@@ -24,7 +26,7 @@ Left column: chat transcript area + a prompt box area containing a prompt which 
 Right column: a list of Patient Data rows, each with a copy/remove button used to add/remove that field from the prompt. From left to right, each row is arranged: Copy/Remove button, Row label, Row data
 Key size/constraint rules
 Chat bubble max width: 85%.
-Prompt box min height: 84px; max height: 220px.
+Prompt box min height: 84px; max height: 220px. Internal scroll, keyboard scrolling, and visible overflow indication are mandatory when content exceeds max height; see Section 10 for detailed acceptance criteria.
 Tooltip content width: 220px; offset below icon: 100% + 8px; border radius: 0.5rem; padding: 0.5rem 0.75rem; font size: 0.875rem.
 Header blur: 12px.
 Modal overlay padding: 1rem; modal content max width: 32rem.
@@ -123,12 +125,14 @@ WHEN Send is enabled and clicked, and required medical fields are missing, THEN 
 WHEN a bot “thinking” indicator first appears (in either error or success flow), THEN assistive technology announces: “GenAI is writing its response”, WITHIN immediate.
 WHEN the bot finishes typing and the full bot message appears (error message or referral), THEN assistive technology announces: “GenAI response complete.”, WITHIN immediate.
 WHEN Send is enabled and clicked, and required medical fields are missing, THEN the bot starts typing the error message after a pause, WITHIN 800ms.
-WHEN the error message typing finishes, THEN the full error message appears as a bot message, THEN the field selections are cleared, THEN the prompt resets to the base prompt, THEN Send returns to disabled, WITHIN the computed typing time.
+WHEN the error message typing finishes, THEN the full error message appears as a bot message, THEN previously selected fields remain selected, THEN the prompt content remains intact (base prompt + currently selected field lines) unless the user changes selections via Copy/Remove controls, THEN Send state reflects current selection state (enabled when at least 1 field remains selected), WITHIN the computed typing time.
 WHEN Send is enabled and clicked, and all required medical fields are present, THEN the Send button plays a bulge animation, WITHIN immediate.
 WHEN Send is enabled and clicked, and all required medical fields are present, THEN the user prompt is posted into the chat as a user message, THEN the prompt box becomes blank, THEN a bot “thinking” indicator appears, WITHIN 700ms.
 WHEN the successful-send thinking begins, THEN the bot starts typing the referral after a pause, WITHIN 2000ms after thinking begins.
 WHEN referral typing finishes, THEN the full referral appears as a bot message, WITHIN the computed typing time.
 WHEN the referral finishes, THEN the feedback modal appears, WITHIN 500ms after the referral finishes.
+WHEN a successful send has occurred (post-success locked state), THEN all Patient Data Copy/Remove controls and Send MUST expose disabled state programmatically (`disabled` or `aria-disabled="true"`) and visually, and MUST reject both pointer and keyboard activation (mouse, touch, Enter, Space), WITHIN immediate.
+WHEN activation is attempted on any locked Copy/Remove or Send control in the post-success state, THEN no selection/send state changes occur and a user-facing status hint is shown (for example: "Controls are locked after a successful send. Select Retry to edit and send again."), WITHIN immediate.
 WHEN the feedback modal appears, THEN keyboard focus moves into the modal (to the modal title, or if the title is not focusable then the first focusable control in the modal), WITHIN immediate.
 WHILE the feedback modal is visible, THEN focus is trapped within the modal (Tab/Shift+Tab cycles through focusable elements inside the modal only), WITHIN immediate.
 WHEN the feedback modal closes (via Retry or Finish), THEN focus returns to the element that had focus immediately before the modal appeared; if that element is no longer focusable, THEN focus moves to the header reset interaction button, WITHIN immediate.
@@ -137,7 +141,8 @@ WHEN the referral is produced, THEN the feedback result is:
 ❌ failure (“Not quite right” / “The patient's data is at risk”) IF any of those were included
 WITHIN immediate once feedback is shown.
 WHEN feedback is visible, THEN clicking Retry resets the entire experience to the initial state (only the welcome chat message, no selected fields, base prompt restored, Send disabled), WITHIN immediate.
-WHEN feedback is visible, THEN clicking Finish closes the modal and shows the alert text “Great job! Continue to the next section of the module.”, WITHIN immediate.
+WHEN feedback is visible, THEN clicking Finish closes the modal and renders the in-page status message text “Great job! Continue to the next section of the module.”, WITHIN immediate.
+Note (cross-reference): Do not use browser `window.alert()`; use in-page status semantics per Section 10.
 WHEN any chat message is added OR the thinking/typing indicator updates, THEN the chat does not automatically scroll (no auto-scroll); the scroll position remains unchanged, WITHIN immediate.
 WHEN the user attempts manual typing (including Enter or Shift+Enter) in the prompt box, THEN nothing is entered and no message is sent (the prompt box allows focus and text selection/copy, but only accepts patient data via copy buttons; no custom text entry), WITHIN immediate.
 WHEN considering attachment behaviour, THEN none (no attachment UI or states). WITHIN immediate.
@@ -187,7 +192,7 @@ o	Bisoprolol 2.5mg once daily
 o	No known drug allergies
 o	Recent ECG: sinus rhythm with occasional PACs. Thyroid function normal.
 Error message (bot)
-Oops! You've asked me to write a referral but you haven't included all of the medical information I need. Please add the missing medical fields using the Copy controls, then send again.
+Oops! You’ve asked me to write a referral but you’re missing required medical fields: [missing field names, e.g., History, Medication]. Please use the Copy/Remove controls to add only the missing required fields, then send again.
 
 Lines appended into the prompt box and into the user’s sent chat message (when fields are selected)
 •	Name: L. Morgan
@@ -231,7 +236,7 @@ Feedback modal text
 You've protected the patient's identity by not entering any PID into GenAI. Scroll down to the next section of the module when you’re ready.
 ❌ Not quite right
 The patient's data is at risk because you’ve entered PID into GenAI. Click retry when you’re ready to have another go, glance back at the guidance above on what counts as PID if you need help.
-Alert text shown after Finish
+In-page status message text shown after Finish
 Great job! Continue to the next section of the module.
 7.	Animations and Transitions (exact)
 Reduced motion preference (global)
@@ -290,9 +295,9 @@ Selection completes and prompt builds (in order of clicks. If user clicks medica
 Send becomes enabled (and visually “glowing”), WITHIN immediate.
 User clicks Send. Send button bulges, WITHIN immediate.
 User message posts, prompt box becomes blank, and a “thinking” indicator appears, WITHIN 700ms.
-Bot types out “Oops! You've asked me to write a referral but you haven't included all of the medical information I need. Please add the missing medical fields using the Copy controls, then send again.” response
+Bot types out “Oops! You’ve asked me to write a referral but you’re missing required medical fields: [missing field names, e.g., History, Medication]. Please use the Copy/Remove controls to add only the missing required fields, then send again.” response
 WHEN typing finishes, previously selected patient data fields remain selected; user prompt remains populated with selected fields plus base prompt; Send remains enabled when at least 1 field is selected.
-System indicates which required medical fields are still missing. User may adjust selections and re-send.
+System indicates which required medical fields are still missing using explicit field names (or equivalent specific identifiers). User may adjust selections and re-send.
 Included medical information and success journey
 Starting state: chat shows “How can I help?”, prompt shows the base prompt, Send disabled.
 User clicks all of the necessary medical fields (HISTORY, MEDICATION, ALLERGIES, INVESTIGATIONS), but none of the patient data fields (NAME, AGE, ADDRESS, NATIONALITY, ETHNICITY)
@@ -318,7 +323,8 @@ User clicks Retry (full reset) or Finish (close modal and show alert), WITHIN im
 9.	Edge Cases
 Rapid clicking multiple Patient Data copy/remove buttons: during the 600ms selection window, copy/remove buttons are non-interactive, so additional clicks have no effect until it completes.
 If the user repeatedly hits Send without including all required medical fields, the chat will accumulate multiple failed attempts (each adds a new user message + error response), while previously selected fields persist unless the user changes them.
-After a successful send, the prompt box is blank and stays blank until Retry; selected fields remain locked (cannot be changed), and Send stays disabled.
+After a successful send, the prompt box is blank and stays blank until Retry; selected fields remain locked (cannot be changed), and Send stays disabled. Locked Copy/Remove and Send controls must expose disabled state programmatically (`disabled`/`aria-disabled`) and reject both pointer and keyboard activation.
+If activation is attempted on locked controls after success, no state change occurs and the UI provides immediate user feedback via a status hint explaining controls are locked until Retry.
 Finish always allows progress (shows the same alert) even when the feedback state is failure.
 
 
@@ -369,8 +375,8 @@ Selection lock, disabled states, and order
 • Visual layering (z-index) MUST NOT determine reading order; DOM order controls sequential navigation order. Tooltip and modal containers may be portaled visually but keyboard order must remain logical. (KFP-08)
 
 Error handling and redundant entry
-• On failed send (missing required medical fields), previously selected fields MUST remain selected by default; the system MUST indicate which required medical fields are still missing. Users MUST NOT be forced to re-enter unchanged selections. (CE-01, CE-02, CE-11)
-• Failed-send error suggestion text MUST be actionable and consistent with read-only prompt behaviour: instruct users to use Copy/Remove controls to add required fields. (CE-08)
+• On failed send (missing required medical fields), previously selected fields and current prompt content MUST remain intact by default unless the user changes selections; the system MUST indicate which required medical fields are still missing using explicit field names (or equivalent specific identifiers). Users MUST NOT be forced to re-enter unchanged selections. (CE-01, CE-02, CE-11)
+• Failed-send error suggestion text MUST be actionable and consistent with read-only prompt behaviour: instruct users to use Copy/Remove controls to add only the explicitly identified missing required fields. (CE-08)
 
 Motion, timing, zoom/reflow, and obscuration
 • No Auto-scroll behaviour in chat; instead provide a “Jump to latest” control to resume. (MTI-06)
