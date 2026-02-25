@@ -135,7 +135,8 @@ WHEN the referral is produced, THEN the feedback result is:
 ❌ failure (“Not quite right” / “The patient's data is at risk”) IF any of those were included
 WITHIN immediate once feedback is shown.
 WHEN feedback is visible, THEN clicking Retry resets the entire experience to the initial state (only the welcome chat message, no selected fields, base prompt restored, Send disabled), WITHIN immediate.
-WHEN feedback is visible, THEN clicking Finish closes the modal and shows the alert text “Great job! Continue to the next section of the module.”, WITHIN immediate.
+WHEN feedback is visible, THEN clicking Finish closes the modal and renders the in-page status message text “Great job! Continue to the next section of the module.”, WITHIN immediate.
+Note (cross-reference): Do not use browser `window.alert()`; use in-page status semantics per Section 10.
 WHEN any chat message is added OR the thinking/typing indicator updates, THEN the chat does not automatically scroll (no auto-scroll); the scroll position remains unchanged, WITHIN immediate.
 WHEN the user attempts manual typing (including Enter or Shift+Enter) in the prompt box, THEN nothing is entered and no message is sent (the prompt box allows focus and text selection/copy, but only accepts patient data via copy buttons; no custom text entry), WITHIN immediate.
 WHEN considering attachment behaviour, THEN none (no attachment UI or states). WITHIN immediate.
@@ -229,7 +230,7 @@ Feedback modal text
 You've protected the patient's identity by not entering any PID into GenAI. Scroll down to the next section of the module when you’re ready.
 ❌ Not quite right
 The patient's data is at risk because you’ve entered PID into GenAI. Click retry when you’re ready to have another go, glance back at the guidance above on what counts as PID if you need help.
-Alert text shown after Finish
+In-page status message text shown after Finish
 Great job! Continue to the next section of the module.
 7.	Animations and Transitions (exact)
 Reduced motion preference (global)
@@ -317,7 +318,7 @@ User clicks Retry (full reset) or Finish (close modal and show alert), WITHIN im
 Rapid clicking multiple Patient Data copy/remove buttons: during the 600ms selection window, copy/remove buttons are non-interactive, so additional clicks have no effect until it completes.
 If the user repeatedly hits Send without including all required medical fields, the chat will accumulate multiple failed attempts (each adds a new user message + error response), while previously selected fields persist unless the user changes them.
 After a successful send, the prompt box is blank and stays blank until Retry; selected fields remain locked (cannot be changed), and Send stays disabled.
-Finish always allows progress (shows the same alert) even when the feedback state is failure.
+Finish always allows progress (renders the same in-page status message text) even when the feedback state is failure.
 
 
 
