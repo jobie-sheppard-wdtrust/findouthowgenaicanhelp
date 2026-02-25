@@ -146,6 +146,8 @@ WHEN feedback is visible, THEN clicking Retry resets the entire experience to th
 WHEN feedback is visible, THEN clicking Finish closes the modal and renders an in-page confirmation message with status semantics (`role="status"` or `role="alert"`) and visible text “Great job! Continue to the next section of the module.”, WITHIN immediate.
 Note (cross-reference): Do not use browser `window.alert()`; use in-page status semantics per Section 10.
 WHEN any chat message is added OR the thinking/typing indicator updates, THEN the chat does not automatically scroll (no auto-scroll); the scroll position remains unchanged, WITHIN immediate.
+WHEN the chat transcript overflows, THEN always-visible, keyboard-accessible transcript navigation controls are present without requiring hover, and include at minimum: “Go to newest message” and “Back to key interaction controls” (returning focus/viewport to the prompt and Patient Data interaction region), WITHIN immediate.
+WHEN the user activates transcript navigation controls, THEN the chat scroll position changes only via that explicit user action (never automatically) and keyboard focus moves to a logical target in the destination region, WITHIN immediate.
 WHEN the user attempts manual typing (including Enter or Shift+Enter) in the prompt box, THEN nothing is entered and no message is sent (the prompt box allows focus and text selection/copy, but only accepts patient data via copy buttons; no custom text entry), WITHIN immediate.
 WHEN considering attachment behaviour, THEN none (no attachment UI or states). WITHIN immediate.
 WHEN considering preset prompt clicks, THEN none (no preset chips; selecting Patient Data fields is the only way to change the prompt). WITHIN immediate.
@@ -300,6 +302,7 @@ User clicks Send, WITHIN immediate.
 User message posts and a “thinking” indicator appears, WITHIN 700ms.
 During this failed-send path, prompt content remains populated (base prompt + selected field lines) and previously selected fields remain selected by default.
 Bot types out “Oops! You’ve asked me to write a referral but you’re missing required medical fields: [missing field names, e.g., History, Medication]. Please use the Copy/Remove controls to add only the missing required fields, then send again.” response
+During new bot/user content arrival and typing updates, the transcript position remains fixed unless the user activates a transcript navigation control (no auto-scroll).
 WHEN typing finishes, previously selected patient data fields remain selected; user prompt remains populated with selected fields plus base prompt; Send remains enabled when at least 1 field is selected.
 System indicates which required medical fields are still missing using explicit field names (or equivalent specific identifiers). User may adjust selections and re-send.
 Included medical information and success journey
@@ -311,6 +314,7 @@ Send becomes enabled (and visually “glowing”), WITHIN immediate.
 User clicks Send. Send button bulges, WITHIN immediate.
 User message posts, prompt box becomes blank, and a “thinking” indicator appears, WITHIN 700ms.
 Bot starts typing the referral, WITHIN 2000ms after thinking begins; typing time uses the defined typing duration rule.
+During new bot/user content arrival and typing updates, the transcript position remains fixed unless the user activates a transcript navigation control (no auto-scroll).
 Positive / success feedback modal appears, WITHIN 500ms after the referral finishes.
 User clicks Retry (full reset) or Finish (close modal and show alert), WITHIN immediate.
 Included medical information and failure journey
@@ -322,6 +326,7 @@ Send becomes enabled (and visually “glowing”), WITHIN immediate.
 User clicks Send. Send button bulges, WITHIN immediate.
 User message posts, prompt box becomes blank, and a “thinking” indicator appears, WITHIN 700ms.
 Bot starts typing the referral, WITHIN 2000ms after thinking begins; typing time uses the defined typing duration rule.
+During new bot/user content arrival and typing updates, the transcript position remains fixed unless the user activates a transcript navigation control (no auto-scroll).
 Negative / failure feedback modal appears, WITHIN 500ms after the referral finishes.
 User clicks Retry (full reset) or Finish (close modal and show alert), WITHIN immediate.
 9.	Edge Cases
@@ -330,6 +335,7 @@ If the user repeatedly hits Send without including all required medical fields, 
 After a successful send, the prompt box is blank and stays blank until Retry; selected fields remain locked (cannot be changed), and Send stays disabled. Locked Copy/Remove and Send controls must expose disabled state programmatically (`disabled`/`aria-disabled`) and reject both pointer and keyboard activation.
 If activation is attempted on locked controls after success, no state change occurs and the UI provides immediate user feedback via a status hint explaining controls are locked until Retry.
 Finish always allows progress (shows the same alert) even when the feedback state is failure.
+Transcript navigation controls (“Go to newest message” and “Back to key interaction controls”) remain visible and keyboard operable in all chat states, including while typing, after repeated failed sends, and in post-success locked state.
 
 
 
@@ -383,7 +389,8 @@ Error handling and redundant entry
 • Failed-send error suggestion text MUST be actionable and consistent with read-only prompt behaviour: instruct users to use Copy/Remove controls to add only the explicitly identified missing required fields. (CE-08)
 
 Motion, timing, zoom/reflow, and obscuration
-• No Auto-scroll behaviour in chat; instead provide a “Jump to latest” control to resume. (MTI-06)
+• Chat transcript MUST never auto-scroll when new content appears or while typing updates render; scrolling occurs only from explicit user action. (MTI-06)
+• Always-visible, keyboard-accessible transcript navigation controls MUST be provided to move to newest content and back to key interaction regions (prompt and Patient Data controls) without enabling any automatic scrolling behaviour. (MTI-06)
 • Any animation lasting more than 5 seconds (including infinite pulses) MUST be pausable or suppressible with an in-UI control in addition to honoring reduced-motion preference. (MTI-01, MTI-02, MTI-05)
 • Non-essential motion (chat entrances, sweeps, bulges, modal entrance) MUST be disabled when reduced-motion is requested; this already applies and remains required. (MTI-03, MTI-04)
 • Content MUST remain usable at 200% zoom and at 320 CSS px width without loss of information or functionality; horizontal scrolling should be avoided except where medically necessary data tokens cannot wrap. (LRZ-01, LRZ-04, LRZ-05, LRZ-08, LRZ-09)
