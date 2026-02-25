@@ -337,6 +337,7 @@ Landmarks, structure, and reading order
 Interactive controls and target size
 • All interactive controls (Reset, info trigger, Copy/Remove controls, Send, Retry, Finish) MUST use native `<button>` elements or equivalent semantics with role, keyboard operation, and disabled-state support. (KFP-03, KFP-04, SRA-03, SRA-04)
 • Activation for all buttons MUST support keyboard Enter and Space in addition to pointer/touch. (KFP-03, KFP-04)
+• Pointer activation for Reset, Send, all Copy/Remove controls, Retry, and Finish MUST complete on pointer up-event (not irreversibly on pointer down-event alone), unless an equivalent abort/reversal behavior is provided. Accidental pointer down-events MUST be cancellable by moving off target before release. (KFP-12)
 • Minimum pointer target size for all controls MUST be at least 24x24 CSS px; if any visible glyph is smaller, add internal padding to meet this minimum. (KFP-10)
 • Copy/Remove selected state MUST use at least one non-colour visual cue in addition to colour (for example icon shape change plus explicit text state). (CE-10)
 • Patient Data label source text MUST be authored in normal word case (e.g., “Name”), with uppercase appearance applied via styling only; do not hardcode all-caps letters in source content. (CE-04)
