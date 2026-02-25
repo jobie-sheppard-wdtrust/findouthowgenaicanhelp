@@ -745,6 +745,12 @@
         }
 
         const requiredMedicalFields = ["history", "medication", "allergies", "investigations"];
+        const requiredFieldLabels = {
+          history: "History",
+          medication: "Medication",
+          allergies: "Allergies",
+          investigations: "Investigations",
+        };
         const missingMedicalFields = requiredMedicalFields.filter(
           (key) => !state.copiedFields.has(key)
         );
@@ -762,8 +768,11 @@
           setTimeout(() => {
             state.isThinking = false;
             renderThinking();
+            const missingFieldNames = missingMedicalFields
+              .map((key) => requiredFieldLabels[key])
+              .join(", ");
             const errorMessage =
-              "Oops! You've asked me to write a referral but you haven't included all of the medical information I need. Could you paste it in, and then I can write a referral for you?";
+              `Oops! You’ve asked me to write a referral but you’re missing required medical fields: ${missingFieldNames}. Please use the Copy/Remove controls to add only the missing required fields, then send again.`;
             const chars = errorMessage.split("");
             let charIndex = 0;
             state.typingContent = "";
@@ -782,8 +791,6 @@
                   content: errorMessage,
                 });
                 state.typingContent = "";
-                state.copiedFields = new Set();
-                state.displayInputValue = BASE_PROMPT;
                 renderAll();
               }
             }, charInterval);
