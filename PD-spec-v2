@@ -258,6 +258,7 @@ Send button glow (enabled state)
 Element: Send control
 Trigger: Send becomes enabled (at least 1 field selected, not already sent, and not currently generating/sending)
 Duration / easing: 2s, ease-in-out, infinite
+Control requirement: This infinite animation MUST be pausable or suppressible via an in-UI control, following the same control behavior defined in Section 10 (Motion, timing, zoom/reflow, and obscuration); `prefers-reduced-motion` support alone is not sufficient.
 Keyframes:
 0% and 100%: box-shadow 0 0 0 0 using primary color at 0.4 opacity
 50%: box-shadow 0 0 0 8px using primary color at 0 opacity
@@ -270,6 +271,7 @@ Thinking dots pulse
 Element: thinking indicator dots
 Trigger: while the thinking indicator is visible
 Duration / easing: 1s, ease-in-out, infinite
+Control requirement: This infinite animation MUST be pausable or suppressible via an in-UI control, following the same control behavior defined in Section 10 (Motion, timing, zoom/reflow, and obscuration); `prefers-reduced-motion` support alone is not sufficient.
 Keyframes: opacity 0.4 → 1 → 0.4
 Stagger: dot 1 delay 0s; dot 2 delay 0.2s; dot 3 delay 0.4s
 Feedback modal entrance
