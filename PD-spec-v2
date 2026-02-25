@@ -22,7 +22,7 @@ Left column: chat transcript area + a prompt box area containing a prompt which 
 Right column: a list of Patient Data rows, each with a copy/remove button used to add/remove that field from the prompt. From left to right, each row is arranged: Copy/Remove button, Row label, Row data
 Key size/constraint rules
 Chat bubble max width: 85%.
-Prompt box min height: 84px; max height: 220px.
+Prompt box min height: 84px; max height: 220px. Internal scroll, keyboard scrolling, and visible overflow indication are mandatory when content exceeds max height; see Section 10 for detailed acceptance criteria.
 Tooltip content width: 220px; offset below icon: 100% + 8px; border radius: 0.5rem; padding: 0.5rem 0.75rem; font size: 0.875rem.
 Header blur: 12px.
 Modal overlay padding: 1rem; modal content max width: 32rem.
