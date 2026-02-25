@@ -112,6 +112,8 @@ Feedback result: success / failure
 Success vs failure determined by whether Name, Age, Address, Nationality, Ethnicity were included in the sent prompt.
 Post-success locked state
 After successful send: prompt box is blank and stays blank until Retry; selected fields remain locked; Send stays disabled.
+In the locked post-success state, all locked Copy/Remove and Send controls MUST expose disabled state programmatically (`disabled` or `aria-disabled="true"`) and visually; visual lock state and accessibility-tree state MUST remain synchronized at all times.
+In the locked post-success state, locked controls MUST reject both pointer and keyboard activation (mouse, touch, Enter, Space) with no state change.
 
 5.	Interaction Rules
 WHEN the page loads, THEN the chat shows “How can I help?”, WITHIN immediate.
@@ -134,6 +136,7 @@ WHEN the successful-send thinking begins, THEN the bot starts typing the referra
 WHEN referral typing finishes, THEN the full referral appears as a bot message, WITHIN the computed typing time.
 WHEN the referral finishes, THEN the feedback modal appears, WITHIN 500ms after the referral finishes.
 WHEN a successful send has occurred (post-success locked state), THEN all Patient Data Copy/Remove controls and Send MUST expose disabled state programmatically (`disabled` or `aria-disabled="true"`) and visually, and MUST reject both pointer and keyboard activation (mouse, touch, Enter, Space), WITHIN immediate.
+WHEN a control enters or exits the post-success locked state, THEN its visual lock styling and accessibility-tree disabled state (`disabled`/`aria-disabled`) MUST update together in the same state transition, WITHIN immediate.
 WHEN activation is attempted on any locked Copy/Remove or Send control in the post-success state, THEN no selection/send state changes occur and a user-facing status hint is shown (for example: "Controls are locked after a successful send. Select Retry to edit and send again."), WITHIN immediate.
 WHEN the feedback modal appears, THEN keyboard focus moves into the modal (to the modal title, or if the title is not focusable then the first focusable control in the modal), WITHIN immediate.
 WHILE the feedback modal is visible, THEN focus is trapped within the modal (Tab/Shift+Tab cycles through focusable elements inside the modal only), WITHIN immediate.
@@ -332,7 +335,7 @@ User clicks Retry (full reset) or Finish (close modal and show alert), WITHIN im
 9.	Edge Cases
 Rapid clicking multiple Patient Data copy/remove buttons: during the 600ms selection window, copy/remove buttons are non-interactive, so additional clicks have no effect until it completes.
 If the user repeatedly hits Send without including all required medical fields, the chat will accumulate multiple failed attempts (each adds a new user message + error response), while previously selected fields persist unless the user changes them.
-After a successful send, the prompt box is blank and stays blank until Retry; selected fields remain locked (cannot be changed), and Send stays disabled. Locked Copy/Remove and Send controls must expose disabled state programmatically (`disabled`/`aria-disabled`) and reject both pointer and keyboard activation.
+After a successful send, the prompt box is blank and stays blank until Retry; selected fields remain locked (cannot be changed), and Send stays disabled. Locked Copy/Remove and Send controls MUST expose disabled state programmatically (`disabled`/`aria-disabled`) and visually, MUST reject both pointer and keyboard activation, and the visual lock state MUST stay synchronized with accessibility-tree disabled state.
 If activation is attempted on locked controls after success, no state change occurs and the UI provides immediate user feedback via a status hint explaining controls are locked until Retry.
 Finish always allows progress (shows the same alert) even when the feedback state is failure.
 Transcript navigation controls (“Go to newest message” and “Back to key interaction controls”) remain visible and keyboard operable in all chat states, including while typing, after repeated failed sends, and in post-success locked state.
