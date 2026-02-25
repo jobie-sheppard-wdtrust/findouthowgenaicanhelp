@@ -121,7 +121,7 @@ WHEN Send is enabled and clicked, and required medical fields are missing, THEN 
 WHEN a bot “thinking” indicator first appears (in either error or success flow), THEN assistive technology announces: “GenAI is writing its response”, WITHIN immediate.
 WHEN the bot finishes typing and the full bot message appears (error message or referral), THEN assistive technology announces: “GenAI response complete.”, WITHIN immediate.
 WHEN Send is enabled and clicked, and required medical fields are missing, THEN the bot starts typing the error message after a pause, WITHIN 800ms.
-WHEN the error message typing finishes, THEN the full error message appears as a bot message, THEN the field selections are cleared, THEN the prompt resets to the base prompt, THEN Send returns to disabled, WITHIN the computed typing time.
+WHEN the error message typing finishes, THEN the full error message appears as a bot message, THEN previously selected fields remain selected, THEN the prompt content remains intact (base prompt + currently selected field lines) unless the user changes selections via Copy/Remove controls, THEN Send state reflects current selection state (enabled when at least 1 field remains selected), WITHIN the computed typing time.
 WHEN Send is enabled and clicked, and all required medical fields are present, THEN the Send button plays a bulge animation, WITHIN immediate.
 WHEN Send is enabled and clicked, and all required medical fields are present, THEN the user prompt is posted into the chat as a user message, THEN the prompt box becomes blank, THEN a bot “thinking” indicator appears, WITHIN 700ms.
 WHEN the successful-send thinking begins, THEN the bot starts typing the referral after a pause, WITHIN 2000ms after thinking begins.
@@ -185,7 +185,7 @@ o	Bisoprolol 2.5mg once daily
 o	No known drug allergies
 o	Recent ECG: sinus rhythm with occasional PACs. Thyroid function normal.
 Error message (bot)
-Oops! You've asked me to write a referral but you haven't included all of the medical information I need. Please add the missing medical fields using the Copy controls, then send again.
+Oops! You’ve asked me to write a referral but you’re missing required medical fields: [missing field names, e.g., History, Medication]. Please use the Copy/Remove controls to add only the missing required fields, then send again.
 
 Lines appended into the prompt box and into the user’s sent chat message (when fields are selected)
 •	Name: L. Morgan
@@ -288,9 +288,9 @@ Selection completes and prompt builds (in order of clicks. If user clicks medica
 Send becomes enabled (and visually “glowing”), WITHIN immediate.
 User clicks Send. Send button bulges, WITHIN immediate.
 User message posts, prompt box becomes blank, and a “thinking” indicator appears, WITHIN 700ms.
-Bot types out “Oops! You've asked me to write a referral but you haven't included all of the medical information I need. Please add the missing medical fields using the Copy controls, then send again.” response
+Bot types out “Oops! You’ve asked me to write a referral but you’re missing required medical fields: [missing field names, e.g., History, Medication]. Please use the Copy/Remove controls to add only the missing required fields, then send again.” response
 WHEN typing finishes, previously selected patient data fields remain selected; user prompt remains populated with selected fields plus base prompt; Send remains enabled when at least 1 field is selected.
-System indicates which required medical fields are still missing. User may adjust selections and re-send.
+System indicates which required medical fields are still missing using explicit field names (or equivalent specific identifiers). User may adjust selections and re-send.
 Included medical information and success journey
 Starting state: chat shows “How can I help?”, prompt shows the base prompt, Send disabled.
 User clicks all of the necessary medical fields (HISTORY, MEDICATION, ALLERGIES, INVESTIGATIONS), but none of the patient data fields (NAME, AGE, ADDRESS, NATIONALITY, ETHNICITY)
@@ -367,8 +367,8 @@ Selection lock, disabled states, and order
 • Visual layering (z-index) MUST NOT determine reading order; DOM order controls sequential navigation order. Tooltip and modal containers may be portaled visually but keyboard order must remain logical. (KFP-08)
 
 Error handling and redundant entry
-• On failed send (missing required medical fields), previously selected fields MUST remain selected by default; the system MUST indicate which required medical fields are still missing. Users MUST NOT be forced to re-enter unchanged selections. (CE-01, CE-02, CE-11)
-• Failed-send error suggestion text MUST be actionable and consistent with read-only prompt behaviour: instruct users to use Copy/Remove controls to add required fields. (CE-08)
+• On failed send (missing required medical fields), previously selected fields and current prompt content MUST remain intact by default unless the user changes selections; the system MUST indicate which required medical fields are still missing using explicit field names (or equivalent specific identifiers). Users MUST NOT be forced to re-enter unchanged selections. (CE-01, CE-02, CE-11)
+• Failed-send error suggestion text MUST be actionable and consistent with read-only prompt behaviour: instruct users to use Copy/Remove controls to add only the explicitly identified missing required fields. (CE-08)
 
 Motion, timing, zoom/reflow, and obscuration
 • No Auto-scroll behaviour in chat; instead provide a “Jump to latest” control to resume. (MTI-06)
