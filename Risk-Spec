@@ -1,0 +1,412 @@
+1) Interaction Overview
+This is a single-page “GenAI Chatbot” simulation that shows one preset task. When a user clicks the preset task button, the prompt auto-fills into the message input, then auto-sends, shows a typing indicator, and finally shows a fixed bot response.
+In the bot response, specific phrases become highlighted and clickable in staged phases. Clicking a highlight opens a “Spotting hidden risks” pop-up that explains the risk, and locks scrolling until dismissed.
+2) Screen Map and Layout
+•	Regions and scroll areas
+o	Full-height layout: at least the viewport height, and must be able to extend vertically beyond the viewport when content requires (e.g., at 320px width / 400% zoom) without clipping or trapping content.Main content padding: 1.5rem 1rem.
+o	A main chat “window” fills available space.
+o	The message area scrolls vertically (overflow-y: auto).
+o	The chat footer stays below the message area (not inside the scroll area).
+•	Major components and where they appear
+o	Title bar at the top of the chat window, showing:
+	Header text: “GenAI Chatbot”
+	Helper text: “See the risks when GenAI helps with these tasks”
+o	Scrollable messages area below the title bar.
+o	Footer area below the message area containing:
+	A preset prompt button (when visible).
+	The message input and “send” control
+•	Key size/constraint rules
+o	Messages column max width: 48rem (centered with margin: 0 auto).
+o	Chat bubble max width: 32rem.
+o	Input min-height: 56px.
+o	Input max-height: 200px.
+o	Risk pop-up width: min(22rem, 90vw).
+o	Avatar size: 2.25rem × 2.25rem.
+o	“Send” control size: 2.5rem × 2.5rem.
+o	Risk pop-up minimize control size: 2rem × 2rem.
+o	Typing dot size: 0.5rem × 0.5rem.
+o	Attachment icon size: 1rem × 1rem.
+o	Bot/user icon inside avatar: 1.25rem × 1.25rem.
+•	Typography and colour defaults:
+o	Base font family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif.
+o	Base line-height: 1.5.
+o	Title text size/weight: 1.125rem, 600.
+o	Subtitle text size: 0.875rem.
+o	Chat bubble text size: 0.9375rem.
+o	Prompt button text size: 0.875rem.
+o	Risk pop-up header text size/weight: 0.9375rem, 600.
+o	Risk pop-up title text size/weight: 0.9375rem, 600.
+o	Risk pop-up body text size: 0.875rem.
+o	Page background: hsl(220 20% 97%).
+o	Default text: hsl(220 20% 10%).
+o	Card/background surfaces: hsl(0 0% 100%).
+o	Border: hsl(220 15% 90%).
+o	Primary accent: hsl(221 83% 53%).
+o	Primary text-on-accent: hsl(0 0% 100%).
+o	Muted text: hsl(220 10% 50%).
+o	Bot bubble background: hsl(220 15% 95%).
+o	Bot bubble text: hsl(220 20% 15%).
+o	User bubble background: hsl(221 83% 53%).
+o	User bubble text: hsl(0 0% 100%).
+o	Titlebar background overlay: rgba(255, 255, 255, 0.5).
+o	Standard window shadow + input shadow + risk pop-up shadow: rgba(0, 0, 0, 0.08) (used with 0 4px 12px).
+o	Bubble shadow: rgba(0, 0, 0, 0.08) (used with 0 2px 8px).
+o	Bot avatar background: #90278e.
+o	Highlight background: rgba(248, 113, 113, 0.2).
+o	Risk pop-up border: rgba(249, 115, 22, 0.75).
+o	“Send” hover opacity: 0.9.
+o	“Send” disabled opacity: 0.4.
+o	Prompt disabled opacity: 0.5.
+•	Borders/radius/shadows/spacing defaults: 
+o	Main window
+	Border: 1px solid (border color above)
+	Radius: 1rem
+	Shadow: 0 4px 12px rgba(0, 0, 0, 0.08)
+o	Title bar
+	Padding: 0.75rem 1rem
+	Gap: 0.25rem
+	Border-bottom: 1px solid (border color above)
+	Backdrop blur: 8px
+o	Messages column
+	Gap between messages: 1.5rem
+o	Message row
+	Gap between avatar and content: 0.75rem
+o	Message content stack
+	Gap: 0.5rem
+o	Chat bubble
+	Padding: 0.75rem 1rem
+	Radius: 1rem
+	Shadow: 0 2px 8px rgba(0, 0, 0, 0.08)
+	Bot bubble corner tweak: border-top-left-radius 0.375rem
+	User bubble corner tweak: border-top-right-radius 0.375rem
+o	Typing indicator “dots” container
+	Padding: 1rem
+	Gap between dots: 0.25rem
+	Radius: 1rem (with border-top-left-radius 0.375rem)
+o	Footer
+	Padding: 0.5rem 1rem 1.5rem
+	Background: linear-gradient(to top, hsl(220 20% 97%), hsl(220 20% 97%), transparent)
+	Inner stack gap: 1rem
+o	Prompt button
+	Row gap: 0.5rem
+	Button padding: 0.5rem 1rem
+	Button border: 1px solid (border color above)
+	Button radius: 9999px
+o	Input wrapper
+	Border: 1px solid (border color above)
+	Radius: 1rem
+	Shadow: 0 4px 12px rgba(0, 0, 0, 0.08)
+o	Text input area
+	Padding: 1rem 1.25rem
+	Right padding reserve: 3.5rem
+o	“Send” control
+	Position offset: right 0.75rem; vertically centered (top: 50%; translateY(-50%))
+	Radius: 0.75rem
+o	Risk pop-up
+	Border: 3px solid rgba(249, 115, 22, 0.75)
+	Radius: 1rem
+	Shadow: 0 4px 12px rgba(0, 0, 0, 0.08)
+	Titlebar top radii: 0.875rem / 0.875rem
+	Body bottom radii: 0.875rem / 0.875rem
+3) Components
+•	Page title (browser tab): “GenAI Chatbot”
+•	Main chat window container (card-like surface with title bar, messages area, footer)
+•	Title bar
+o	Header text: “GenAI Chatbot”
+o	Helper text: “See the risks when GenAI helps with this task”
+•	Preset prompt button (1)
+o	“Summarise this review into a clinic letter”
+•	Message input (multi-line)
+o	Placeholder: “Type your message...”
+•	“Send” control (icon button)
+•	Chat transcript area
+o	Message rows (bot and user)
+o	Avatars (bot avatar uses background #90278e; user avatar uses primary accent)
+o	Chat bubbles (bot style vs user style)
+•	Typing indicator (bot avatar + 3 dots) shown during preset response delay
+•	Highlighted phrases/blocks inside specific bot responses (clickable text with highlight background rgba(248, 113, 113, 0.2))
+•	Risk pop-up (appears near clicked highlight)
+o	Header: “Spotting hidden risks”
+o	Close/dismiss control with label: “–”
+o	Risk title (varies)
+o	Risk body text (varies)
+4) States
+•	Initial state (page just loaded)
+o	Bot message “How can I help?” is visible.
+o	Preset prompt button is visible.
+o	Input shows placeholder “Type your message...”.
+o	“Send” control is disabled if the input is empty/whitespace.
+•	Composing (manual typing)
+o	Input text is not user-editable
+o	Input auto-resizes up to 200px.
+o	“Send” control becomes enabled if there is at least one non-whitespace character AND the bot is not in “typing” state.
+•	Preset selected (auto-fill stage)
+o	The clicked preset button is removed.
+o	The full preset prompt auto-fills into the input with a fade-in effect (400ms).
+•	Preset selected (auto-send staging)
+o	After 1400ms, the “send” control performs a bulge animation (300ms).
+o	After the bulge animation ends, the preset auto-sends without further user action.
+•	Typing state (preset only)
+o	Preset prompt buttons are hidden.
+o	“Send” control is disabled.
+o	Typing indicator appears at bottom of chat.
+o	After 2000ms, the bot response appears.
+o	After bot response appears, typing state ends. Input field becomes deactivated and will not accept custom text. Prompt button has disappeard.
+•	Risk pop-up open
+o	Risk pop-up visible with header “Spotting hidden risks”.
+o	Page scrolling and chat scrolling are disabled until dismissed.
+o	Clicking “–” or the associated highlighted red text closes the pop-up and restores scrolling.
+•	Risk pop-up toggle (shared group behaviour)
+o	If a risk pop-up is open for the “Hallucination and Bias” group, clicking the other highlight in that same group closes the pop-up associated with the previous highlight, and opens the pop-up associated with the newly clicked highlight.
+5) Interaction Rules
+•	WHEN the page loads, THEN the chat shows the bot message “How can I help?”, WITHIN immediate.
+•	WHEN the page loads, THEN the preset prompt button is visible, WITHIN immediate.
+•	WHEN the page loads, THEN the message input shows placeholder text “Type your message...”, WITHIN immediate.
+•	WHEN the message input is empty (or only whitespace), THEN the “send” control is disabled, WITHIN immediate.
+•	WHEN the user tries to type a custom message input, THEN the input box does not accept this custom input to be typed in, WITHIN immediate.
+•	WHEN the user presses Enter in the message input, THEN the message is sent WITHIN immediate.
+•	WHEN the user presses Shift+Enter in the message input, input is rejected and the input field does not change
+•	WHEN the user clicks the “send” control while it is enabled, THEN a user message bubble is added containing the trimmed input text, WITHIN immediate.
+•	WHEN the user clicks a preset prompt button, THEN that button is removed from the available preset buttons, WITHIN immediate.
+•	WHEN the user clicks a preset prompt button, THEN the full preset prompt text auto-fills into the message input with a fade-in effect (400ms), WITHIN immediate.
+•	WHEN a preset prompt is auto-filled into the input, THEN after 1400ms the “send” control performs a bulge animation (300ms), WITHIN 1400ms.
+•	WHEN the bulge animation ends (after 300ms), THEN the preset auto-sends (without further user action) and posts the preset as a user message bubble, WITHIN 300ms.
+•	WHEN a preset auto-sends, THEN the input clears and its height resets to “auto”, WITHIN immediate.
+•	WHEN a preset auto-sends, THEN the interface enters a “typing” state where:
+o	the preset prompt buttons are hidden, AND
+o	the “send” control is disabled, AND
+o	a typing indicator (bot avatar + 3 dots) appears at the bottom of the chat,
+WITHIN immediate.
+•	WHEN the interface is in the “typing” state, THEN after 2000ms the bot response appears as a bot message bubble, WITHIN 2000ms.
+•	WHEN the bot response for “Summarise this review into a clinic letter” appears, THEN these exact phrases are visually highlighted (background rgba(248, 113, 113, 0.2)) and behave like clickable text, with highlight activation staged in three phases (immediate, +800ms, +1600ms), WITHIN 1600ms:
+o	Samuel Dannam, 83 (IMMEDIATE)
+o	Notes identify that their blood pressure has been stable (+800ms)
+o	Given their age, the patient may benefit from additional community support to help manage day-to-day activities. (+800ms)
+o	suggest whether escalation might be needed (+1600ms)
+o	highlight which factors may be most relevant to monitor closely? (+1600ms)
+•	WHEN the user clicks a highlighted phrase/block, THEN a risk pop-up appears titled “Hidden Risk: ” and custom text (specified below) depending on highlighted phrase, AND scrolling is disabled (page + chat scroll area) until the pop-up is dismissed, WITHIN immediate.
+•	WHEN the risk pop-up appears, THEN its content is:
+o	IF the user clicked “Samuel Dannam, 83”, THEN:
+	Custom text: GDPR violation
+	Risk text: Remember how GenAI works? Since GenAI companies could store or pass on the data you enter, it is a GDPR violation to enter any information that would allow a third-party to link the patient to their medical data, including their name and age. Later in the module, you will explore how to do this safely and legally
+o	IF the user clicked “Notes identify that their blood pressure has been stable”, THEN:
+	Custom text: Hallucination and Bias (with “Hallucination” bold)
+	Risk text: See how GenAI has mistakenly summarised the patient's blood pressure as stable, even though the notes only mentioned a singular reading: 'BP normal today'? Remember that GenAI is always making predictions about the most helpful answer, so it might make up plausible-sounding details or mix up related concepts.
+o	IF the user clicked “Given their age, the patient may benefit from additional community support to help manage day-to-day activities.”, THEN:
+	Custom text: Hallucination and Bias (with “Bias” bold)
+	Risk text: See how GenAI has drifted here from summarising the notes closely, to making its own assumption about the patient because of their age? This may sound plausible, but it is a subtle form of age bias. It is inaccurate and not supported by the review notes.
+o	IF the user clicked “suggest whether escalation might be needed” OR “highlight which factors may be most relevant to monitor closely?”, THEN:
+	Custom text: Inappropriate Volunteering
+	Risk text: Both of these tasks go beyond simple drafting and summarising, they involve some clinical reasoning. This has risk to the patient if it goes wrong, and so such use cases of consumer GenAI are often illegal, but GenAI did not warn you about this! This is why you need to carefully stop and think about what tasks are appropriate to use GenAI for. We will give you tools to support you with this, later in the module.
+•	WHEN the risk pop-up is shown, THEN it positions itself above or below the clicked phrase depending on available space, WITHIN immediate.
+o	It uses a 16px gap between the clicked phrase and the pop-up.
+o	It keeps at least 16px clearance from the viewport edges.
+•	WHEN the risk pop-up is open, THEN clicking the “–” control closes the pop-up and restores scrolling, WITHIN immediate.
+•	WHEN the risk pop-up is open, clicking outside the pop-up does not close it. Only the “-“ control or clicking another highlighted section.
+•	WHEN the risk pop-up is open AND the user clicks a highlighted item in the same risk group as the currently open pop-up, THEN the pop-up switches to the newly clicked content WITHIN immediate.
+o	Shared risk group: the “Notes identify that their blood pressure has been stable” highlight and the “Given their age, the patient may benefit…” highlight.
+o	Shared risk group: the “suggest whether escalation might be needed” and the “highlight which factors may be most relevant to monitor closely?”
+•	No auto-scrolling ever
+6) Content and Copy (high fidelity)
+•	Page title (browser tab)
+o	GenAI Chatbot
+•	Header
+o	GenAI Chatbot
+•	Helper text/instructions
+o	See the risks when GenAI helps with this task
+•	Buttons/labels
+o	Summarise this review into a clinic letter
+•	Placeholders
+o	Type your message...
+•	Messages (in order, by journey)
+o	Initial bot message:
+	How can I help?
+o	Preset 1 user message (auto-filled then sent):
+	Can you help me draft a short clinic letter summarising a recent GP review?
+	It is for the patient record and onward sharing with community services, so it should be clear and neutral in tone. Here are my rough notes from the review:
+	Samuel Dannam, 83
+	– Elderly patient with CVD and CKD
+	– Walked to surgery (5 mins)
+	– BP normal today
+	– Routine long-term condition review
+	– No changes made
+	– Follow-up planned
+o	Preset 1 bot response:
+	Sure — here's a short, neutral clinic letter based on your notes
+	Clinic Letter
+	This letter summarises a recent GP review of an elderly patient, Samuel Dannam, 83, with multiple long-term conditions, including cardiovascular disease and chronic kidney disease. Overall, the notes suggest that the patient remains relatively mobile, as they could walk the few minutes to the appointment. Notes identify that their blood pressure has been stable, and that regular follow-ups appointments would be appropriate for the patient.
+	Given their age, the patient may benefit from additional community support to help manage day-to-day activities. No changes were made at this review, pending ongoing monitoring. If helpful, I can suggest whether escalation might be needed or I could highlight which factors may be most relevant to monitor closely?
+•	Risk pop-up copy (title + body)
+o	Spotting hidden risks
+o	Hallucination and Bias
+	See how GenAI has mistakenly summarised the patient's blood pressure as stable, even though the notes only mentioned a singular reading: 'BP normal today'? Remember that GenAI is always making predictions about the most helpful answer, so it might make up plausible-sounding details or mix up related concepts.
+o	Hallucination and Bias
+	 See how GenAI has drifted here from summarising the notes closely, to making its own assumption about the patient because of their age? This may sound plausible, but it is a subtle form of age bias. It is inaccurate and not supported by the review notes.
+o	Inappropriate Volunteering
+	Both of these tasks go beyond simple drafting and summarising, they involve some clinical reasoning. This has risk to the patient if it goes wrong, and so such use cases of consumer GenAI are often illegal, but GenAI did not warn you about this! This is why you need to carefully stop and think about what tasks are appropriate to use GenAI for. We will give you tools to support you with this, later in the module.
+o	GDPR 
+	Remember how GenAI works? Since GenAI companies could store or pass on the data you enter, it is a GDPR violation to enter any information that would allow a third-party to link the patient to their medical data, including their name and age. Later in the module, you will explore how to do this safely and legally
+
+7) Animations and Transitions (exact)
+•	New chat message entrance
+o	Element: the whole new message row (bubble + any avatar)
+o	Trigger: when a newly-added message first appears in the chat
+o	Duration/delay/easing: 0.5s, ease-out, no delay
+o	Keyframes: opacity 0 → 1 AND translateY(10px) → translateY(0)
+o	initial “How can I help?” message appears without animation.
+•	Prompt button entrance
+o	Element: the row of preset prompt buttons
+o	Trigger: when the preset prompt button is shown
+o	Duration/delay/easing: 0.5s, ease-out, no delay
+o	Keyframes: opacity 0 → 1 AND translateY(10px) → translateY(0)
+•	Typing indicator dots bounce
+o	Element: each dot scales in/out
+o	Trigger: while the typing indicator is visible
+o	Duration/delay/easing: 2000ms, ease-in-out, repeats infinitely
+o	Keyframes: scale(0) at 0% → scale(1) at 40% → scale(0) at 80% and 100%
+o	Note: no stagger timings are defined; dots animate in sync.
+•	Input auto-fill fade-in
+o	Element: the text opacity in the message input area
+o	Trigger: immediately after clicking a preset prompt button (as the input is populated)
+o	Duration/delay/easing: 400ms, ease-out, no delay
+o	Keyframes: opacity 0 → 1
+•	“Send” control bulge
+o	Element: the “send” control scales up then back down while staying vertically centered
+o	Trigger: 1400ms after clicking a preset prompt button
+o	Duration/delay/easing: 300ms, ease-out, no delay
+o	Keyframes: translateY(-50%) scale(1) → translateY(-50%) scale(1.15) → translateY(-50%) scale(1)
+•	“Pulse” animation style (defined but not obviously used by default)
+o	Element: opacity and vertical position
+o	Trigger: when an element is put into a pulsing state
+o	Duration/delay/easing: 2000ms, ease-out, infinite, alternate
+o	Keyframes: opacity 0 → 1 AND translateY(10px) → translateY(0), then alternates back
+•	Hover/state transitions
+o	Elements: preset prompt button, the “send” control, the risk pop-up minimize control
+o	Trigger: hover and disabled states
+o	Duration/delay/easing: all 200ms (easing not specified)
+•	Risk pop-up appearance/disappearance
+o	Element: the risk pop-up
+o	Trigger: opening/closing
+o	Duration/delay/easing: none (appears/disappears instantly)
+o	Keyframes: none
+8) Complete User Journeys
+1.	Preset click journey (include attachment if relevant)
+1.	Page starts with bot message “How can I help?” and preset button visible.
+2.	User clicks one preset button.
+3.	That preset button is removed immediately.
+4.	The full preset prompt auto-fills into the input with a fade-in effect (400ms).
+5.	After 1400ms, the “send” control bulges (300ms).
+6.	When the bulge ends, the preset auto-sends (user message bubble appears) and the input clears (height resets to “auto”).
+7.	The interface enters “typing” state immediately: preset buttons hidden, send disabled, typing indicator visible.
+8.	After 2000ms, the bot response appears as a bot message bubble.
+9.	The “typing” state ends when the bot response appears (typing indicator removed, prompt button remains invisible, input field remains deactivated).
+10.	 The specified phrases become highlighted in staged phases (immediate, +800ms, +1600ms). 
+2.	Attempt to enter custom message journey
+1.	User clicks input field and attempts to type custom message into the input
+2.	Input field does not activate at the users click and does not accept custom text
+3.	Nothing appears in input field unless user clicks the preset prompt
+
+9) Edge Cases
+•	Input field does not accept any user typing except enter (to send message) only the preset prompt
+•	Enter sends message
+•	Shift+Enter is rejected and does not change message or affect interaction
+•	While the risk pop-up is open, clicking between the two “Hallucination and Bias” highlights switches to the new pop-up content.
+•	The risk pop-up has no fade/slide animation; it appears/disappears instantly.
+•	When the risk pop-up is open, scrolling is disabled (page + chat scroll area) until dismissed, which can prevent reading other messages if the pop-up obscures them.
+•	The typing indicator dots animate with the same timing (no dot-to-dot staggering).
+•	Risk pop-up position is only calculated when it opens (no defined re-position on resize without re-opening).
+
+10) Accessibility Requirements (WCAG 2.2 AA)
+General interpretation rules
+Where this spec says “click”, it means “activate” (mouse/touch click OR keyboard activation) unless a rule explicitly says otherwise.
+Page-level requirements
+Page language is English.
+The page contains a single main region for the chat interface.
+“GenAI Chatbot” is exposed as the main page heading.
+All regions (title bar, messages area, footer) are identifiable to assistive technologies via standard page structure (not only visual styling).
+Chat transcript semantics (GenAI vs user)
+Each message row is programmatically identifiable as either “GenAI” or “You” (do not rely on avatar colour/position alone).
+The transcript is presented in a meaningful reading order that matches the visual order.
+Non-text visuals (icons/avatars)
+All decorative icons/avatars are ignored by assistive technologies.
+All meaningful icons have a text alternative that conveys their purpose.
+Interactive controls — semantics, names, keyboard, pointer
+All interactive controls are implemented as semantic controls (not generic containers), including:
+Preset prompt button
+“Send” control (icon button)
+All highlighted phrases/blocks in bot responses that open the risk pop-up
+Risk pop-up dismiss control (visual label “–”)
+All interactive controls have an accessible name.
+Icon-only controls:
+The “Send” control has the accessible name “Send”.
+The risk pop-up dismiss control has the accessible name “Close”.
+Keyboard access:
+All interactive controls are reachable using Tab/Shift+Tab.
+Enter and Space activate any button-like control.
+Any link-like control activates on Enter.
+Focus visibility:
+A visible focus indicator is shown for every focusable control (including highlighted phrases) whenever it receives keyboard focus.
+Pointer cancellation:
+No activation occurs on pointer down.
+Activation occurs on pointer up/click release (so the pointer can be moved away to cancel before release).
+Target size:
+All non-inline interactive controls have an interactive target area of at least 24 × 24 CSS pixels.
+Focus continuity when controls are removed/hidden/disabled
+If an activated control is removed/hidden (e.g., the preset prompt button), focus does not get lost.
+After preset activation (when the preset button is removed), focus moves to the message input if it is focusable; otherwise focus moves to the “Send” control.
+If any focused control becomes disabled/hidden/removed as part of a state change, focus moves immediately to the next logical available control.
+Message input — label, instructions, and rejected actions
+The message input has an associated label (it may be visually hidden) with the accessible name “Message”.
+The placeholder “Type your message...” is not the label.
+The message input is focusable and read-only (users can review text but cannot type custom messages).
+Provide an instruction associated with the message input (it may be visually hidden):
+“This simulation does not accept typed messages. Use the preset prompt button.”
+Enter / Shift+Enter behaviour:
+Pressing Enter sends the message ONLY when the “Send” control is enabled.
+Pressing Shift+Enter does not add a new line.
+When Shift+Enter is pressed, provide feedback (visual and announced) exactly once per key press:
+“Typing and new-lines are not available in this simulation.”
+When the user attempts to type other characters into the input, provide feedback (visual and announced) exactly once per focus session:
+“Typing are not available. Use the preset prompt button.”
+Timed auto-send (preset-only)
+The preset prompt auto-sends only after the user activates the preset prompt button (it must not auto-send due to focus changes or other input changes).
+The preset prompt button’s accessible name or description makes this clear:
+“Summarise this review into a clinic letter (sends once activated)”
+Status announcements (screen reader)
+Provide a single, shared status announcement mechanism for concise one-time announcements.
+Announcements occur once per meaningful event and must not repeat due to re-rendering large regions.
+Announce the following exactly once when they occur:
+When the preset prompt is inserted into the input: “Prompt added.”
+When the preset is sent (user message appears): “Message sent.”
+When the bot response appears: “Response received.”
+When the risk pop-up opens: “Hidden risk panel opened.”
+When the risk pop-up closes: “Hidden risk panel closed.”
+Do not announce the typing dots animation or any purely visual highlight/animation effects.
+Risk pop-up accessibility (dialog behaviour)
+The GDPR risk pop-up is treated as a dialog named GDPR – protecting personal data
+The <strong> Hallucination </strong> and Bias risk pop-up is treated as a dialog named <strong> Hallucination </strong> and Bias
+The Hallucination and <strong> Bias </strong> and risk pop-up is treated as a dialog named Hallucination and <strong> Bias </strong> 
+The Inappropriate Volunteering risk pop-up is treated as a dialog named Inappropriate Volunteering 
+On open:
+Focus moves into the pop-up (to the pop-up header or the first focusable control).
+While open:
+Keyboard focus remains within the pop-up (no tabbing to background content).
+Escape closes the pop-up.
+On close (via “–” or Escape):
+Focus returns to the highlighted phrase that opened the pop-up.
+Pop-up layout at 320px width / 400% zoom:
+The pop-up remains fully usable without horizontal scrolling.
+If the pop-up content is taller than the viewport, the pop-up body scrolls internally while the header and dismiss control remain visible.
+If the viewport size changes while the pop-up is open, the pop-up is re-positioned and/or resized so it remains usable and within the viewport.
+The pop-up must not obscure the focused element.
+Bold emphasis in pop-up titles
+Where the pop-up title uses bold emphasis (e.g., “Hallucination” bold or “Bias” bold), that emphasis is conveyed semantically (not only via visual font-weight).
+Use of colour / link purpose for highlighted phrases
+Highlighted phrases that open the risk pop-up are distinguishable as interactive using a non-colour cue in addition to the highlight background (e.g., underline).
+Each highlighted phrase’s accessible name matches its visible text.
+Each highlighted phrase also has an additional accessible description:
+“Opens spotting hidden risks.”
+Orientation
+The interaction works in both portrait and landscape orientations, with no forced orientation and no “rotate device” messaging.
+
+
