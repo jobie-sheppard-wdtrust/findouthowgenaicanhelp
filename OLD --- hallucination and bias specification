@@ -19,12 +19,18 @@ Icon button: Circular, 2rem x 2rem, subtle primary tint background (primary at 1
 
 Heading text: Medium bold (600 weight), default foreground color.
 
+Focused-component obscuration requirement: Components that receive keyboard or programmatic focus MUST NOT become fully hidden behind the fixed header.
+
+Implementation-neutral scroll accommodation: The layout MUST provide an offset/scroll accommodation behavior (for example, via target scroll margins, container scroll padding, or an equivalent mechanism) so focused targets near the top edge of either pane remain discoverable beneath the header.
+
 Panels and Layout Proportions
 Main container height: calc(100vh - 3.5rem) to fill remaining space beneath header.
 
 Left panel (GenAI): 50% width, right border, 0.5rem padding, vertical scroll if needed.
 
 Right panel (Email client): 50% width, 0.5rem padding, vertical scroll if needed.
+
+Keyboard traversal acceptance criteria near pane tops: Using keyboard-only traversal (Tab/Shift+Tab and default sequential focus order), when focus moves to the first focusable control near the top of the left or right pane, that focused control MUST remain at least partially visible below the fixed header.
 
 Left Panel: GenAI Chat UI
 Chat Header
