@@ -4,7 +4,7 @@
 This is a single-page, two-column chatbot simulation about keeping patient data anonymous when using GenAI tools. The user can “copy” specific Patient Data fields into a prompt box (only accepts patient data via copy buttons, no custom text entry), then press Send to submit that prompt as a user chat message. Depending on whether the simulation decides the prompt is missing required medical fields, the bot either types an error message or types a full referral message.
 
 After a successful referral response, a feedback modal appears. The feedback is “✅ Excellent work!” if none of the following were included in the sent prompt: Name, Age, 
-Address, Nationality, Ethnicity; otherwise it is “❌ Not quite right”. The user can then Retry (full reset) or Finish (close modal and show an alert message).
+Address, Nationality, Ethnicity; otherwise it is “❌ Not quite right”. The user can then Retry (full reset).
 
 2.	Layout and Structure
 
@@ -75,15 +75,14 @@ Activation: each Patient Data copy/remove button can be activated by mouse, touc
 “Copy Investigations” / “Remove Investigations”
 
 Send control (icon-only). Accessible label text: “Send prompt”.
-Feedback modal controls: “Retry” and “Finish”.
+Feedback modal controls: “Retry”.
 Informational components
 Header text: “Keeping personal data anonymous”.
 Tooltip text: “Learn to protect patient data when using GenAI tools. Only share medical details needed for care.”
 Helper text: “Use Copy/Remove controls (mouse, touch, Enter, or Space) to add or remove fields from your prompt”.
 Prompt box (focusable; text can be selected and copied; only accepts patient data via copy buttons; no custom text entry) showing the base prompt and any selected field lines. Placeholder text exists: “Your prompt will appear here...”.
 Chat transcript area, containing bot/user messages plus a bot “thinking” indicator and a typing effect.
-Feedback modal content (success/failure messages).
-Alert text shown after Finish: “Great job! Continue to the next section of the module.”
+
 4.	States
 
 Initial state
@@ -107,7 +106,7 @@ Shown in both error and success flows immediately after Send is clicked (with di
 Bot typing state
 Bot types either the error message or the referral message (typed over a computed duration).
 Feedback modal visible / hidden
-Appears after successful referral, then can be dismissed via Finish or reset via Retry.
+Appears after successful referral, then can be dismissed via Retry.
 Feedback result: success / failure
 Success vs failure determined by whether Name, Age, Address, Nationality, Ethnicity were included in the sent prompt.
 Post-success locked state
@@ -140,13 +139,12 @@ WHEN a control enters or exits the post-success locked state, THEN its visual lo
 WHEN activation is attempted on any locked Copy/Remove or Send control in the post-success state, THEN no selection/send state changes occur and a user-facing status hint is shown (for example: "Controls are locked after a successful send. Select Retry to edit and send again."), WITHIN immediate.
 WHEN the feedback modal appears, THEN keyboard focus moves into the modal (to the modal title, or if the title is not focusable then the first focusable control in the modal), WITHIN immediate.
 WHILE the feedback modal is visible, THEN focus is trapped within the modal (Tab/Shift+Tab cycles through focusable elements inside the modal only), WITHIN immediate.
-WHEN the feedback modal closes (via Retry or Finish), THEN focus returns to the element that had focus immediately before the modal appeared; if that element is no longer focusable, THEN focus moves to the header reset interaction button, WITHIN immediate.
+WHEN the feedback modal closes (via Retry), THEN focus returns to the element that had focus immediately before the modal appeared; if that element is no longer focusable, THEN focus moves to the header reset interaction button, WITHIN immediate.
 WHEN the referral is produced, THEN the feedback result is:
 ✅ success (“Excellent work!” / “You've protected the patient's identity”) IF none of these were included: Name, Age, Address, Nationality, Ethnicity
 ❌ failure (“Not quite right” / “The patient's data is at risk”) IF any of those were included
 WITHIN immediate once feedback is shown.
 WHEN feedback is visible, THEN clicking Retry resets the entire experience to the initial state (only the welcome chat message, no selected fields, base prompt restored, Send disabled), WITHIN immediate.
-WHEN feedback is visible, THEN clicking Finish closes the modal and renders an in-page confirmation message with status semantics (`role="status"` or `role="alert"`) and visible text “Great job! Continue to the next section of the module.”, WITHIN immediate.
 Note (cross-reference): Do not use browser `window.alert()`; use in-page status semantics per Section 10.
 WHEN any chat message is added OR the thinking/typing indicator updates, THEN the chat does not automatically scroll (no auto-scroll); the scroll position remains unchanged, WITHIN immediate.
 WHEN the chat transcript overflows, THEN always-visible, keyboard-accessible transcript navigation controls are present without requiring hover, and include at minimum: “Go to newest message” and “Back to key interaction controls” (returning focus/viewport to the prompt and Patient Data interaction region), WITHIN immediate.
@@ -170,7 +168,6 @@ Learn to protect patient data when using GenAI tools. Only share necessary medic
 Use Copy/Remove controls (mouse, touch, Enter, or Space) to add or remove fields from your prompt
 Buttons/labels
 Retry
-Finish
 Send prompt
 Reset this game to the beginning
 Your prompt will appear here...
@@ -244,8 +241,6 @@ Feedback modal text
 You've protected the patient's identity by not entering any PID into GenAI. Scroll down to the next section of the module when you’re ready.
 ❌ Not quite right
 The patient's data is at risk because you’ve entered PID into GenAI. Click retry when you’re ready to have another go, glance back at the guidance above on what counts as PID if you need help.
-In-page confirmation rendered after Finish (status semantics: `role="status"` or `role="alert"`)
-Great job! Continue to the next section of the module.
 7.	Animations and Transitions (exact)
 Reduced motion preference (global)
 IF the user has a system/browser preference for reduced motion, THEN:
@@ -319,7 +314,7 @@ User message posts, prompt box becomes blank, and a “thinking” indicator app
 Bot starts typing the referral, WITHIN 2000ms after thinking begins; typing time uses the defined typing duration rule.
 During new bot/user content arrival and typing updates, the transcript position remains fixed unless the user activates a transcript navigation control (no auto-scroll).
 Positive / success feedback modal appears, WITHIN 500ms after the referral finishes.
-User clicks Retry (full reset) or Finish (close modal and show alert), WITHIN immediate.
+User clicks Retry (full reset) WITHIN immediate.
 Included medical information and failure journey
 Starting state: chat shows “How can I help?”, prompt shows the base prompt, Send disabled.
 User clicks all of the necessary medical fields (HISTORY, MEDICATION, ALLERGIES, INVESTIGATIONS), but includes one or more of the patient data fields (NAME, AGE, ADDRESS, NATIONALITY, ETHNICITY)
@@ -331,13 +326,12 @@ User message posts, prompt box becomes blank, and a “thinking” indicator app
 Bot starts typing the referral, WITHIN 2000ms after thinking begins; typing time uses the defined typing duration rule.
 During new bot/user content arrival and typing updates, the transcript position remains fixed unless the user activates a transcript navigation control (no auto-scroll).
 Negative / failure feedback modal appears, WITHIN 500ms after the referral finishes.
-User clicks Retry (full reset) or Finish (close modal and show alert), WITHIN immediate.
+User clicks Retry (full reset) WITHIN immediate.
 9.	Edge Cases
 Rapid clicking multiple Patient Data copy/remove buttons: during the 600ms selection window, copy/remove buttons are non-interactive, so additional clicks have no effect until it completes.
 If the user repeatedly hits Send without including all required medical fields, the chat will accumulate multiple failed attempts (each adds a new user message + error response), while previously selected fields persist unless the user changes them.
 After a successful send, the prompt box is blank and stays blank until Retry; selected fields remain locked (cannot be changed), and Send stays disabled. Locked Copy/Remove and Send controls MUST expose disabled state programmatically (`disabled`/`aria-disabled`) and visually, MUST reject both pointer and keyboard activation, and the visual lock state MUST stay synchronized with accessibility-tree disabled state.
 If activation is attempted on locked controls after success, no state change occurs and the UI provides immediate user feedback via a status hint explaining controls are locked until Retry.
-Finish always allows progress (shows the same alert) even when the feedback state is failure.
 Transcript navigation controls (“Go to newest message” and “Back to key interaction controls”) remain visible and keyboard operable in all chat states, including while typing, after repeated failed sends, and in post-success locked state.
 
 
@@ -356,9 +350,9 @@ Landmarks, structure, and reading order
 • Referral output content headings (Patient details, Reason for referral, etc.) MUST be marked up as semantic headings with list content as real lists. (SRA-10)
 
 Interactive controls and target size
-• All interactive controls (Reset, info trigger, Copy/Remove controls, Send, Retry, Finish) MUST use native `<button>` elements or equivalent semantics with role, keyboard operation, and disabled-state support. (KFP-03, KFP-04, SRA-03, SRA-04)
+• All interactive controls (Reset, info trigger, Copy/Remove controls, Send, Retry) MUST use native `<button>` elements or equivalent semantics with role, keyboard operation, and disabled-state support. (KFP-03, KFP-04, SRA-03, SRA-04)
 • Activation for all buttons MUST support keyboard Enter and Space in addition to pointer/touch. (KFP-03, KFP-04)
-• Pointer activation for Reset, Send, all Copy/Remove controls, Retry, and Finish MUST complete on pointer up-event (not irreversibly on pointer down-event alone), unless an equivalent abort/reversal behavior is provided. Accidental pointer down-events MUST be cancellable by moving off target before release. (KFP-12)
+• Pointer activation for Reset, Send, all Copy/Remove controls, Retry, MUST complete on pointer up-event (not irreversibly on pointer down-event alone), unless an equivalent abort/reversal behavior is provided. Accidental pointer down-events MUST be cancellable by moving off target before release. (KFP-12)
 • Minimum pointer target size for all controls MUST be at least 24x24 CSS px; if any visible glyph is smaller, add internal padding to meet this minimum. (KFP-10)
 • Copy/Remove selected state MUST use at least one non-colour visual cue in addition to colour (for example icon shape change plus explicit text state). (CE-10)
 • Each Patient Data Copy/Remove toggle MUST expose selected/not-selected state programmatically (for example a toggle button with `aria-pressed="true"/"false"`, or an equivalent role/state model that communicates the same binary selected state to assistive technology). (SRA-03, SRA-04)
@@ -374,11 +368,10 @@ Focus visibility and focus management
 • Reset action MUST place focus on the primary heading or first main interactive control after reset. (KFP-13)
 
 Modal, tooltip, status messages, and live regions
-• Feedback modal MUST use `role="dialog"`, `aria-modal="true"`, and programmatic name/description linked to visible title/body text. Escape key MUST close only if an equivalent visible close path exists (Retry/Finish remain required). (KFP-01, SRA-04)
+• Feedback modal MUST use `role="dialog"`, `aria-modal="true"`, and programmatic name/description linked to visible title/body text. Escape key MUST close only if an equivalent visible close path exists (Retry remain required). (KFP-01, SRA-04)
 • Tooltip trigger accessible name MUST describe its purpose (for example “About this exercise”). Tooltip content MUST be associated via `aria-describedby`; tooltip MUST be dismissible and keyboard reachable without trapping focus. (KFP-14, SRA-11)
 • Thinking indicator MUST expose an accessible status text (for example “Assistant is generating a response”). Decorative dots MUST be hidden from assistive tech. (SRA-02, SRA-14)
 • Typing updates and completion events MUST be announced via polite live region; final error/success/system notices that require awareness MUST use `role="status"` or `role="alert"` as appropriate. (SRA-02, SRA-13, SRA-15, SRA-17, KFP-06)
-• Finish confirmation text MUST be rendered as in-page status message (`role="status"` or `role="alert"`), not browser `window.alert()`. After it appears, focus MUST move to that message or next logical section link. (KFP-06, SRA-17)
 
 Prompt box semantics and instructions
 • Prompt box MUST have a persistent visible label (for example “Prompt to send”) programmatically associated to the control. Placeholder text is optional and MUST NOT be the only label. (CE-06, SRA-06)
