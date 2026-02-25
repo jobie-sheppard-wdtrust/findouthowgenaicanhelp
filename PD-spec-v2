@@ -6,15 +6,17 @@ This is a single-page, two-column chatbot simulation about keeping patient data 
 After a successful referral response, a feedback modal appears. The feedback is “✅ Excellent work!” if none of the following were included in the sent prompt: Name, Age, 
 Address, Nationality, Ethnicity; otherwise it is “❌ Not quite right”. The user can then Retry (full reset) or Finish (close modal and show an alert message).
 
-2.	Screen Map and Layout
+2.	Layout and Structure
 
 Regions and scroll areas
 Viewport-height app: total height 100vh, vertical stack.
 Header: fixed height by content; does not shrink.
-Main area: fills remaining height; split into 2 columns (50% / 50%); overflow-hidden overall.
+Main area: fills remaining height and splits into 2 columns (50% / 50%). The main/page container MUST allow vertical scrolling (overflow-y: auto/visible) so all content remains reachable at 320px width and 200% zoom.
+Horizontal clipping is allowed only on explicitly decorative wrappers (if present) using overflow-x: hidden; interactive/content containers (main area, chat pane, patient data pane, prompt region) MUST NOT clip vertically.
 Responsive reflow: at narrow viewport widths, the 2 columns stack vertically (chat / GenAI bot pane above; Patient Data pane below). In this stacked layout, both panes remain vertically scrollable.
 Left column: chat messages list scrolls vertically.
 Right column: Patient Data list scrolls vertically.
+Conformance note: See Section 10 “Motion, timing, zoom/reflow, and obscuration” for normative reflow/resize behaviour requirements.
 
 Major components and where they appear
 Header: page heading text plus a button to reset the interaction
