@@ -1,7 +1,7 @@
 
 1.	Interaction Overview
 
-This is a single-page, two-column chatbot simulation about keeping patient data anonymous when using GenAI tools. The user can “copy” specific Patient Data fields into a prompt box (only accepts patient data via copy buttons, no custom text entry), then press Send to submit that prompt as a user chat message. Depending on whether the simulation decides the prompt is missing required medical fields, the bot either types an error message or types a full referral message.
+This is a single-page, two-column chatbot simulation about keeping patient data safe when using GenAI tools. The user can “copy” specific Patient Data fields into a prompt box (only accepts patient data via copy buttons, no custom text entry), then press Send to submit that prompt as a user chat message. Depending on whether the simulation decides the prompt is missing required medical fields, the bot either types an error message or types a full referral message.
 
 After a successful referral response, a feedback modal appears. The feedback is “✅ Excellent work!” if none of the following were included in the sent prompt: Name, Age, 
 Address, Nationality, Ethnicity; otherwise it is “❌ Not quite right”. The user can then Retry (full reset).
@@ -29,10 +29,9 @@ Right column: a list of Patient Data rows, each with a copy/remove button used t
 Key size/constraint rules
 Chat bubble max width: 85%.
 Prompt box min height: 84px; max height: 220px. Internal scroll, keyboard scrolling, and visible overflow indication are mandatory when content exceeds max height; see Section 10 for detailed acceptance criteria.
-Tooltip content width: 220px; offset below icon: 100% + 8px; border radius: 0.5rem; padding: 0.5rem 0.75rem; font size: 0.875rem.
 Header blur: 12px.
 Modal overlay padding: 1rem; modal content max width: 32rem.
-Z-order: tooltip content layer value 20; feedback overlay above everything (layer value 50).
+Z-order: feedback overlay (modal layer) MUST remain above all non-modal UI layers.
 
 3. Typography and colour defaults 
 Base font family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, sans-serif.
@@ -55,7 +54,7 @@ Success green: 142 76% 36% (hex #16a34a)
 Danger red: 0 84% 60% (hex #ef4444)
 Shadow: subtle: 0 1px 2px rgba(0,0,0,0.05); elevated: 0 4px 12px rgba(0,0,0,0.1)
 Radius and spacing defaults
-Radius: base 0.75rem; patient row corner radius 0.75rem minus 2px; “small” radius variant 0.75rem minus 4px; prompt box radius 1rem; send button radius 0.75rem; tooltip radius 0.5rem; modal card radius 1rem.
+Radius: base 0.75rem; patient row corner radius 0.75rem minus 2px; “small” radius variant 0.75rem minus 4px; prompt box radius 1rem; send button radius 0.75rem; modal card radius 1rem.
 Common paddings/gaps used: 1.5rem, 1rem, 0.75rem, 0.5rem, 0.375rem, 0.25rem.
 3.	Components
 
@@ -77,8 +76,8 @@ Activation: each Patient Data copy/remove button can be activated by mouse, touc
 Send control (icon-only). Accessible label text: “Send prompt”.
 Feedback modal controls: “Retry”.
 Informational components
-Header text: “Keeping personal data anonymous”.
-Tooltip text: “Learn to protect patient data when using GenAI tools. Only share medical details needed for care.”
+Header text: “Keeping patient data safe”.
+Subheader text: “Always anonymise patient medical data in consumer GenAI tools”.
 Helper text: “Use Copy/Remove controls (mouse, touch, Enter, or Space) to add or remove fields from your prompt”.
 Prompt box (focusable; text can be selected and copied; only accepts patient data via copy buttons; no custom text entry) showing the base prompt and any selected field lines. Placeholder text exists: “Your prompt will appear here...”.
 Chat transcript area, containing bot/user messages plus a bot “thinking” indicator and a typing effect.
@@ -160,8 +159,16 @@ Per-character interval = total typing duration ÷ number of characters
 6.	Content and Copy (high fidelity)
 
 Header
-Page title: HITL – Keeping personal data anonymous
-Header text: Keeping personal data anonymous
+Canonical Copy (single source of truth)
+Page title: HITL – Keeping patient data safe
+H1: Keeping patient data safe
+Subheader (visible directly beneath H1): Always anonymise patient medical data in consumer GenAI tools
+Canonical string rule: all string-based checks for page title/H1/subheader MUST match this block exactly.
+
+Header
+Page title: HITL – Keeping patient data safe
+Header text (H1): Keeping patient data safe
+Subheader text: Always anonymise patient medical data in consumer GenAI tools
 Helper text / instructions:
 Learn to protect patient data when using GenAI tools. Only share necessary medical details needed, leave out PID
 
@@ -340,17 +347,20 @@ Transcript navigation controls (“Go to newest message” and “Back to key in
 
 Document and language
 • The root HTML element MUST set `lang="en"`. (CE-09)
-• The page `<title>` MUST be: “HITL – Keeping personal data anonymous”. (CE-05)
+• The page `<title>` MUST be: “HITL – Keeping patient data safe”. (CE-05)
+• Page title, H1, and subheader checks MUST reference the Section 6 Canonical Copy block as the single source of truth. (CE-05, SRA-07)
 
 Landmarks, structure, and reading order
 • The page MUST expose landmarks in this order in the DOM: skip link target region, header/banner, main, chat section, patient data section. Visual CSS re-ordering MUST NOT change reading/tab order. (KFP-15, CE-07, SRA-05, SRA-16)
 • A visible-on-focus skip link MUST be the first focusable element and move focus to the start of main interaction content. (KFP-09)
-• Header text “Keeping personal data anonymous” MUST be the page H1. (SRA-07)
+• Header text “Keeping patient data safe” MUST be the page H1. (SRA-07)
+• A visible subheader directly beneath the H1 MUST read: “Always anonymise patient medical data in consumer GenAI tools”. (SRA-07)
+• Traceability integrity check: after retiring contextual-help conformance items, no retired conformance IDs may remain dangling in this spec’s normative references or control mappings. (TI-01)
 • Chat transcript MUST be a programmatic list/log of messages; each message MUST include an exposed sender label (“User” or “Assistant”) that is available to assistive technology. (SRA-01, SRA-12)
 • Referral output content headings (Patient details, Reason for referral, etc.) MUST be marked up as semantic headings with list content as real lists. (SRA-10)
 
 Interactive controls and target size
-• All interactive controls (Reset, info trigger, Copy/Remove controls, Send, Retry) MUST use native `<button>` elements or equivalent semantics with role, keyboard operation, and disabled-state support. (KFP-03, KFP-04, SRA-03, SRA-04)
+• All interactive controls (Reset, Copy/Remove controls, Send, Retry) MUST use native `<button>` elements or equivalent semantics with role, keyboard operation, and disabled-state support. (KFP-03, KFP-04, SRA-03, SRA-04)
 • Activation for all buttons MUST support keyboard Enter and Space in addition to pointer/touch. (KFP-03, KFP-04)
 • Pointer activation for Reset, Send, all Copy/Remove controls, Retry, MUST complete on pointer up-event (not irreversibly on pointer down-event alone), unless an equivalent abort/reversal behavior is provided. Accidental pointer down-events MUST be cancellable by moving off target before release. (KFP-12)
 • Minimum pointer target size for all controls MUST be at least 24x24 CSS px; if any visible glyph is smaller, add internal padding to meet this minimum. (KFP-10)
@@ -367,9 +377,8 @@ Focus visibility and focus management
 • On modal open, focus MUST move to the modal title (or first focusable control). On close, focus MUST return to the control that opened the modal, unless removed, in which case focus goes to the nearest logical next control in main flow. (KFP-01, KFP-06, KFP-11)
 • Reset action MUST place focus on the primary heading or first main interactive control after reset. (KFP-13)
 
-Modal, tooltip, status messages, and live regions
+Modal, status messages, and live regions
 • Feedback modal MUST use `role="dialog"`, `aria-modal="true"`, and programmatic name/description linked to visible title/body text. Escape key MUST close only if an equivalent visible close path exists (Retry remain required). (KFP-01, SRA-04)
-• Tooltip trigger accessible name MUST describe its purpose (for example “About this exercise”). Tooltip content MUST be associated via `aria-describedby`; tooltip MUST be dismissible and keyboard reachable without trapping focus. (KFP-14, SRA-11)
 • Thinking indicator MUST expose an accessible status text (for example “Assistant is generating a response”). Decorative dots MUST be hidden from assistive tech. (SRA-02, SRA-14)
 • Typing updates and completion events MUST be announced via polite live region; final error/success/system notices that require awareness MUST use `role="status"` or `role="alert"` as appropriate. (SRA-02, SRA-13, SRA-15, SRA-17, KFP-06)
 
@@ -380,7 +389,9 @@ Prompt box semantics and instructions
 
 Selection lock, disabled states, and order
 • During the 600ms lock window, Copy/Remove controls MUST expose disabled state programmatically (`disabled` or `aria-disabled="true"`) and visually. Attempts to activate disabled controls MUST provide no state change. (KFP-07)
-• Visual layering (z-index) MUST NOT determine reading order; DOM order controls sequential navigation order. Tooltip and modal containers may be portaled visually but keyboard order must remain logical. (KFP-08)
+• Sequential keyboard navigation order (Tab / Shift+Tab) MUST remain unchanged except for removal of the retired contextual-help stop; remaining order across Reset, Copy/Remove controls, Send, and Retry MUST stay consistent with DOM order. (KFP-15)
+• Visual layering (z-index) MUST NOT determine reading order; DOM order controls sequential navigation order. Modal containers may be portaled visually but keyboard order must remain logical. (KFP-08)
+• Modal overlay/card layering MUST remain above all non-modal UI layers at all times. (KFP-08)
 
 Error handling and redundant entry
 • On failed send (missing required medical fields), previously selected fields and current prompt content MUST remain intact by default unless the user changes selections; the system MUST indicate which required medical fields are still missing using explicit field names (or equivalent specific identifiers). Users MUST NOT be forced to re-enter unchanged selections. (CE-01, CE-02, CE-11)
