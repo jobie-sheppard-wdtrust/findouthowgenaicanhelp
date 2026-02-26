@@ -345,7 +345,9 @@ All interactive controls are reachable using Tab/Shift+Tab.
 Enter and Space activate any button-like control.
 Any link-like control activates on Enter.
 Focus visibility:
-A visible focus indicator is shown for every focusable control (including highlighted phrases) whenever it receives keyboard focus.
+All keyboard-focusable interactive elements MUST show a focus indicator that is at least 2 CSS pixels thick (or equivalent indicator area) and has a contrast ratio of at least 3:1 against adjacent colours.
+The focus indicator MUST remain visible at 320px width and at 400% zoom, including in both main and feedback views.
+The focus indicator MUST NOT be fully obscured by the fixed header, overlays, or adjacent UI layers while focused.
 Pointer cancellation:
 No activation occurs on pointer down.
 Activation occurs on pointer up/click release (so the pointer can be moved away to cancel before release).
