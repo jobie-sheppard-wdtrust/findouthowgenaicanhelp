@@ -1,0 +1,83 @@
+HB Spec v2 — Patch Sheet (planning stage, no spec edits yet)
+
+Source files used:
+- HB-risks
+- HB-spec-v2
+
+Purpose:
+Define exactly what to change in HB-spec-v2 to mitigate all currently open risks (R-017, R-022, N-01) while avoiding internal inconsistencies.
+
+User decisions now fixed:
+- R-022: no skip/pause/resume controls; animation-duration policy will be implemented separately.
+- N-01: Option A selected (strict simple measurable focus rule).
+
+---
+
+Final patch list (exact change instructions for HB-spec-v2)
+
+A) R-017 — modal dismiss must be neutral cancel (not implicit Continue)
+
+1) Replace this behaviour bullet in Section 5 (interaction behaviour):
+Current text:
+- “WHEN the user clicks outside the modal card (on the dark overlay) OR presses Escape, THEN the block is processed as a “Check content” action (highlight → insert → correction), WITHIN immediate after dismissal.”
+
+Replace with:
+- “WHEN the user clicks outside the modal card (on the dark overlay) OR presses Escape, THEN the modal closes as a cancel action, WITHIN immediate.”
+- “WHEN the per-block Feedback modal is closed by cancel (overlay click or Escape), THEN no insert/highlight/correction starts, and the draft block remains selectable and unchanged, WITHIN immediate after dismissal.”
+
+2) Keep the existing Continue rule as-is (do not change):
+- “WHEN the user clicks “Continue”, THEN the modal closes and the block is processed as a “Check content” action …”
+
+3) Update Section 8 “Complete User Journeys” summary bullet:
+Current text:
+- “The per-block feedback modal can be dismissed by clicking outside the card; this still triggers the correction flow (same as “Continue”).”
+
+Replace with:
+- “The per-block feedback modal can be dismissed by clicking outside the card or pressing Escape; this is a cancel action and does not trigger correction.”
+
+4) Strengthen Section 10 “Per-block Feedback modal (keyboard access, focus management)” by adding:
+- “If the modal closes via cancel (Escape or overlay click), focus returns to the draft block that opened the modal. If unavailable, focus moves to the next logical available control, WITHIN immediate.”
+
+---
+
+B) R-022 — animation behaviour in standard-motion mode (no skip controls)
+
+1) In Section 10 “Reduced motion and long animations”, keep the existing reduced-motion requirement.
+
+2) No new controls added:
+- Do not introduce Skip/Pause/Resume UI requirements in HB-spec-v2.
+
+3) Implementation note:
+- Any explicit animation-duration cap wording will be added separately during implementation, not in this patch sheet.
+
+---
+
+C) N-01 — measurable focus appearance (Option A)
+
+1) In Section 10 under “Visible focus (including hover-linked glow parity)”, replace:
+Current text:
+- “All focusable interactive elements have a clearly visible focus indicator.”
+
+Replace with:
+- “All keyboard-focusable interactive elements MUST show a focus indicator that is at least 2 CSS pixels thick (or equivalent indicator area) and has a contrast ratio of at least 3:1 against adjacent colours.”
+- “The focus indicator MUST remain visible at 320px width and at 400% zoom, including in both main and feedback views.”
+- “The focus indicator MUST NOT be fully obscured by the fixed header, overlays, or adjacent UI layers while focused.”
+
+2) Keep the existing hover/focus parity bullet unchanged.
+
+3) Keep existing “Focus not obscured” bullets; do not remove them (they complement the measurable focus rule).
+
+---
+
+Cross-check checklist before editing HB-spec-v2
+
+1) Confirm no remaining line says overlay/Escape dismissal triggers correction.
+2) Confirm correction timing language remains internally consistent after implementation-specific timing updates.
+3) Confirm no conflicts between new measurable focus rule and existing focus-not-obscured/reflow requirements.
+4) Confirm Section 8 journey narrative matches Section 5 and Section 10 behaviour.
+
+---
+
+Status
+- This patch sheet is complete and decision-closed for R-017, R-022, and N-01.
+- Next step (separate change): apply these exact edits to HB-spec-v2.
