@@ -905,3 +905,124 @@ Auto-scroll behaviour follows the `120px` rule described in section 6.1.
 * Manual sends only produce a preset response when the entire input exactly matches a preset prompt string (case-insensitive compare). Any deviations (extra spaces, punctuation changes, different line breaks) will trigger the fixed “preset prompts only” response.
 
 ---
+
+
+## 12) WCAG Risk-Mitigation Requirements (normative)
+
+These requirements are normative and MUST be implemented in addition to all behaviours above.
+
+### 12.1 Programmatic names, roles, labels, and language
+
+* Send button (icon-only): the Send button MUST expose the programmatic accessible name `Send`.
+* The send icon is decorative for assistive technologies and MUST NOT be exposed as the control name.
+* The textarea MUST have a programmatic label (not placeholder-only), with accessible name `Message`.
+* Page title text area (browser/tab title): `GenAI Chatbot`.
+* The root `html` element MUST declare the default language using valid BCP 47; default for this interaction is English (`lang="en"`) unless intentionally localized.
+* Preset prompt button accessible names MUST exactly match visible button labels character-for-character (including punctuation and apostrophes), with no extra words.
+
+### 12.2 Landmarks, structure, and transcript semantics
+
+* Header semantics:
+  * The header region is exposed as a header landmark.
+  * `GenAI Chatbot` is exposed as heading level 1.
+  * `See some examples of the help it can provide` is exposed as descriptive text associated with the header (not as a heading).
+* Main transcript semantics:
+  * The transcript MUST be exposed as a single live-updating `log` region.
+  * Each message MUST include programmatically determinable author text (e.g., `AI Assistant` / `You`; equivalently `Bot` / `You` is acceptable if applied consistently).
+  * Bot and typing-indicator avatars are decorative and hidden from assistive technologies.
+* Message formatting semantics:
+  * Bold text is exposed as emphasis.
+  * Bulleted content is exposed as list/listitem semantics.
+  * Hard line breaks and paragraph boundaries are exposed semantically (not visual-only).
+* URL behaviour:
+  * URLs displayed in message content are rendered as operable links reachable by keyboard Tab and activatable with Enter.
+  * Link accessible names include visible link text; visible message text and URL string remain unchanged.
+  * Links MUST have visible focus indicators and remain fully visible (including indicator) when focused.
+
+### 12.3 Status messages and controlled announcements
+
+* New bot message while user is away from bottom:
+  * If a new bot message is added while the user is 10px or more from bottom, announce once: `New message received. Scroll down to view.`
+  * Do not move focus and do not force-scroll.
+* Typing indicator:
+  * On appearance, announce once: `Assistant is typing`.
+  * Dot animation MUST NOT produce repeated/incremental announcements.
+* Typed bot message:
+  * Character-by-character visual typing MUST NOT trigger repeated partial announcements.
+  * Announce each bot message once, only when complete.
+* Input and prompts state changes:
+  * When textarea becomes disabled, expose disabled state and announce once: `Input disabled while the assistant responds`.
+  * When textarea becomes enabled, expose enabled state and announce once: `Input enabled`.
+  * Prompt-row hide/show and remaining prompt availability changes MUST be programmatically determinable.
+  * No repeated announcements for the same state transition.
+* Attachments:
+  * Attachment preview accessible text format: `Attachment: <filename>`.
+  * On preview shown, announce once: `Attachment added: <filename>`.
+  * On preview cleared/hidden (if previously present), announce once: `Attachment removed`.
+  * Attachment pill in transcript uses accessible text `Attachment: <filename>` and is programmatically associated with its message.
+* Error response (section 7.6) is programmatically identifiable as input error and its correction guidance is announced once.
+
+### 12.4 Keyboard operation and focus management
+
+* Preset prompts are fully keyboard-operable and in normal Tab order; Enter/Space triggers same behaviour and timings as click.
+* Pointer cancellation for preset activation:
+  * Activation occurs on pointer-up, not pointer-down.
+  * Press-down then release outside the same prompt does not activate.
+* Auto-send cancellation before send occurs:
+  * Escape cancels pending auto-send.
+  * Any textarea content change cancels pending auto-send.
+  * On cancellation, send button immediately returns to non-bulging state and manual send remains available.
+* Textarea key handling:
+  * Tab and Shift+Tab move to next/previous focusable element in standard order.
+  * Enter-send MUST NOT trap focus.
+* Focus order (Tab sequence):
+  1. Main transcript scroll area.
+  2. Visible preset prompt buttons (left-to-right).
+  3. Textarea.
+  4. Send button.
+* Focus movement on dynamic UI change:
+  * If a preset button disappears while focused, move focus to textarea.
+  * If prompt row hides while focus is inside it, move focus to textarea if enabled, else to main transcript scroll area.
+  * When prompt row reappears, do not auto-move focus into it.
+  * If a focused element becomes hidden/disabled when a message is sent (including prompt buttons/row, textarea, send), move focus to main transcript scroll area.
+* Main transcript scroll area:
+  * Must be keyboard-focusable as a single focus stop.
+  * Supports keyboard scrolling (Arrow Up/Down, Page Up/Down, Home/End, Space).
+* Focus visibility and appearance:
+  * Every focusable control (prompt buttons, textarea, send button, links) MUST show visible focus indicator on keyboard focus.
+  * Indicator remains visible until focus moves.
+  * Indicator thickness at least 2 CSS px and contrast at least 3:1 against adjacent colours.
+  * Indicator area is at least the equivalent of a 2px perimeter of the focused component and is never fully obscured or removed.
+* Focus not obscured:
+  * When focus moves to or remains on elements in main scroll area, scrolling/layout updates MUST keep focused element and indicator fully visible and not covered by fixed header/footer.
+  * Maintain at least 8px visible gap from obscuring edges where applicable.
+
+### 12.5 Visual contrast, target size, and non-colour cues
+
+* Prompt button minimum target area: at least 24px × 24px per button, non-overlapping, fully available.
+* Non-text contrast (AA): interactive boundaries/state indicators for prompt buttons, textarea/input wrapper, send button, links, and attachment pills must maintain >= 3:1 contrast in default/hover/focus/disabled (where perceivable) states.
+* Inline links are distinguishable without colour alone (e.g., persistent underline) in default and focus states.
+
+### 12.6 Reflow, resize, spacing, and orientation robustness
+
+* Orientation support: both portrait and landscape; no orientation lock.
+* Reflow at 320 CSS px width (400% zoom equivalent):
+  * No horizontal scrolling required to read content or use controls.
+  * `100vh` and fixed heights are visual defaults only; container/header/footer/textarea must be allowed to grow when needed to avoid clipping/overlap/loss of functionality.
+  * Avoid simultaneous required dual vertical scroll regions; provide a single usable vertical scrolling experience.
+* Responsive width constraints:
+  * Max-width values (`48rem`, `32rem`) are upper bounds only and must shrink to viewport at narrow widths.
+  * Prompt row wraps to multiple lines as needed; no off-screen clipping.
+  * Long filenames in preview/pills wrap or break within available width.
+* Global long-string wrapping: long unbroken strings (URLs, words, filenames) wrap/break across bubbles, attachments, and labels to prevent horizontal overflow.
+* Text resize to 200%: all content and controls remain available without clipping/truncation/overlap that hides content or functionality loss; listed sizes/paddings are defaults at 100%.
+* Text spacing overrides support:
+  * Line height 1.5×, paragraph spacing 2×, letter spacing 0.12×, word spacing 0.16×.
+  * Under these overrides, all content/controls remain available with no clipping/truncation/overlap or loss of functionality.
+  * Text containers (including fixed header/footer regions) allow wrapping and vertical expansion.
+
+### 12.7 Persistent visible input instruction
+
+* Provide a persistent visible instruction associated with message input, present before submission and available whenever textarea is enabled.
+* Required instruction text (exact):
+  * `This simulation only responds to the preset prompts shown on screen. Click a preset prompt, or paste a full preset prompt exactly (case-insensitive).`
