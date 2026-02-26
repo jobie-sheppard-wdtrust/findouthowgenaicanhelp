@@ -1,0 +1,907 @@
+---
+
+## 1) Interaction Overview (1–2 paragraphs)
+
+A single-page “GenAI Chatbot” simulation showing how a chatbot can help with 3 example tasks. The user can either click preset prompt buttons (which auto-fills, briefly animates, then auto-sends) or type and send their own message; the simulation replies only when the typed message exactly matches a preset prompt, otherwise it shows a fixed “preset prompts only” notice.
+
+Primary user journey (one sentence): user chooses a preset → sees the prompt appear in the input → it sends automatically → the bot shows a typing indicator → the bot types out the full preset response.
+
+---
+
+2. Screen Map and Layout
+   A. Root container (entire app)
+
+Region name: App container
+
+Location: Full page body; contains header, main, footer (stacked vertically).
+
+Dimensions/constraints (user-visible, exact values):
+
+* The app fills the full viewport height.
+
+* The layout is vertically stacked: header (top), chat area (middle), footer (bottom).
+
+* The chat area is the only region that scrolls and it takes the remaining vertical space.
+
+Base page styling (exact values):
+
+* Font family: `-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif`
+
+* Line height: `1.5`
+
+* Page background: `hsl(220 20% 97%)`
+
+* Default text colour: `hsl(220 20% 10%)`
+
+Backgrounds/borders/shadows/rounding (user-visible):
+
+* Header has a thin bottom divider line and a semi-transparent white background with a subtle blur effect.
+* Footer background fades upward (a gradient) so the bottom area looks more solid and the upper edge looks more transparent.
+* The input/composer area appears as a white “card” with a border, rounded corners, and a soft drop shadow.
+* Message bubbles have rounded corners and a soft shadow.
+
+Typography (user-visible):
+
+* Header title appears slightly larger and bold.
+* Header subtitle appears smaller and muted (lower contrast) than the title.
+* Chat bubble text font-size is exactly 15px (0.9375rem)
+
+
+B. Header
+
+Region name: Header
+
+Location: Top of container.
+
+Content (exact text):
+
+GenAI Chatbot
+
+See some examples of the help it can provide
+
+Styling/dimensions (user-visible):
+
+* Header padding: \1rem 1.5rem` (top/bottom, left/right), plus a thin bottom divider line.`
+* Content inside the header is centered and constrained to \max-width: 48rem`; header background still spans full viewport width on large displays.`
+* Title is bold and slightly larger than body text; subtitle is smaller and muted.
+
+C. Main chat area
+
+Region name: Main chat area
+
+Location: Middle section; contains message list.
+
+Scroll behaviour:
+
+The main chat area is the only scrolling region in the app (the header and footer remain visible).
+
+Overflow/scroll rules (user-visible):
+
+* Main chat area padding: \1.5rem 1rem` (top/bottom, left/right). * Message list content is centered and constrained to `max-width: 48rem`.`
+* The main chat area scrolls vertically when content exceeds the viewport.
+* Scroll-to-bottom uses CSS \scroll-behavior: smooth` on the main chat scroller. Auto-scroll-to-bottom happens only when the user is already near the bottom: if `distanceFromBottom < 120px` then, after any new message/typing-indicator render, the app scrolls to `targetTop = scrollHeight` on the next animation frame; otherwise it does not auto-scroll.`
+
+D. Footer (prompts + input composer)
+
+Region name: Footer
+
+Location: Bottom section.
+
+Styling/dimensions (user-visible):
+* Footer padding: \0.5rem 1rem 1.5rem` (top, left/right, bottom). * Footer inner content is centered and constrained to `max-width: 48rem` (footer background still spans full viewport width).`
+
+Sub-regions:
+
+Preset prompts row/container (3 buttons initially).
+
+Input wrapper:
+
+Attachment preview region
+
+Multiline text input (textarea)
+
+Send button (paper-plane icon)
+
+3. UI Components Inventory
+   3.1 Preset prompt buttons
+
+Type: clickable buttons (3 initial).
+
+Labels (exact):
+
+Research NICE Sepsis recommendations
+
+Draft a response to a patient complaint
+
+What are arguments for and against my colleague's discharge plan?
+
+Visibility rules:
+
+Entire prompts area is hidden when:
+
+no unused prompts remain, OR
+
+bot typing indicator is active, OR
+
+prompts are locked during a send/response cycle.
+
+Disabled rules:
+
+While the bot is responding (typing indicator visible), the preset prompts row is hidden, so prompts cannot be used during that period.
+
+Visual styling (user-visible, exact values):
+
+Prompts row:
+
+* Prompts are centered and can wrap onto multiple lines.
+
+* Spacing between prompt buttons: `0.5rem`.
+
+* When the row appears, it fades in and rises slightly over `0.3s` with an `ease-out` feel.
+
+Prompt buttons:
+
+* Padding: `0.5rem` (vertical) and `1rem` (horizontal).
+
+* Background: `hsl(0 0% 100%)`.
+
+* Border: `1px solid hsl(220 15% 90%)`.
+
+* Corner radius: `9999px` (fully pill-shaped).
+
+* Font size: `0.875rem`.
+
+* Text colour: `hsl(220 20% 10%)`.
+
+* Hover transition duration: `0.2s`.
+
+Hover state:
+
+* Background and border become `hsl(221 83% 53%)`.
+
+* Text becomes `hsl(0 0% 100%)`.
+
+Disabled look (when applicable):
+
+* Opacity: `0.5`.
+
+* Looks non-clickable.
+
+3.2 Message items
+
+Roles:
+
+Bot messages (with bot avatar)
+
+User messages
+
+Initial bot message appears immediately on load:
+
+Content: How can I help?
+
+Marked as non-animated.
+
+Bot avatar icon:
+
+A specific inline SVG (robot-like icon) is used for the bot avatar.
+
+ Message bubble content formatting (bot only):
+
+* Content is HTML-escaped (treated as text, not rendered as raw HTML).
+
+* Text wrapped in double asterisks (e.g., **bold**) appears as bold.
+
+* Lines beginning with “• ” render as a bulleted list.
+
+* Blank lines create visible line breaks.
+
+* Other lines appear as separate lines (line breaks preserved).
+
+Visual layout details (user-visible):
+
+* The chat content is centered with a maximum width (messages do not stretch across very wide screens).
+
+* Bot messages appear on the left with a circular bot avatar.
+
+* User messages are right-aligned and do not show an avatar.
+
+* Messages are spaced apart vertically (clear separation between message groups).
+  Visual styling (user-visible, exact values):
+
+  New message appearance:
+
+  * New messages fade in and rise by `10px` into place.
+
+  * Duration: `0.3s` with an `ease-out` feel.
+
+  * The initial bot message (“How can I help?”) appears immediately with no animation.
+
+  Alignment and spacing:
+
+  * Bot messages are left-aligned and include a circular avatar.
+
+  * User messages are right-aligned and do not show an avatar.
+
+  * Horizontal gap between bot avatar and its message bubble: `0.75rem`.
+
+  Avatar:
+
+  * Size: `2.25rem × 2.25rem`.
+
+  * Shape: circle.
+
+  * Bot avatar background colour: `#90278e`.
+
+  * Avatar icon size: `1.25rem × 1.25rem` (stroke width `2`, no fill).
+
+  Message bubble:
+
+  * Padding: `0.75rem` (vertical) and `1rem` (horizontal).
+
+  * Corner radius: `1rem`.
+
+  * Shadow: `0 2px 8px rgba(0, 0, 0, 0.08)`.
+
+  * Font size: `0.9375rem`.
+
+  * Maximum width: `32rem`.
+
+  * Long words wrap to avoid horizontal overflow.
+
+  Bot bubble:
+
+  * Background: `hsl(220 15% 95%)`.
+
+  * Text colour: `hsl(220 20% 15%)`.
+
+  * Top-left corner is less rounded: `0.375rem`.
+
+  User bubble:
+
+  * Background: `hsl(221 83% 53%)`.
+
+  * Text colour: `hsl(0 0% 100%)`.
+
+  * Top-right corner is less rounded: `0.375rem`.
+
+* 3.3 Typing indicator
+
+Appears when the bot is typing.
+
+Structure:
+
+Bot avatar icon
+
+Three dots that animate using the bounce keyframe definition.
+
+Animation details:
+
+0%, 80%, 100% scale(0)
+
+40% scale(1)
+
+Dot timing offsets / animation-duration assignments (exact values defined in file) are:
+
+* Dot size:
+
+  * width: `0.5rem`
+  * height: `0.5rem`
+* Dot background: `hsl(220 10% 50%)`
+* Dot border-radius: `50%`
+* Animation: `bounce 1.4s infinite ease-in-out`
+* Delays:
+
+  * 1st dot: `-0.32s`
+  * 2nd dot: `-0.16s`
+  * 3rd dot: `0s`
+
+3.4 Attachment preview (composer)
+
+A dedicated area shows an attachment when one is queued.
+
+Attachment preview content:
+
+File icon
+
+File name text (escaped)
+
+Visibility:
+
+Hidden when no attachment queued.
+
+Visible when attachment is queued.
+
+Styling (exact values defined in file) for attachment preview:
+
+* Default:
+
+  * display: `none`
+  * padding: `0.5rem 0.75rem`
+  * border-bottom: `1px solid rgba(59, 130, 246, 0.25)`
+  * background: `rgba(59, 130, 246, 0.08)`
+  * font-size: `0.8125rem`
+  * font-weight: `600`
+* Visible state:
+
+  * display: `flex`
+
+3.5 Message attachment (inside a sent user message)
+
+When a user message includes an attachment name, the message includes:
+
+file icon + file name text.
+
+Styling (exact values defined in file) for message attachment:
+
+* padding: `0.4rem 0.75rem`
+* border-radius: `0.75rem`
+* border: `1px solid rgba(59, 130, 246, 0.4)`
+* background: `rgba(59, 130, 246, 0.12)`
+* font-size: `0.8125rem`
+* font-weight: `600`
+* box-shadow: `0 6px 16px rgba(37, 99, 235, 0.16)`
+
+3.6 Text input (textarea)
+
+Auto-resizes height based on content.
+
+Height capped at 200px.
+
+Placeholder begins with: Type your message... and the full attribute is: `Type your message...`.
+
+Textarea styling (exact values defined in file):
+
+* padding: `1rem 1.25rem`
+* padding-right: `3.5rem`
+* font-size: `0.9375rem`
+* min-height: `56px`
+* max-height: `200px`
+* resize: `none`
+* background: `transparent`
+* border: `none`
+* outline: `none`
+* width: `100%`
+* placeholder color: `hsl(220 10% 50%)`
+
+3.7 Send button
+
+Icon styling:
+
+width: 1.25rem
+
+height: 1.25rem
+
+stroke-width: 2
+
+fill: none
+
+stroke-linecap: round
+
+stroke-linejoin: round
+
+Disabled styling:
+
+opacity 0.4
+
+cursor not-allowed
+
+Bulge animation:
+
+name: buttonBulge
+
+duration: 0.3s
+
+easing: ease-out
+
+keyframes:
+
+0%: translateY(-50%) scale(1)
+
+50%: translateY(-50%) scale(1.15)
+
+100%: translateY(-50%) scale(1)
+
+Send button styling (exact values defined in file):
+
+* position: `absolute`
+* right: `0.75rem`
+* top: `50%`
+* transform: `translateY(-50%)`
+* width: `2.5rem`
+* height: `2.5rem`
+* border-radius: `0.75rem`
+* background: `hsl(221 83% 53%)`
+* transition: `all 0.2s`
+* hover: opacity `0.9`
+
+4. User-visible Rules Summary
+
+   Preset prompts row visibility:
+
+   * The prompts row is visible only when:
+
+     * at least one unused preset prompt remains, AND
+
+     * the bot is not responding (typing indicator not visible), AND
+
+     * the interaction is not mid send/response cycle.
+
+   Send button enable/disable:
+
+   * Send is enabled only when:
+
+     * the input contains at least one non-space character, AND
+
+     * the bot is not responding.
+
+   * Otherwise, send is disabled and looks faded (opacity `0.4`) and non-clickable.
+
+   Input availability:
+
+   * While the bot is responding, the input is disabled (cannot type).
+
+   * Outside of that period, the input is enabled.
+
+   Attachment preview:
+
+   * An attachment preview appears only after selecting preset #2.
+
+   * The attachment preview clears immediately after the message is sent.
+
+   5) Events and User Actions
+
+### 5.1 Click a preset prompt button
+
+* Preconditions:
+
+  * Prompt area is visible (not locked, not typing, and at least one unused prompt remains).
+* Immediate UI response (Step 1):
+
+  * The clicked prompt becomes “used” and disappears from available prompt buttons.
+
+  * The input textarea is immediately filled with the preset prompt text (full long text, not the short label).
+
+  * The input height is recalculated and capped at 200px.
+
+  * The send button becomes enabled (unless typing is active, which it is not at this moment). Rule is defined in section 5.3.
+
+  * If the preset has an attachment name, attachment preview appears; otherwise it clears. (Only preset #2 has an attachment name.)
+
+  * When a preset auto-fills the textarea, the inserted text fades in over `0.4s` with an `ease-out` feel. 
+
+  * Timed UI response:
+
+  * After **1400ms**, the text fade class is removed and the send button performs a bulge animation.
+
+  * Bulge animation lasts **300ms** (`0.3s ease-out`).
+
+  * After that **300ms**, the bulge class is removed and the message is sent automatically (see 5.4).
+
+### 5.2 Type in the textarea
+
+* Immediate UI response:
+
+  * The textarea grows to fit the typed text up to a maximum height of `200px`. If content exceeds that, the textarea scrolls internally.
+
+  * Send button enabled/disabled updates (rule in 5.3).
+
+### 5.3 Send button enable/disable rule
+
+* Deterministic rule:
+
+  * Send button is disabled when:
+
+    * the input contains only spaces (effectively empty), OR the bot is responding (typing indicator visible)
+
+### 5.4 Press Enter to send (keyboard)
+
+* Trigger:
+
+  * Keydown: Enter without Shift.
+* Preconditions:
+
+  * the input contains at least one non-space character AND the bot is not responding (typing indicator not visible).
+* Behaviour:
+
+  * Enter sends the message; Shift+Enter inserts a newline in the textarea.
+
+    Determines whether the input exactly matches (case-insensitive) one of the preset prompt texts:
+
+    * If matches: uses that preset response (and attachment name if present).
+    * If not: uses the fixed “preset prompts only” response text and no attachment.
+  * Sends message (details in section 6).
+
+### 5.5 Click send button (mouse/tap)
+
+* Preconditions:
+
+  * the input contains at least one non-space character AND the bot is not responding (typing indicator not visible).
+* Behaviour:
+
+  * Same matching logic and send flow as Enter-to-send.
+
+### 5.6 Scroll main area
+
+* Trigger:
+
+  * User scrolls the main chat region.
+* Behaviour:
+
+  * Computes distance from bottom and toggles auto-scroll enabled:
+
+    * Auto-scroll enabled when `distanceFromBottom < 120`
+    * Disabled otherwise.
+
+---
+
+6. System Behaviours and Automation
+
+6.1 Auto-scroll execution (user-visible, exact values)
+
+* If the user is within `120px` of the bottom, new messages automatically scroll the chat to the newest message.
+
+* If the user is `120px` or more from the bottom, new messages do not force-scroll the view.
+
+* When auto-scrolling happens, it moves smoothly (not a sudden jump).
+
+6.2 Typing simulation
+
+Bot typing speed: 5ms per character
+
+User typing speed (manual send): 10ms per character
+
+Each step reveals exactly 1 additional character.
+
+Continues until full text displayed.
+
+6.3 Send/response cycle
+
+This cycle begins when a message is sent either by:
+
+* clicking **Send**, or
+* pressing **Enter** (without Shift), or
+* an automatic send after a preset prompt is chosen.
+
+#### A) Immediate effects at send trigger (t = 0ms)
+
+1. **Preset prompt buttons are locked** (the preset prompt row is hidden while locked).
+2. **Text input is disabled** (cannot be edited).
+3. A **new user message** is appended to the conversation, using the exact text that was sent.
+4. **Optional attachment on the user message:**
+
+   * If an attachment name is supplied for this send, the user message displays an attachment chip/label showing that filename (e.g., “Patel email complaint.pdf”) above the user bubble.
+   * If no attachment name is supplied, no attachment chip is shown.
+5. The input field is then **cleared** (becomes empty) and its height resets to auto.
+6. Any pending “attachment preview” in the input area is cleared/hidden.
+7. The send button is updated so it is **disabled** (because the input is now empty).
+
+#### B) User message reveal behaviour (two modes)
+
+**Mode 1 — “typed user message” (manual entry send):**
+
+* The user message appears with a **character-by-character reveal** at **10ms per character**, starting immediately after the message is created.
+
+**Mode 2 — “instant user message” (preset auto-send):**
+
+* The user message appears **immediately in full** (no character-by-character reveal).
+
+#### C) Bot typing-indicator phase (t = 0ms onward)
+
+1. Immediately after the send trigger, the interface enters a “bot is responding” phase where:
+
+   * A **typing indicator** (three animated dots) is visible in the message list.
+   * Preset prompt buttons remain hidden/locked.
+   * The input remains disabled.
+
+2. The typing-indicator phase lasts for an exact delay that depends on how the user message was added:
+
+* If the user message was **instant** (preset auto-send): **1000ms** typing-indicator delay.
+* If the user message was **typed** (manual entry send): **1500ms** typing-indicator delay.
+
+#### D) Bot message typing phase (starts after the delay above)
+
+1. After the typing-indicator delay completes:
+
+   * The typing indicator is removed/hidden.
+   * A new **bot message** is appended.
+
+2. The bot message is revealed **character-by-character** at **5ms per character**, starting immediately when the bot message is created, continuing until the full response is visible.
+
+#### E) Unlocking after bot finishes typing (end of bot message typing)
+
+When the bot finishes typing the final character of its response:
+
+1. The input becomes **enabled** again.
+2. Preset prompt buttons are **unlocked** and the preset prompt row becomes visible again **unless** all presets have already been used (in which case it stays hidden).
+
+#### F) Interaction blocking summary (what the user can’t do during the cycle)
+
+From **t = 0ms** until the bot finishes typing:
+
+* The text input is disabled (no typing).
+* Preset prompt buttons are unavailable (row hidden).
+* Sending is prevented because the send button is disabled while the system is in the “bot is responding” phase.
+
+
+6.4 Preset-click auto-send
+
+1400ms delay
+
+300ms bulge
+
+Then automatic send
+
+---
+
+## 7) Content and Copy (exact)
+
+### 7.1 Headings/subheadings
+
+* `GenAI Chatbot`
+* `See some examples of the help it can provide`
+
+### 7.2 Initial bot message
+
+* `How can I help?`
+
+### 7.3 Preset prompt button labels
+
+1. `Research NICE Sepsis recommendations`
+2. `Draft a response to a patient complaint`
+3. `What are arguments for and against my colleague's discharge plan?`
+
+### 7.4 Preset prompt full texts (inserted into input when preset clicked)
+
+1. `Research the current NICE recommendations for initial management of Sepsis in adults`
+2. `Help me respond to this patient complaint. She had an outpatient appointment cancelled at short notice, and wasn't given a clear reason. The response should acknowledge mistakes, and apologise genuinely`
+3. `I'm reviewing follow-up arrangements for a stable long-term condition patient. We're considering switching routine follow-ups from face-to-face to phone or video. Can you outline some practical arguments for and against this? Keep your answer concise.`
+
+### 7.5 Preset bot responses (full, multi-line; preserve formatting markers)
+
+1. Response to preset 1 (exact, including URL text and markdown markers):
+
+```
+Sure thing! I found several NICE recommendations based on this webpage (https://www.example-source.com).
+        
+**Summary — NICE initial management of suspected sepsis (adults)**
+
+Rapid recognition, prompt assessment, and early escalation are emphasized to reduce time-to-treatment and deterioration.
+
+**Key steps**  
+• Structured risk assessment to identify high-risk patients  
+• Urgent clinical review and early vital signs  
+• Blood tests, including lactate when indicated  
+• Prompt antibiotics and IV fluids where sepsis is suspected  
+• Ongoing monitoring and timely escalation to senior/critical care
+
+**Next step**  
+Would you like to suggest how this guidance applies to a specific patient or outline the most appropriate next clinical step for them?
+```
+
+2. Response to preset 2 (exact):
+
+```
+Of course — I will draft an accountable response to the complaint you've attached. It will acknowledge the communication issues without being defensive.
+        
+        **Draft response — genuine and accountable**
+
+Dear Ms Patel,
+
+Thank you for contacting us. I’m very sorry for the short-notice cancellation of your appointment and for the frustration this caused.
+
+We recognise that cancelling appointments without a clear explanation has a real impact on patients’ time and confidence in the service. While some cancellations are unavoidable given the current pressures on our outpatient services, we recognise that a lack of communication is not acceptable, whatever the reason.
+
+We have raised this with the team involved to ensure it does not happen again. Thank you for taking the time to raise this with us.
+
+Kind regards,
+[Name]
+Patient Advice and Liaison Service
+[NHS Trust name]
+
+**Refinements**  
+If you like, I can make this more formal or more conversational, or I could add a short "what we're changing" section to demonstrate improvement?
+```
+
+3. Response to preset 3 (exact):
+
+```
+Sure — here are some points to consider. I've kept the focus practical:
+
+**Pros vs. cons — remote follow-ups**
+
+**Possible advantages**  
+• Easier access for patients who work, travel, or have mobility issues  
+• Fewer missed appointments  
+• Saves clinic space and time  
+• Can feel more convenient and less stressful
+
+**Possible downsides**  
+• You lose non-verbal cues and in-room context  
+• Some patients may struggle with technology or privacy  
+• Harder to pick up subtle deterioration or safeguarding concerns  
+• Continuity can suffer if different clinicians handle calls
+
+**Adjustments**  
+If you like, I could turn this into a suitability checklist or adapt it to a specific condition?
+```
+
+### 7.6 Fixed “non-matching input” bot response (exact)
+
+If the user sends a message that does not exactly match a preset prompt (case-insensitive compare), the bot response is exactly:
+
+```
+**Note — preset prompts only**  
+Because I am just a realistic simulation of a GenAI, I can only answer the preset prompts you see on screen. If you were speaking to a full GenAI chatbot, it would answer your specific question here.
+```
+
+### 7.7 Attachment names
+
+* Only preset #2 includes an attachment name:
+
+  * `Patel email complaint.pdf`
+
+### 7.8 Placeholder text
+
+---
+
+* Textarea placeholder is: `Type your message...`.
+
+##
+
+## 8) Animation and Transition Spec
+
+### ### 8.1 Send button bulge (user-visible, exact values)
+
+
+Trigger:
+
+* After a preset prompt is selected and auto-fills the textarea.
+
+Timing:
+
+* Wait `1400ms`, then the send button performs a single bulge.
+
+* Bulge duration: `300ms` (`0.3s`) with an `ease-out` feel.
+
+Visual effect:
+
+* The send button scales `1.0 → 1.15 → 1.0`.
+
+Input availability:
+
+* During the `1400ms` wait and the `300ms` bulge, the input remains editable.
+
+* Once the message is sent, the input becomes disabled until the bot finishes responding.
+
+### 8.2 New message appearance (user-visible, exact values)
+
+* New messages fade in and rise by `10px` into place.
+
+* Duration: `0.3s` with an `ease-out` feel.
+
+* The initial bot message appears immediately with no animation.
+
+### ### 8.3 Preset prompts row appearance (user-visible, exact values)
+
+
+* When the preset prompts row appears, it fades in and rises by `10px`.
+
+* Duration: `0.3s` with an `ease-out` feel.
+
+### ### 8.4 Auto-fill text fade-in (user-visible, exact values)
+
+
+* When a preset prompt auto-fills the textarea, the text fades in.
+
+* Duration: `0.4s` with an `ease-out` feel.
+
+### ### 8.5 Typing indicator dots (user-visible, exact values)
+
+
+* The typing indicator shows three dots that pulse in a repeating loop.
+
+* Loop timing: `1.4s` per cycle, repeating continuously, with an `ease-in-out` feel.
+
+* Staggering: dot 1 leads dot 2 by `0.16s`, and dot 2 leads dot 3 by `0.16s` (equivalently delays of `-0.32s`, `-0.16s`, `0s`).
+
+
+Input availability:
+
+* During the `1400ms` wait and the `300ms` bulge, the input remains editable.
+
+* Once the message is sent, the input becomes disabled until the bot finishes responding.
+
+---
+
+Rendering Rules (Corrected to be implementation-agnostic)
+
+The screen updates whenever:
+
+* a user message is sent,
+
+* the bot begins responding (typing indicator appears),
+
+* the bot finishes responding (typing indicator disappears), or
+
+* the bot response text grows during the typing simulation.
+
+Messages appear in chronological order.
+
+When present, the typing indicator appears after the most recent message.
+
+Preset prompt buttons show only unused prompts.
+
+Auto-scroll behaviour follows the `120px` rule described in section 6.1.
+
+## 10) Complete User Journeys (step-by-step)
+
+### 10.1 Preset-click journey (example: preset 2 with attachment)
+
+1. User clicks `Draft a response to a patient complaint`.
+2. Prompt buttons update immediately: the clicked prompt disappears from the list.
+3. The textarea is immediately filled with the full preset prompt text (long sentence).
+4. Attachment preview appears showing `Patel email complaint.pdf` with a file icon.
+5. After **1400ms**, the send button bulges (0.3s ease-out).
+6. After an additional **300ms**, the message is sent automatically:
+
+   * Input becomes disabled.
+   * Prompts hide.
+   * The user message appears immediately (no user typing animation in this auto-send path).
+   * The attachment preview clears.
+7. Typing indicator appears immediately after send.
+8. After **1000ms**, the bot begins typing the full preset response at **5ms/character**.
+9. When bot finishes:
+
+   * Input re-enables.
+   * Prompts reappear (remaining unused prompts).
+
+### 10.2 Manual-entry journey (matching a preset exactly)
+
+1. User types/pastes text exactly equal (case-insensitive) to one preset prompt (e.g., the full sepsis prompt).
+2. Send button becomes enabled when trimmed input non-empty and system not typing.
+3. User presses Enter (without Shift) or clicks Send.
+4. The user message is added with a typing animation at **10ms/character** (because typing is not skipped in manual send).
+5. Typing indicator shows; after **1500ms**, the bot types the matching preset response.
+
+### 10.3 Manual-entry journey (non-matching input)
+
+1. User sends any message that does not exactly match one of the preset prompt texts (case-insensitive).
+2. After the send/typing-indicator delay, the bot types the fixed response: **“Note — preset prompts only …”** (exact text in section 7.6).
+
+---
+
+## 11) Edge Cases
+
+1. **Repeated clicks on a preset**
+
+* Once clicked, that preset is recorded as used and should disappear from the prompt list; therefore it cannot be clicked again via the prompt UI (unless the UI is reloaded).
+
+2. **Attempt to send while system typing**
+
+* Send is blocked because:
+
+  * send button disabled when typing is active,
+  * and Enter-to-send path checks “not typing”.
+
+3. **Scroll away during auto-scroll**
+
+* If the user scrolls so distance-from-bottom is ≥120px, auto-scroll is disabled; subsequent renders will not force scroll to bottom until the user returns within <120px.
+
+4. **Very long input**
+
+* Textarea height caps at **200px**; beyond that, it will not grow further (scroll inside textarea textarea may occur).
+
+5. **All presets exhausted**
+
+* When all prompts are used, prompt area hides permanently (until reload).
+
+6. **Attachment lifecycle**
+
+* Only preset #2 queues `Patel email complaint.pdf` for preview and includes it with the user message when sent.
+* After sending, queued attachment resets to null and preview clears.
+
+7. **Exact-match requirement**
+
+* Manual sends only produce a preset response when the entire input exactly matches a preset prompt string (case-insensitive compare). Any deviations (extra spaces, punctuation changes, different line breaks) will trigger the fixed “preset prompts only” response.
+
+---
