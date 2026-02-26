@@ -417,162 +417,72 @@ o	Letter spacing: 0.12 × the font size
 o	Word spacing: 0.16 × the font size
 •	To satisfy this, text containers must allow wrapping and vertical expansion as needed (including within the fixed header and fixed footer regions), rather than forcing content to be hidden.”
 
-Patch ID: P-101
-Risk IDs: CE-03, CE-01, MTI-01
-WCAG SCs: 3.3.2 (A), 3.2.2 (A), 2.2.1 (A)
+Patch ID: P-208
+Risk IDs: SR-14
+WCAG SCs: 1.4.11 (AA), 1.4.1 (A)
 Action: Insert after
-Anchor text: "* Placeholders\n\n * Type your message..."
-New spec text (exact): "* Field labels (visible)\n\n * Message\n\n* Helper text (visible, persistent, shown near the message composer)\n\n * This simulation can only answer the preset prompts shown above.\n * To get a response, click a preset prompt button or type one preset prompt exactly (case-insensitive; no extra spaces or characters).\n * If a preset is set to send automatically, it will clearly show that it is about to send, and you can cancel before it sends."
+Anchor text:
+"* Prompt buttons:
+
+* Border: `1px solid hsl(220 15% 90%)`."
+New spec text (exact):
+"* Non-text contrast for controls (AA):
+•	Visual boundaries and state indicators for interactive controls (preset prompt buttons, textarea/input wrapper boundary, send button, links, and attachment pills) MUST have at least 3:1 contrast against adjacent colours in every interactive state (default, hover, focus, disabled where still perceivable).
+•	Inline links in message text MUST be visually distinguishable without relying on colour alone (for example, persistent underline), and that non-colour cue MUST remain present in default and focus states."
 ________________________________________
-Patch ID: P-102
-Risk IDs: CE-04
+
+Patch ID: P-209
+Risk IDs: SR-15
+WCAG SCs: 3.1.1 (A)
+Action: Insert after
+Anchor text:
+"* Page title text area (browser/tab title): “GenAI Chatbot”"
+New spec text (exact):
+"* Page language: The root html element MUST declare the default human language of the page using a valid BCP 47 language tag.
+•	For this interaction, set the page language to English (`lang="en"`) unless localized content is intentionally provided."
+________________________________________
+
+Patch ID: P-210
+Risk IDs: SR-16
 WCAG SCs: 3.3.2 (A)
-Action: Replace
-Anchor text: "* (Send button: icon-only, no visible text)"
-New spec text (exact): "* Send button (icon-only, no visible text). Accessible name for assistive technologies: “Send”."
+Action: Insert after
+Anchor text:
+"* Textarea placeholder is: `Type your message...`."
+New spec text (exact):
+"* Input instructions (persistent, visible): Provide a visible instruction associated with the message input explaining how to get a valid response.
+•	Required instruction text: “This simulation only responds to the preset prompts shown on screen. Click a preset prompt, or paste a full preset prompt exactly (case-insensitive).”
+•	The instruction MUST be present before input is submitted (not only after an error), and MUST remain available whenever the textarea is enabled."
 ________________________________________
-Patch ID: P-103
-Risk IDs: CE-01
+
+Patch ID: P-211
+Risk IDs: SR-17
 WCAG SCs: 3.3.1 (A), 3.3.3 (AA)
 Action: Replace
-Anchor text: "5. Note — preset prompts only\n Because I am just a realistic simulation of a GenAI, I can only answer the preset prompts you see on screen. If you were speaking to a full GenAI chatbot, it would answer your specific question here."
-New spec text (exact): "5. Input not recognised\n Your message doesn’t match a preset prompt. This simulation can only answer the preset prompts shown on screen.\n Please click a preset prompt button, or copy and paste the full preset prompt text exactly (case-insensitive; no extra spaces or characters)."
-________________________________________
-Patch ID: P-104
-Risk IDs: CE-01
-WCAG SCs: 3.3.1 (A), 3.3.3 (AA)
-Action: Replace
-Anchor text: "* WHEN the fixed notice message is used, THEN it is stored and sent as one single message string that includes the Markdown hard break exactly as: **Note — preset prompts only** \nBecause …, WITHIN 0 ms."
-New spec text (exact): "* WHEN the fixed notice message is used, THEN it is stored and sent as one single message string that includes the line breaks exactly as:\n **Input not recognised**\n Your message doesn’t match a preset prompt. This simulation can only answer the preset prompts shown on screen.\n Please click a preset prompt button, or copy and paste the full preset prompt text exactly (case-insensitive; no extra spaces or characters)., WITHIN 0 ms."
-________________________________________
-Patch ID: P-105
-Risk IDs: CE-01, MTI-01
-WCAG SCs: 3.2.2 (A), 2.2.1 (A)
-Action: Insert after
-Anchor text: "* Preset prompt buttons row (3 buttons, hides/shows)"
-New spec text (exact): " * Preset auto-send control (toggle)\n\n * Visible text label shows one of:\n * “Auto-send: On”\n * “Auto-send: Off”"
-________________________________________
-Patch ID: P-106
-Risk IDs: CE-01, MTI-01
-WCAG SCs: 3.2.2 (A), 2.2.1 (A)
-Action: Replace
-Anchor text: "* Input remains editable during the 1400 ms wait and the 0.3 s bulge"
-New spec text (exact): "* Input remains editable during the 1400 ms wait and the 0.3 s bulge.\n* If “Auto-send: On”, a visible countdown status is shown during the wait (text: “Sending automatically…”), and a visible cancel control is shown (button text: “Cancel”).\n* If “Cancel” is activated before the auto-send moment, THEN the scheduled auto-send is stopped and no automatic send occurs."
-________________________________________
-Patch ID: P-107
-Risk IDs: MTI-01, CE-01
-WCAG SCs: 2.2.1 (A), 3.2.2 (A)
-Action: Replace
-Anchor text: "* WHEN 1400 ms have passed after a preset prompt click, THEN the send button plays the bulge animation, WITHIN 0 ms.\n\n* WHEN 300 ms have passed after the bulge starts, THEN the message is sent automatically and the send button bulge ends, WITHIN 0 ms."
-New spec text (exact): "* WHEN 1400 ms have passed after a preset prompt click, THEN the send button plays the bulge animation, WITHIN 0 ms.\n\n* WHEN 300 ms have passed after the bulge starts AND “Auto-send: On” AND the user has not activated “Cancel”, THEN the message is sent automatically and the send button bulge ends, WITHIN 0 ms.\n\n* WHEN “Auto-send: Off”, THEN no automatic send occurs after a preset prompt click (the user sends manually via Enter or the Send button)."
-________________________________________
-Patch ID: P-108
-Risk IDs: CE-05
-WCAG SCs: 3.3.2 (A), 4.1.3 (AA)
-Action: Insert after
-Anchor text: "* Footer\n\n * Preset prompt buttons row (3 buttons, hides/shows)\n * Input wrapper\n\n * Attachment preview area (shows filename when queued)\n * Textarea (auto-grows up to 200 px)\n * Send button (icon-only)"
-New spec text (exact): " * Status line (non-interactive text)\n\n * Location: in the footer, above the textarea\n * Purpose: shows short status updates (see “Status messages (exact)” below)"
-________________________________________
-Patch ID: P-109
-Risk IDs: CE-05
-WCAG SCs: 4.1.3 (AA), 3.3.2 (A)
-Action: Insert after
-Anchor text: "* Attachment names\n\n * Patel email complaint.pdf"
-New spec text (exact): "* Status messages (exact)\n\n * “Sending…”\n * “AI Assistant is typing…”\n * “New message received.”\n * “Preset prompts are unavailable while the AI Assistant is responding.”\n * “No more preset prompts are available.”"
-________________________________________
-Patch ID: P-110
-Risk IDs: CE-05
-WCAG SCs: 4.1.3 (AA), 3.3.2 (A)
-Action: Insert after
-Anchor text: "* WHEN a message is sent, THEN preset prompt buttons are hidden AND the textarea is disabled, WITHIN 0 ms."
-New spec text (exact): "* WHEN a message is sent, THEN the status line text becomes “Sending…”, WITHIN 0 ms.\n\n* WHEN preset prompt buttons are hidden because the AI Assistant is responding, THEN the status line text becomes “Preset prompts are unavailable while the AI Assistant is responding.”, WITHIN 0 ms.\n\n* WHEN the bot finishes typing its response and the textarea becomes enabled again, THEN the status line is cleared (no status text), WITHIN 0 ms."
-________________________________________
-Patch ID: P-111
-Risk IDs: CE-05
-WCAG SCs: 4.1.3 (AA)
-Action: Insert after
-Anchor text: "* WHEN a message is sent, THEN the bot typing indicator (bot avatar + 3 bouncing dots) appears, WITHIN 0 ms."
-New spec text (exact): "* WHEN the bot typing indicator appears, THEN the status line text becomes “AI Assistant is typing…”, WITHIN 0 ms.\n\n* WHEN the bot response is finished typing THEN the status line text becomes “New message received.” WITHIN 0ms
+Anchor text:
+"### 7.6 Fixed “non-matching input” bot response (exact)
 
-________________________________________
-Patch ID: P-113
-Risk IDs: CE-05
-WCAG SCs: 3.3.2 (A), 4.1.3 (AA)
-Action: Insert after
-Anchor text: "* Once all three presets have been used via clicking, the preset prompt row stays hidden permanently"
-New spec text (exact): "* WHEN the preset prompt row becomes hidden permanently due to all three presets being used, THEN the status line text becomes “No more preset prompts are available.”, WITHIN 0 ms."
-________________________________________
-Patch ID: P-115
-Risk IDs: CE-08
-WCAG SCs: 1.3.1 (A)
-Action: Replace
-Anchor text: "* Attachment preview area (shows filename when queued)"
-New spec text (exact): "* Attachment preview area (shows the queued attachment with the text prefix “Attachment queued: ” followed by the filename)"
-________________________________________
-Patch ID: P-116
-Risk IDs: CE-08
-WCAG SCs: 1.3.1 (A)
-Action: Replace
-Anchor text: "* Optional user-message attachment pill (filename)"
-New spec text (exact): "* Optional user-message attachment pill (visually shows filename; accessible name includes the text prefix “Attachment: ” followed by the filename)"
-________________________________________
-Patch ID: P-117
-Risk IDs: CE-08
-WCAG SCs: 1.3.1 (A)
-Action: Replace
-Anchor text: "* WHEN a sent message is associated with an attachment filename, THEN the transcript shows an attachment pill above the user message bubble containing that filename, WITHIN 0 ms."
-New spec text (exact): "* WHEN a sent message is associated with an attachment filename, THEN the transcript shows an attachment pill above the user message bubble.\n * The pill visually shows the filename.\n * The pill’s accessible name is “Attachment: {filename}”.\n * The pill is programmatically grouped with (and clearly belongs to) the associated user message bubble.\n WITHIN 0 ms."
-________________________________________
-Patch ID: P-118
-Risk IDs: MTI-02, MTI-03
-WCAG SCs: 2.2.2 (A)
-Action: Insert after
-Anchor text: "* Typing indicator row (bot avatar + 3 dots)"
-New spec text (exact): "* Skip typing control (button)\n\n * Visible button text: “Skip typing”\n * Shown only while any message is typing out character-by-character"
-________________________________________
-Patch ID: P-119
-Risk IDs: MTI-02
-WCAG SCs: 2.2.2 (A)
-Action: Insert after
-Anchor text: "* WHEN the bot response starts typing, THEN the typing indicator disappears and the bot message appears and types at 5 ms per character until complete."
-New spec text (exact): "* WHEN a message is typing out character-by-character (bot or user), THEN the “Skip typing” button is visible, WITHIN 0 ms.\n\n* WHEN the user activates “Skip typing”, THEN the currently-typing message immediately becomes fully visible in its final form (no further character-by-character updates), WITHIN 0 ms.\n\n* WHEN the message finishes typing (either naturally or via “Skip typing”), THEN the “Skip typing” button is hidden, WITHIN 0 ms."
-________________________________________
-Patch ID: P-121
-Risk IDs: MTI-04
-WCAG SCs: 2.3.1 (A)
-Action: Insert after
-Anchor text: "## 7) Animations and Transitions (exact)"
-New spec text (exact): "* Flashing constraint (applies to all animations, transitions, and effects in this interaction)\n\n * No element may flash more than 3 times in any 1 second period.\n * No animation may create a flash that would exceed common seizure safety thresholds (including rapid alternation of high-contrast light/dark states)."
+If the user sends a message that does not exactly match a preset prompt (case-insensitive compare), the bot response is exactly:
 
-REMOVE AUTO SCROLL PATCHES
+```
+**Note — preset prompts only**
+Because I am just a realistic simulation of a GenAI, I can only answer the preset prompts you see on screen. If you were speaking to a full GenAI chatbot, it would answer your specific question here.
+```"
+New spec text (exact):
+"### 7.6 Fixed "non-matching input" bot response (exact)
 
-Patch ID: P-201
-Risk IDs: MTI-03
-WCAG SCs: 2.2.2 (A)
-Action: Replace
-Anchor text: "* Scroll/auto-scroll behaviour on the main transcript"
-New spec text (exact): "* Scroll behaviour on the main transcript (no auto-scroll)"
+If the user sends a message that does not exactly match a preset prompt (case-insensitive compare), this is treated as an input error and the bot response is exactly:
+
+```
+**Input not recognised**
+Your message doesn’t match one of the allowed preset prompts in this simulation.
+To fix this, click a preset prompt button, or paste one full preset prompt exactly (case-insensitive; no extra words or characters).
+```
+
+Accessibility requirements for this error state:
+•	The input error MUST be programmatically identifiable to assistive technologies.
+•	The error description and correction suggestion MUST be announced once when this response appears."
 ________________________________________
-Patch ID: P-202
-Risk IDs: MTI-03
-WCAG SCs: 2.2.2 (A)
-Action: Replace
-Anchor text: "* Auto-scroll enabled state\n\n * Auto-scroll remains enabled only while the user is within 120 px of the bottom of the scroll area\n* Auto-scroll disabled state\n\n * When the user is 120 px or more from the bottom, auto-scroll is disabled until they scroll back within 120 px of bottom"
-New spec text (exact): "* No auto-scroll state\n\n * The transcript never scrolls automatically in response to new or updated messages."
-________________________________________
-Patch ID: P-203
-Risk IDs: MTI-03
-WCAG SCs: 2.2.2 (A)
-Action: Replace
-Anchor text: "* WHEN a new message is added or updated AND auto-scroll is enabled, THEN the main scroll area scrolls to the bottom on the next visible screen refresh.\n\n* WHEN the user scrolls such that they are 120 px or more from the bottom, THEN auto-scroll is disabled, WITHIN 0 ms.\n\n* WHEN the user scrolls back to within 120 px of the bottom, THEN auto-scroll is re-enabled, WITHIN 0 ms."
-New spec text (exact): " ” 
-________________________________________
-Patch ID: P-204
-Risk IDs: MTI-03
-WCAG SCs: 2.2.2 (A)
-Action: Replace
-Anchor text: "* If the user scrolls up (≥120 px from bottom), new messages will not force-scroll the view to bottom until the user scrolls back near the bottom.\n* Auto-scroll remains enabled only while the user is within 120 px of the bottom of the scroll area; otherwise auto-scroll is disabled until they scroll back within 120 px of bottom."
-New spec text (exact): "* The transcript never scrolls automatically when new messages are added or updated (no auto-scroll)."
 
-
-
+Retired false-positive patches (removed from this sheet because they are not required WCAG failures for this spec and/or conflict with core interaction requirements):
+- CE-01 / CE-03 / CE-04 / CE-05 / CE-08 series (former Patch IDs P-101 to P-117 in the CE block).
+- MTI-01 / MTI-02 / MTI-03 / MTI-04 series (former Patch IDs P-105 to P-121 and P-201 to P-204 in the MTI block).
