@@ -1,282 +1,75 @@
-Risk list — Hallucination & Bias 
+Risk list — Hallucination & Bias
 
-Theme code: (KFP) 
+This sheet has been reconciled against `HB-spec-v2` (including Section 10 Accessibility Requirements).
 
-R-001 
+## Open risks (medium/serious)
 
-Risk ID: R-001 
+Theme code: (A11Y-GAP)
 
-Behaviour implied by spec: Core interaction is described as mouse click driven (click draft blocks → open context menu → choose actions). 
+R-017
 
-Why this might fail WCAG (including WCAG 2.2 SC mapping): If draft blocks / the context menu / actions are not fully operable by keyboard, users may be unable to complete the interaction. WCAG 2.1.1 (A) Keyboard. Also risk of inconsistent/unclear keyboard focus movement when menus appear/disappear. WCAG 2.4.3 (A) Focus Order. 
+Risk ID: R-017
 
-Level of risk: High 
+Behaviour implied by spec: Dismissing the per-block “Feedback” modal by clicking outside the card OR pressing Escape still triggers the “Check content” processing sequence (not a neutral cancel).
 
-Spec evidence (exact): “Draft bubble container with 6 selectable draft blocks (each block is clickable unless deactivated).”“WHEN the user clicks a draft block that has not already been added/checked, THEN a small context menu appears at the click location…” 
+Why this might fail WCAG (including WCAG 2.2 SC mapping): Users may cause a significant change (insertion + correction flow) through an action commonly understood as “dismiss/cancel”, making the result unpredictable. WCAG 3.2.2 (A) On Input.
 
-R-002 
+Level of risk: Medium
 
-Risk ID: R-002 
+Spec evidence (exact):
+- “WHEN the user clicks outside the modal card (on the dark overlay) OR presses Escape, THEN the block is processed as a “Check content” action (highlight → insert → correction), WITHIN immediate after dismissal.”
 
-Behaviour implied by spec: Context menu closes when clicking outside it. No keyboard dismissal behaviour is defined. 
+---
 
-Why this might fail WCAG (including WCAG 2.2 SC mapping): If the context menu can’t be dismissed by keyboard (or focus can move “behind” it), users can get stuck or lose their place. WCAG 2.1.2 (A) No Keyboard Trap, 2.4.3 (A) Focus Order. 
+R-022
 
-Level of risk: High 
+Risk ID: R-022
 
-Spec evidence (exact): “WHEN the user clicks anywhere outside the context menu, THEN the context menu closes, WITHIN immediate.” 
+Behaviour implied by spec: The “Check content” correction sequence chains multiple timed operations; draft-block interactions are suppressed during animation and no explicit pause/stop/hide or skip control is required for the non-reduced-motion path.
 
-R-003 
+Why this might fail WCAG (including WCAG 2.2 SC mapping): Extended auto-updating visual changes without explicit user control can create failure risk for WCAG 2.2.2 (A) Pause, Stop, Hide.
 
-Risk ID: R-003 
+Level of risk: Medium
 
-Behaviour implied by spec: Per-block modal (“Feedback”) appears for 2 blocks; it can be dismissed by clicking outside the card (overlay) and proceeds with the flow. Focus behaviour is not defined. 
+Spec evidence (exact):
+- “WHEN an animation is currently running, THEN clicking draft blocks does not open the context menu, WITHIN immediate.”
+- Correction timing rules define chained delays and typing effects (1000 ms pre-highlight pause, 900 ms delete-highlight, 500 ms post-highlight pause, 650 ms post-delete pause, 80 ms/character typing, whitespace pauses, and 900 ms inter-block pauses).
+- Section 10 includes reduced-motion behaviour, but no explicit pause/stop/hide or skip control requirement for standard-motion mode.
 
-Why this might fail WCAG (including WCAG 2.2 SC mapping): If focus is not managed when the modal opens/closes (focus not moved into it, not trapped within it, not restored), users may be unable to operate it or may interact with background content unintentionally. WCAG 2.1.1 (A) Keyboard, 2.4.3 (A) Focus Order, 2.4.11 (AA) Focus Not Obscured (Minimum). Also risk that dismissal is pointer-only. 
+---
 
-Level of risk: High 
+N-01
 
-Spec evidence (exact): “Per-block Feedback modal open… Full-screen overlay with blur and centered card.”“WHEN the user clicks “Continue” OR clicks outside the modal card (on the dark overlay), THEN the modal closes…” 
+Risk ID: N-01
 
-R-004 
+Behaviour implied by spec: Section 10 requires a “clearly visible focus indicator” but does not define measurable focus appearance minimum characteristics.
 
-Risk ID: R-004 
+Why this might fail WCAG (including WCAG 2.2 SC mapping): “Clearly visible” can be implemented inconsistently; without explicit measurable minimums, implementations may fail WCAG 2.4.13 (AA) Focus Appearance.
 
-Behaviour implied by spec: Post-send “hover linking” visually links draft blocks ↔ feedback cards (glow/highlight). 
+Level of risk: Medium
 
-Why this might fail WCAG (including WCAG 2.2 SC mapping): If the same linking feedback is only available on hover (mouse) and not available via keyboard focus, then part of the interaction’s functionality may be inaccessible to keyboard-only users. WCAG 2.1.1 (A) Keyboard. 
+Spec evidence (exact):
+- “All focusable interactive elements have a clearly visible focus indicator.”
+- No explicit measurable criteria are provided for focus indicator contrast, area/thickness, or minimum appearance change.
 
-Level of risk: Medium 
+Task to resolve by modifying spec:
+- Add explicit Section 10 focus appearance minimum requirements aligned to WCAG 2.4.13 (AA), including measurable criteria for indicator contrast and indicator area/thickness.
 
-Spec evidence (exact): “Hover linking enables glow/highlight pairing between draft blocks and feedback cards.”“WHEN the user hovers a draft block in feedback view, THEN the matching feedback card glows…” 
+## Resolved / false-positive risks (covered by current spec)
 
-R-005 
+The following existing risks are now treated as resolved because `HB-spec-v2` Section 10 explicitly defines requirements that address them:
 
-Risk ID: R-005 
+- R-001, R-002, R-003, R-004 (keyboard operability, menu/modal keyboard handling, focus return, hover/focus parity).
+- R-005, R-006 (visible focus and focus not obscured).
+- R-007, R-008, R-009, R-010, R-011, R-021 (name/role/state, programmatic regions/headings, status messages, sequence/focus order, language, draft↔feedback association).
+- R-012, R-013, R-019 (reflow and text-spacing requirements at 320px / 400% and spacing resilience).
+- R-014 (reduced-motion handling is explicitly required; animation-control concern retained under R-022 only).
+- R-015 (use-of-colour covered by explicit non-colour cues in feedback naming requirements).
+- R-016, R-018 (target size minimum and pointer cancellation explicitly required).
+- R-020 (explicit focus destinations for Send/feedback and Try again transitions).
 
-Behaviour implied by spec: The spec does not define visible focus indicators for interactive elements (draft blocks, menu buttons, Send, Continue, Try again). 
+## Risk-sheet maintenance tasks
 
-Why this might fail WCAG (including WCAG 2.2 SC mapping): If focus is not clearly visible, keyboard users may not be able to track where they are. WCAG 2.4.7 (AA) Focus Visible. 
-
-Level of risk: High 
-
-Spec evidence (exact): vague in the spec 
-
-R-006 
-
-Risk ID: R-006 
-
-Behaviour implied by spec: Fixed header + overlays + scroll containers are used; the spec does not define safeguards to prevent focus being hidden behind the fixed header/overlays at zoom. 
-
-Why this might fail WCAG (including WCAG 2.2 SC mapping): Focus may become obscured (e.g., behind the fixed header or under an overlay) especially at high zoom or in constrained viewports. WCAG 2.4.11 (AA) Focus Not Obscured (Minimum). 
-
-Level of risk: Medium 
-
-Spec evidence (exact): “Top header bar (fixed region at top).”“Full-screen overlay with blur and centered card.” 
-
-R-016 
-
-Risk ID: R-016 
-
-Behaviour implied by spec: Draft blocks and context-menu options are pointer targets with specified padding/gaps, but no explicit minimum target size is required. 
-
-Why this might fail WCAG (including WCAG 2.2 SC mapping): Pointer targets may end up smaller than the WCAG minimum, or too tightly spaced, depending on implementation (e.g., font rendering, line-wrapping, hit-area choices). WCAG 2.5.8 (AA) Target Size (Minimum). 
-
-Level of risk: Medium 
-
-Spec evidence (exact): “Draft block: padding 0.5rem; border radius 0.375rem; margin -0.25rem -0.5rem…”“Context menu: … min width 160px; padding 0.5rem; gap 0.5rem…” 
-
-R-018 
-
-Risk ID: R-018 
-
-Behaviour implied by spec: Click actions trigger key interaction steps (open menu, choose an option, send, reset), but the spec does not constrain when pointer activation fires (e.g., on down-event vs up-event), or how cancellation works. 
-
-Why this might fail WCAG (including WCAG 2.2 SC mapping): If any primary action executes on pointer down (with no way to abort by moving away / releasing elsewhere), it can fail WCAG 2.5.2 (A) Pointer Cancellation. 
-
-Level of risk: Medium 
-
-Spec evidence (exact): “WHEN the user clicks a draft block that has not already been added/checked, THEN a small context menu appears at the click location with “Copy-paste” and “Check content”, WITHIN immediate.”“WHEN the user clicks “Send”, THEN the experience evaluates success/failure…” 
-
-R-020 
-
-Risk ID: R-020 
-
-Behaviour implied by spec: Clicking "Send" destroys the email panel and replaces the layout with the feedback view. Clicking "Try again" destroys the feedback view and restores the two-panel layout. In both cases the element that held focus (Send / Try again button) is removed from the DOM. No focus destination is defined for either transition. 
-
-Why this might fail WCAG (including WCAG 2.2 SC mapping): If focus is not explicitly moved to a logical destination when the focused element is destroyed during a view transition, the browser resets focus to the document body. Keyboard and screen reader users lose their place and must re-navigate from the top of the page. WCAG 2.4.3 (A) Focus Order. 
-
-Level of risk: High 
-
-Spec evidence (exact): "WHEN Send is clicked (success or failure), THEN the UI switches to a feedback view, WITHIN immediate after click." 
-"WHEN the user clicks 'Try again', THEN the feedback view is removed, the two-panel draft/email layout returns, all draft blocks become selectable again, the email content clears back to the empty state, and the Send button becomes disabled again, WITHIN immediate." 
-vague in the spec (no focus destination defined for either transition) 
-
-Theme code: (SRA) 
-
-R-007 
-
-Risk ID: R-007 
-
-Behaviour implied by spec: Multiple interactive elements include icons and “clickable blocks”, but the spec does not define accessible names/roles/states for them (including disabled icon buttons). 
-
-Why this might fail WCAG (including WCAG 2.2 SC mapping): If non-semantic elements are used for controls (or controls lack accessible names/roles/state updates), assistive tech users may not be able to identify or operate them. WCAG 4.1.2 (A) Name, Role, Value, 1.3.1 (A) Info and Relationships. For icon-only controls/meaningful icons, missing text alternatives can also apply. WCAG 1.1.1 (A) Non-text Content. 
-
-Level of risk: High 
-
-Spec evidence (exact): “Right panel… footer/actions area with 2 disabled icon buttons plus a Send button.”“Avatar circle… with an icon stroke #fff (icon shape MISSING INFO).” 
-
-R-008 
-
-Risk ID: R-008 
-
-Behaviour implied by spec: The UI has major regions (header, left draft panel, right email panel; later a feedback panel), but the spec does not define programmatic structure (landmarks/headings) beyond visual layout. 
-
-Why this might fail WCAG (including WCAG 2.2 SC mapping): If regions/headings are not programmatically determinable, screen reader users may have difficulty understanding structure and navigating efficiently. WCAG 1.3.1 (A) Info and Relationships, 2.4.6 (AA) Headings and Labels. 
-
-Level of risk: Medium 
-
-Spec evidence (exact): “Top header bar (fixed region at top).”“Main area below header: two side-by-side panels (left draft, right email client).” 
-
-R-009 
-
-Risk ID: R-009 
-
-Behaviour implied by spec: The UI updates dynamically: blocks inserted, helper text hides, Send enables/disables, blocks become deactivated, view switches to feedback immediately. The spec does not define how these changes are announced to assistive technologies. 
-
-Why this might fail WCAG (including WCAG 2.2 SC mapping): If meaningful state changes aren’t announced (or are announced inconsistently), screen reader users may not know what changed. WCAG 4.1.3 (AA) Status Messages. Also risk that updates are not exposed correctly via accessibility APIs. WCAG 4.1.2 (A) Name, Role, Value. 
-
-Level of risk: High 
-
-Spec evidence (exact): “Helper text hides; email content area shows; Send becomes enabled once at least one non-empty block exists.”“Draft block deactivated… cannot be selected again…”“WHEN Send is clicked… the UI switches to a feedback view, WITHIN immediate…” 
-
-R-010 
-
-Risk ID: R-010 
-
-Behaviour implied by spec: Two-column layouts are central (draft left / email right; later draft left / feedback right), but the spec does not define DOM/read order expectations. 
-
-Why this might fail WCAG (including WCAG 2.2 SC mapping): If DOM order does not match the intended reading/interaction order, the experience may be confusing or misleading for screen readers and keyboard navigation. WCAG 1.3.2 (A) Meaningful Sequence, 2.4.3 (A) Focus Order. 
-
-Level of risk: Medium 
-
-Spec evidence (exact): “Main area below header: two side-by-side panels (left draft, right email client).”“the remaining area becomes a side-by-side layout: draft content on the left, feedback panel on the right…” 
-
-R-011 
-
-Risk ID: R-011 
-
-Behaviour implied by spec: Page language is not specified in the spec. 
-
-Why this might fail WCAG (including WCAG 2.2 SC mapping): If the page language is not programmatically set, screen readers may use the wrong pronunciation rules. WCAG 3.1.1 (A) Language of Page. 
-
-Level of risk: Medium 
-
-Spec evidence (exact): vague in the spec 
-
-R-021 
-
-Risk ID: R-021 
-
-Behaviour implied by spec: The 6 draft blocks have no visible headings or programmatic labels. In the feedback view, each feedback card is labelled with a section name ("GenAI preamble", "Patient info", etc.) and is visually linked to a corresponding draft block via hover glow. No mechanism is defined to programmatically associate a draft block with its matching feedback card, or to label each draft block with its section name. 
-
-Why this might fail WCAG (including WCAG 2.2 SC mapping): The pairing between draft blocks and their corresponding feedback cards is conveyed solely through visual presentation (hover-linked glow). Screen reader users cannot determine which feedback card relates to which draft block. WCAG 1.3.1 (A) Info and Relationships. Separately, the draft blocks lack descriptive headings, making navigation and identification difficult. WCAG 2.4.6 (AA) Headings and Labels. 
-
-Level of risk: High 
-
-Spec evidence (exact): "Draft bubble container with 6 selectable draft blocks (each block is clickable unless deactivated)." 
-"Feedback card section names (in this order): GenAI preamble, Patient info, Medical details, Additional info, Email sign-off, GenAI follow-up" 
-"Hover linking enables glow/highlight pairing between draft blocks and feedback cards." 
-vague in the spec (no programmatic labels on draft blocks; no defined association mechanism between draft blocks and feedback cards) 
-
-Theme code: (LRZ) 
-
-R-012 
-
-Risk ID: R-012 
-
-Behaviour implied by spec: Layout uses fixed two-column splits (50%/50%) and fixed-height calculations with multiple scroll containers in the main view. 
-
-Why this might fail WCAG (including WCAG 2.2 SC mapping): At 320px width or high zoom (e.g., 400%), fixed side-by-side columns and fixed-height containers commonly create horizontal scrolling, clipped content, or “two-dimensional” scrolling. WCAG 1.4.10 (AA) Reflow, 1.4.4 (AA) Resize Text. 
-
-Level of risk: High 
-
-Spec evidence (exact): “Two panels: each 50% width…”“Main area height: calc(100vh - 3.5rem).”“Each panel is independently scrollable (overflow: auto).” 
-
-R-013 
-
-Risk ID: R-013 
-
-Behaviour implied by spec: Feedback view still uses a two-column layout with width calculations and a max width, plus a large top margin on the left column. 
-
-Why this might fail WCAG (including WCAG 2.2 SC mapping): At small widths / high zoom, the calculated columns + max widths + large top margin increase the risk of cramped layout, overflow, and difficult reading/scrolling. WCAG 1.4.10 (AA) Reflow, 1.4.4 (AA) Resize Text. 
-
-Level of risk: Medium 
-
-Spec evidence (exact): “Post-send feedback layout: gap 2rem; each column width calc(50% - 1rem); left column margin-top 20vh; feedback panel max width 600px…” 
-
-R-019 
-
-Risk ID: R-019 
-
-Behaviour implied by spec: Layout relies on viewport-height sizing plus scrollable regions, with explicit line-heights and “overflow auto” containers. The spec does not state that content must remain readable/unclipped when users apply increased text spacing. 
-
-Why this might fail WCAG (including WCAG 2.2 SC mapping): Increased spacing (line height / paragraph spacing / letter or word spacing) can cause clipping/overlap inside fixed-height + overflow containers, or make content unusable without extra scrolling. This can fail WCAG 1.4.12 (AA) Text Spacing. 
-
-Level of risk: Medium 
-
-Spec evidence (exact): “Main area height: calc(100vh - 3.5rem).”“Main area below header: two side-by-side panels (left draft, right email client). Each panel is independently scrollable (overflow: auto).”“Email body block: … overflow auto.”“Draft bubble text: font size 0.875rem; line height 1.4” 
-
-Theme code: (MTI) 
-
-R-014 
-
-Risk ID: R-014 
-
-Behaviour implied by spec: Multiple animations are specified, including continuous blinking cursor and animated highlighting/typing. No reduced-motion handling is defined in the spec. 
-
-Why this might fail WCAG (including WCAG 2.2 SC mapping): If users cannot reduce/avoid non-essential motion from interactions, it may trigger vestibular issues. WCAG 2.3.3 (AA) Animation from Interactions. Continuous blinking/moving content can also create pause/stop/hide risks depending on implementation. WCAG 2.2.2 (A) Pause, Stop, Hide. 
-
-Level of risk: Medium 
-
-Spec evidence (exact): “Cursor blinks on a 1s step-end infinite cycle when not actively typing…”“Fade-in… 0.3s…” 
-
-R-022 
-
-Risk ID: R-022 
-
-Behaviour implied by spec: The "Check content" correction sequence chains multiple timed operations (1000 ms pre-highlight pause, 900 ms delete-highlight, 500 ms post-highlight pause, deletion, 650 ms post-delete pause, 80 ms/char typing with 300 ms whitespace pauses, 900 ms pauses between correction blocks). For multi-correction blocks this exceeds 15–20 seconds of continuous auto-updating content. During this time, draft block clicks are suppressed and no pause/skip/cancel mechanism is defined. 
-
-Why this might fail WCAG (including WCAG 2.2 SC mapping): WCAG 2.2.2 (A) Pause, Stop, Hide requires that auto-updating information lasting more than 5 seconds and presented in parallel with other content must have a mechanism to pause, stop, or hide it. The correction animation meets all three criteria with no user control defined. (Related to but distinct from R-014, which flags 2.2.2 for the blinking cursor; this risk addresses the multi-step correction sequence that both exceeds the 5-second threshold and blocks user interaction.) 
-
-Level of risk: Medium 
-
-Spec evidence (exact): "WHEN an animation is currently running, THEN clicking draft blocks does not open the context menu, WITHIN immediate." 
-Correction timing rules: "Pre-highlight pause: 1000 ms" / "Delete-highlight total: 900 ms" / "Post-highlight pause before delete: 500 ms" / "Post-delete pause: 650 ms" / "Typing speed: 80 ms per character" / "Extra whitespace pause: 300 ms" / "Pause between correction blocks: 900 ms" 
-vague in the spec (no pause, skip, or cancel mechanism defined) 
-
-Theme code: (CE) 
-
-R-015 
-
-Risk ID: R-015 
-
-Behaviour implied by spec: Success/failure linking and feedback affordances include red/green glow semantics; the spec does not explicitly require non-colour cues to convey the same meaning in all cases. 
-
-Why this might fail WCAG (including WCAG 2.2 SC mapping): If success/failure meaning is conveyed only through colour (e.g., red/green glow), users who can’t perceive colour differences may miss key meaning. WCAG 1.4.1 (A) Use of Color. 
-
-Level of risk: Medium 
-
-Spec evidence (exact): “the corresponding feedback card glows red or green also (depending on success or failure)” 
-
-R-017 
-
-Risk ID: R-017 
-
-Behaviour implied by spec: Dismissing the per-block “Feedback” modal by clicking outside the card still triggers the “Check content” processing sequence (not a neutral cancel). 
-
-Why this might fail WCAG (including WCAG 2.2 SC mapping): Users may cause a significant change (insertion + correction flow) through an action commonly understood as “dismiss/cancel”, making the result unpredictable. WCAG 3.2.2 (A) On Input. (Related WCAG reference for 3.2.2 failures is listed in the provided WCAG doc.) 
-
-Level of risk: Medium 
-
-Spec evidence (exact): “WHEN the user clicks “Continue” OR clicks outside the modal card (on the dark overlay), THEN the modal closes and the block is processed as a “Check content” action…” 
+1. Keep only open risks R-017, R-022, and N-01 as active medium/serious items.
+2. Keep resolved IDs listed above for traceability, but do not track them as active unless the spec regresses.
+3. When spec text changes, re-check this file against Section 10 before adding new risks.
