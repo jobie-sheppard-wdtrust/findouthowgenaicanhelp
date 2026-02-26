@@ -1,0 +1,47 @@
+RisksofGenAI Spec — Patch Sheet (planning stage, no spec edits yet)
+
+Source files used:
+- RisksofGenAI-risksheet
+- RisksofGenAI-Spec
+- HB-spec-v2-patch-sheet
+
+Purpose:
+Define exactly what to change in RisksofGenAI-Spec to mitigate the currently open risk VCF-02 by reusing the same measurable-focus implementation pattern already approved in HB-spec-v2-patch-sheet (section C: N-01 — measurable focus appearance, Option A).
+
+---
+
+Final patch list (exact change instructions for RisksofGenAI-Spec)
+
+A) VCF-02 — measurable focus appearance (copied implementation from HB patch)
+
+1) In Section 10 under “Focus visibility:”, replace:
+Current text:
+- “A visible focus indicator is shown for every focusable control (including highlighted phrases) whenever it receives keyboard focus.”
+
+Replace with:
+- “All keyboard-focusable interactive elements MUST show a focus indicator that is at least 2 CSS pixels thick (or equivalent indicator area) and has a contrast ratio of at least 3:1 against adjacent colours.”
+- “The focus indicator MUST remain visible at 320px width and at 400% zoom, including in both main and feedback views.”
+- “The focus indicator MUST NOT be fully obscured by the fixed header, overlays, or adjacent UI layers while focused.”
+
+2) Keep existing focus-management/focus-obscuration requirements unchanged elsewhere in Section 10, including:
+- “The pop-up must not obscure the focused element.”
+
+3) Keep all existing keyboard-access rules unchanged:
+- “All interactive controls are reachable using Tab/Shift+Tab.”
+- “Enter and Space activate any button-like control.”
+- “Any link-like control activates on Enter.”
+
+---
+
+Cross-check checklist before editing RisksofGenAI-Spec
+
+1) Confirm the old non-measurable focus sentence is fully removed (no duplicate weaker variant remains).
+2) Confirm the new 2px / 3:1 measurable rule appears exactly once in Section 10.
+3) Confirm no contradiction with existing pop-up focus-obscuration and reflow requirements.
+4) Confirm wording remains normative (MUST) and testable.
+
+---
+
+Status
+- This patch sheet is complete and decision-closed for VCF-02.
+- Next step (separate change): apply these exact edits to RisksofGenAI-Spec.
