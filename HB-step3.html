@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HITL Training - Checking for Hallucinations and Bias</title>
+  <style>
+    :root {
+      --background: hsl(220 14% 96%);
+      --foreground: hsl(222 47% 11%);
+      --card: hsl(0 0% 100%);
+      --muted-foreground: hsl(220 9% 46%);
+      --border: hsl(220 13% 91%);
+      --primary: hsl(217 91% 60%);
+      --primary-foreground: hsl(0 0% 100%);
+      --draft-bubble-bg: hsl(217 91% 97%);
+      --draft-bubble-border: hsl(217 91% 90%);
+      --hover-highlight: hsl(217 91% 60% / 0.15);
+      --focus-ring: hsl(217 91% 45%);
+      --completed-bg: hsl(220 14% 92%);
+      --highlight-bg: hsl(48 100% 70% / 0.65);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--background);
+      color: var(--foreground);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    :focus-visible {
+      outline: 3px solid var(--focus-ring);
+      outline-offset: 2px;
+      border-radius: 0.25rem;
+    }
+
+    .top-header {
+      position: fixed;
+      inset: 0 0 auto 0;
+      height: 3.5rem;
+      padding: 0 1.5rem;
+      border-bottom: 1px solid var(--border);
+      background: var(--card);
+      display: flex;
+      align-items: center;
+      z-index: 10;
+    }
+
+    .top-header h1 {
+      margin: 0;
+      font-size: 1.125rem;
+      font-weight: 700;
+    }
+
+    .layout {
+      margin-top: 3.5rem;
+      height: calc(100vh - 3.5rem);
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      background: var(--background);
+    }
+
+    .panel {
+      min-height: 0;
+      overflow: auto;
+      padding: 0.5rem;
+    }
+
+    .panel-right {
+      border-left: 1px solid var(--border);
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+    }
+
+    .draft-wrap {
+      padding: 0.5rem;
+    }
+
+    .avatar-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .avatar {
+      width: 2rem;
+      height: 2rem;
+      border-radius: 999px;
+      background: #90278e;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 0.9rem;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .draft-heading {
+      margin: 0;
+      font-size: 1rem;
+    }
+
+    .draft-subtitle {
+      margin: 0.1rem 0 0;
+      color: var(--muted-foreground);
+      font-size: 0.875rem;
+    }
+
+    .draft-bubble {
+      border-radius: 0.75rem;
+      padding: 1rem;
+      background: var(--draft-bubble-bg);
+      border: 1px solid var(--draft-bubble-border);
+    }
+
+    .draft-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: grid;
+      gap: 0.75rem;
+    }
+
+    .draft-item-btn {
+      width: 100%;
+      text-align: left;
+      border: 0;
+      background: transparent;
+      border-radius: 0.375rem;
+      padding: 0.5rem;
+      margin: -0.25rem -0.5rem;
+      cursor: pointer;
+      color: inherit;
+      transition: background-color 0.2s, opacity 0.2s;
+      font-size: 0.875rem;
+      line-height: 1.4;
+      min-height: 44px;
+      white-space: pre-wrap;
+    }
+
+    .draft-item-btn:hover {
+      background: var(--hover-highlight);
+    }
+
+    .draft-item-btn.highlighting {
+      background: var(--highlight-bg);
+    }
+
+    .draft-item-btn[aria-disabled="true"] {
+      opacity: 0.6;
+      background: var(--completed-bg);
+      color: var(--muted-foreground);
+      cursor: not-allowed;
+    }
+
+    .draft-item-btn.locked {
+      cursor: wait;
+    }
+
+    .draft-item-title {
+      margin: 0 0 0.35rem;
+      font-size: 0.925rem;
+      font-weight: 600;
+    }
+
+    .draft-item-text {
+      display: block;
+      white-space: pre-wrap;
+    }
+
+    .email-shell {
+      display: flex;
+      flex-direction: column;
+      min-height: 100%;
+      padding: 0.5rem;
+      gap: 0;
+    }
+
+    .email-header {
+      border-radius: 0.5rem 0.5rem 0 0;
+      padding: 1rem;
+    }
+
+    .email-header h2 {
+      margin: 0 0 1rem;
+      font-size: 1rem;
+    }
+
+    .meta-row {
+      display: grid;
+      grid-template-columns: 4.5rem 1fr;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
+      font-size: 0.875rem;
+    }
+
+    .meta-key { color: var(--muted-foreground); }
+
+    .email-body {
+      flex: 1;
+      min-height: 10rem;
+      border-top: 0;
+      padding: 1rem;
+    }
+
+    .helper-text {
+      margin: 0;
+      color: var(--muted-foreground);
+      font-size: 0.95rem;
+      max-width: 46ch;
+    }
+
+    .status-text {
+      margin-top: 1rem;
+      font-size: 0.9rem;
+      color: var(--muted-foreground);
+    }
+
+    .email-content {
+      display: grid;
+      gap: 0.8rem;
+      margin-top: 1rem;
+    }
+
+    .email-block {
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      background: hsl(0 0% 100%);
+      padding: 0.75rem;
+      white-space: pre-wrap;
+      line-height: 1.5;
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .email-block.fade-in {
+      animation: fade-in-block 0.3s ease-out;
+    }
+
+    .email-block .text-part.highlight-delete {
+      background: var(--highlight-bg);
+    }
+
+    .correction-cursor {
+      font-weight: 700;
+      margin-left: 1px;
+    }
+
+    .correction-cursor.blink {
+      animation: cursor-blink 1s step-end infinite;
+    }
+
+    .correction-cursor.steady {
+      opacity: 1;
+    }
+
+    .email-footer {
+      border-top: 0;
+      border-radius: 0 0 0.5rem 0.5rem;
+      padding: 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .icon-group {
+      display: inline-flex;
+      gap: 0.5rem;
+    }
+
+    .icon-btn,
+    .send-btn {
+      border: 1px solid var(--border);
+      background: var(--card);
+      border-radius: 0.5rem;
+      padding: 0.65rem 0.85rem;
+      font-size: 0.95rem;
+      color: var(--muted-foreground);
+      min-height: 44px;
+      min-width: 44px;
+    }
+
+    .send-btn {
+      padding: 0.75rem 2rem;
+      border-color: transparent;
+      background: var(--primary);
+      color: var(--primary-foreground);
+      font-weight: 600;
+      min-width: auto;
+    }
+
+    .send-btn:disabled,
+    .icon-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .context-menu {
+      position: fixed;
+      min-width: 190px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      box-shadow: 0 15px 30px -12px rgb(0 0 0 / 0.25);
+      padding: 0.5rem;
+      display: grid;
+      gap: 0.5rem;
+      z-index: 20;
+    }
+
+    .context-menu button {
+      border: 0;
+      border-radius: 0.375rem;
+      background: hsl(220 14% 96%);
+      color: inherit;
+      text-align: left;
+      padding: 0.5rem 0.75rem;
+      font-size: 0.875rem;
+      cursor: pointer;
+      min-height: 36px;
+      transition: all 0.2s;
+    }
+
+    .context-menu button:hover {
+      background: var(--hover-highlight);
+    }
+
+    .context-menu.menu-busy {
+      pointer-events: none;
+      opacity: 0.75;
+    }
+
+    [hidden] { display: none !important; }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    @keyframes fade-in-block {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes cursor-blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation: none !important;
+        transition: none !important;
+      }
+    }
+
+    @media (max-width: 900px) {
+      .layout {
+        grid-template-columns: 1fr;
+        height: auto;
+        min-height: calc(100vh - 3.5rem);
+      }
+
+      .panel-right {
+        border-left: 0;
+        border-top: 1px solid var(--border);
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="top-header">
+    <h1>Being a HITL - defend against hallucination and bias</h1>
+  </header>
+
+  <main class="layout" id="main-content">
+    <section class="panel panel-left" aria-labelledby="draft-area-heading" role="region">
+      <div class="draft-wrap">
+        <div class="avatar-row" aria-hidden="true">
+          <span class="avatar">AI</span>
+          <div>
+            <h2 id="draft-area-heading" class="draft-heading">AI Assistant</h2>
+            <p class="draft-subtitle">Draft generated</p>
+          </div>
+        </div>
+
+        <div class="draft-bubble" aria-label="Draft content">
+          <ul class="draft-list" id="draft-list"></ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel panel-right" aria-labelledby="email-heading" role="region">
+      <div class="email-shell">
+        <div class="card email-header">
+          <h2 id="email-heading">New Message</h2>
+          <div class="meta-row"><span class="meta-key">To:</span><span>cardiology.referrals@nhs.net</span></div>
+          <div class="meta-row"><span class="meta-key">Subject:</span><span>eRS Referral - Cardiology</span></div>
+        </div>
+
+        <div class="card email-body" aria-describedby="email-helper interaction-state">
+          <p id="email-helper" class="helper-text">Choose "Copy-paste" or "Check content" from the draft to fill this email.</p>
+          <p id="interaction-state" class="status-text" tabindex="-1">No draft section selected yet.</p>
+          <div id="email-content" class="email-content" aria-live="off"></div>
+          <div id="status-log" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
+        </div>
+
+        <div class="card email-footer">
+          <div class="icon-group" aria-label="Email toolbar">
+            <button class="icon-btn" type="button" disabled aria-label="Attach file">📎</button>
+            <button class="icon-btn" type="button" disabled aria-label="Formatting">✎</button>
+          </div>
+          <button class="send-btn" id="send-btn" type="button" disabled aria-label="Send message">Send</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="context-menu" class="context-menu" role="menu" aria-label="Draft actions" hidden>
+    <button type="button" role="menuitem" id="action-copy">Copy-paste</button>
+    <button type="button" role="menuitem" id="action-check">Check content</button>
+  </div>
+
+  <script>
+    const TIMINGS = {
+      draftHighlight: 500,
+      correctionPreHighlight: 1000,
+      correctionDeleteHighlight: 900,
+      correctionPreDelete: 500,
+      correctionPostDelete: 650,
+      typingMsPerChar: 80,
+      typingWhitespacePause: 300,
+      correctionBetweenChunks: 900,
+      emailFadeIn: 300
+    };
+
+    const sections = [
+      {
+        id: 'preamble',
+        title: '1. GenAI preamble',
+        sectionName: 'GenAI preamble',
+        rawText: 'Absolutely — here is an eRS-compatible referral to the cardiologist, based on the notes you shared',
+        correctedText: ''
+      },
+      {
+        id: 'patient-info',
+        title: '2. Patient info',
+        sectionName: 'Patient info',
+        rawText: `Referral: Routine Cardiology Outpatient Appointment (eRS)\nPatient details: [to be added]\nName:\nAge:\nAddress:\nNHS Number:`,
+        correctedText: `Referral: Routine Cardiology Outpatient Appointment (eRS)\nPatient details\nName: Margaret Ellis\nAge: 67\nAddress: 14 Birchwood Close, Tamworth, Staffordshire, B79 7QR\nNHS Number: 485 627 3901`
+      },
+      {
+        id: 'medical',
+        title: '3. Medical details',
+        sectionName: 'Medical details',
+        rawText: `Reason for referral\nUrgent routine cardiology assessment for longstanding atrial fibrillation and recent episodes of chest pain on exertion.\nRelevant history\nHistory of hypertension, type 1 diabetes, asthma, and previous myocardial infarction in 2018 (per patient report). Family history of sudden cardiac death. Non-smoker.\nCurrent management\nMetformin 1 g twice daily.\nRamipril 10 mg once daily.\nSalbutamol inhaler PRN.\nRelevant investigations\nRecent ECG showed atrial fibrillation with ST elevation. Echocardiogram performed last month demonstrated normal left ventricular function with severe aortic stenosis.`,
+        correctedText: `Reason for referral\nUrgent cardiology assessment for longstanding atrial fibrillation and recent episodes of chest pain on exertion.\nRelevant history\nHistory of hypertension, type 2 diabetes, and previous myocardial infarction in 2018 (per patient report). Family history of sudden cardiac death. Non-smoker.\nCurrent management\nMetformin 1 g twice daily.\nRamipril 10 mg once daily.\nBisoprolol 5 mg once daily.\nRelevant investigations\nRecent ECG showed atrial fibrillation with controlled ventricular rate.\nEchocardiogram performed last month demonstrated mildly reduced left ventricular function with moderate aortic stenosis.`
+      },
+      {
+        id: 'additional',
+        title: '4. Additional info',
+        sectionName: 'Additional info',
+        rawText: 'Additional information\nPatient is keen to be seen as soon as possible. I believe cardiology input is required to confirm diagnosis and advise on management.',
+        correctedText: 'Additional information\nPatient is keen to be seen as soon as possible. I believe cardiology input is required to confirm diagnosis and advise on management.'
+      },
+      {
+        id: 'sign-off',
+        title: '5. Email sign-off',
+        sectionName: 'Email sign-off',
+        rawText: 'Thanks so much for taking a look at this and helping out - Wishing you a very Merry Christmas!\nKindest regards,\nSam - GP\nGreenfield Surgery',
+        correctedText: 'Thanks so much for taking a look at this and helping out.\nKindest regards,\nSam - GP\nGreenfield Surgery'
+      },
+      {
+        id: 'follow-up',
+        title: '6. GenAI follow-up',
+        sectionName: 'GenAI follow-up',
+        rawText: 'Would you like me to suggest some possible diagnoses based on these symptoms, or help you choose a medicine for the patient in the meantime?',
+        correctedText: ''
+      }
+    ];
+
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+    const draftList = document.getElementById('draft-list');
+    const menu = document.getElementById('context-menu');
+    const interactionState = document.getElementById('interaction-state');
+    const statusLog = document.getElementById('status-log');
+    const emailContent = document.getElementById('email-content');
+    const helperText = document.getElementById('email-helper');
+    const sendBtn = document.getElementById('send-btn');
+    const menuItems = [...menu.querySelectorAll('[role="menuitem"]')];
+
+    let activeTrigger = null;
+    let activeSection = null;
+    let isAnimating = false;
+    let isMenuBusy = false;
+    const completedSections = new Set();
+    const insertedBlocks = new Map();
+    let announceQueue = Promise.resolve();
+
+    function announce(message, delay = 0) {
+      announceQueue = announceQueue
+        .then(() => wait(delay))
+        .then(() => {
+          statusLog.textContent = '';
+          window.requestAnimationFrame(() => {
+            statusLog.textContent = message;
+          });
+        });
+    }
+
+    function wait(ms) {
+      return new Promise((resolve) => window.setTimeout(resolve, ms));
+    }
+
+    function getDraftButtons() {
+      return [...document.querySelectorAll('.draft-item-btn')];
+    }
+
+    function renderDraftList() {
+      sections.forEach((section) => {
+        const li = document.createElement('li');
+        li.innerHTML = `
+          <button class="draft-item-btn" id="draft-${section.id}" data-id="${section.id}" aria-haspopup="menu" aria-controls="context-menu" aria-expanded="false">
+            <span class="draft-item-text">${section.rawText}</span>
+          </button>
+        `;
+        draftList.appendChild(li);
+      });
+
+      getDraftButtons().forEach((button) => {
+        button.addEventListener('click', () => {
+          if (menu.hidden || activeTrigger !== button) {
+            openMenu(button);
+          } else {
+            closeMenu();
+          }
+        });
+
+        button.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            if (menu.hidden || activeTrigger !== button) {
+              openMenu(button);
+            } else {
+              closeMenu();
+            }
+            return;
+          }
+
+          if (event.key === 'ArrowDown') {
+            event.preventDefault();
+            openMenu(button);
+          }
+        });
+      });
+    }
+
+    function isUnavailable(button) {
+      return button.getAttribute('aria-disabled') === 'true' || isAnimating;
+    }
+
+    function setExpanded(trigger = null) {
+      getDraftButtons().forEach((btn) => {
+        btn.setAttribute('aria-expanded', btn === trigger ? 'true' : 'false');
+      });
+    }
+
+    function closeMenu({ returnFocus = true, announceClose = true } = {}) {
+      if (menu.hidden) return;
+      menu.hidden = true;
+      setExpanded(null);
+      if (announceClose) {
+        announce('Context menu closed.');
+      }
+      if (returnFocus && activeTrigger) {
+        activeTrigger.focus();
+      }
+      activeTrigger = null;
+      activeSection = null;
+    }
+
+    function setMenuBusy(isBusy) {
+      isMenuBusy = isBusy;
+      menu.classList.toggle('menu-busy', isBusy);
+    }
+
+    function focusNextDraftBlock(currentButton) {
+      const buttons = getDraftButtons();
+      const startIndex = Math.max(0, buttons.indexOf(currentButton));
+
+      for (let i = startIndex + 1; i < buttons.length; i += 1) {
+        if (buttons[i].getAttribute('aria-disabled') !== 'true') {
+          buttons[i].focus();
+          return;
+        }
+      }
+
+      for (let i = 0; i <= startIndex; i += 1) {
+        if (buttons[i].getAttribute('aria-disabled') !== 'true') {
+          buttons[i].focus();
+          return;
+        }
+      }
+
+      if (!sendBtn.disabled) {
+        sendBtn.focus();
+      }
+    }
+
+    function openMenu(button) {
+      if (isUnavailable(button) || isMenuBusy) return;
+      const section = sections.find((item) => item.id === button.dataset.id);
+      const rect = button.getBoundingClientRect();
+      menu.style.top = `${Math.min(window.innerHeight - 120, rect.bottom + 6)}px`;
+      menu.style.left = `${Math.min(window.innerWidth - 230, rect.left)}px`;
+      menu.hidden = false;
+      activeTrigger = button;
+      activeSection = section;
+      setExpanded(button);
+      document.getElementById('action-copy').setAttribute('aria-label', `Copy-paste for ${section.sectionName}`);
+      document.getElementById('action-check').setAttribute('aria-label', `Check content for ${section.sectionName}`);
+      menuItems[0].focus();
+      announce(`Context menu opened for ${section.sectionName}.`);
+    }
+
+    function setAnimating(nextState) {
+      isAnimating = nextState;
+      getDraftButtons().forEach((btn) => {
+        if (btn.getAttribute('aria-disabled') === 'true') return;
+        btn.classList.toggle('locked', nextState);
+      });
+      if (nextState) {
+        interactionState.textContent = 'Action in progress. Draft selection is temporarily locked.';
+      }
+    }
+
+    function updateSendState({ announceChange = true } = {}) {
+      const hasContent = [...insertedBlocks.values()].some((text) => text.trim().length > 0);
+      const previous = sendBtn.disabled;
+      sendBtn.disabled = !hasContent;
+      if (announceChange && previous !== sendBtn.disabled) {
+        announce(sendBtn.disabled ? 'Send disabled' : 'Send enabled');
+      }
+    }
+
+    function markCompleted(button, sectionName, { announceCompletion = true } = {}) {
+      completedSections.add(sectionName);
+      button.setAttribute('aria-disabled', 'true');
+      button.classList.remove('highlighting');
+      button.classList.remove('locked');
+      interactionState.textContent = `${sectionName} completed.`;
+      if (announceCompletion) {
+        announce(`${sectionName} completed.`);
+      }
+    }
+
+    async function runDraftHighlight(button) {
+      if (prefersReducedMotion.matches) return;
+      button.classList.add('highlighting');
+      await wait(TIMINGS.draftHighlight);
+      button.classList.remove('highlighting');
+    }
+
+    function getBlockPosition(id) {
+      return sections.findIndex((section) => section.id === id);
+    }
+
+    function ensureEmailBlock(section, text, { announceSendState = true } = {}) {
+      let block = document.getElementById(`email-block-${section.id}`);
+      if (!block) {
+        block = document.createElement('article');
+        block.className = 'email-block';
+        block.id = `email-block-${section.id}`;
+        block.dataset.index = String(getBlockPosition(section.id));
+        block.innerHTML = '<span class="text-part"></span>';
+
+        const allBlocks = [...emailContent.querySelectorAll('.email-block')];
+        const insertBefore = allBlocks.find((node) => Number(node.dataset.index) > Number(block.dataset.index));
+        if (insertBefore) {
+          emailContent.insertBefore(block, insertBefore);
+        } else {
+          emailContent.appendChild(block);
+        }
+      }
+
+      const textNode = block.querySelector('.text-part');
+      textNode.textContent = text;
+
+      if (!prefersReducedMotion.matches) {
+        block.classList.remove('fade-in');
+        void block.offsetWidth;
+        block.classList.add('fade-in');
+      }
+
+      helperText.hidden = true;
+      insertedBlocks.set(section.id, text);
+      updateSendState({ announceChange: announceSendState });
+      return block;
+    }
+
+    function removeEmailBlock(section, { announceSendState = true } = {}) {
+      const block = document.getElementById(`email-block-${section.id}`);
+      if (block) {
+        block.remove();
+      }
+      insertedBlocks.set(section.id, '');
+      const hasVisible = [...insertedBlocks.values()].some((text) => text.trim().length > 0);
+      helperText.hidden = hasVisible;
+      updateSendState({ announceChange: announceSendState });
+    }
+
+    async function performCorrection(section, block, { announceSendState = true } = {}) {
+      if (section.rawText === section.correctedText) {
+        insertedBlocks.set(section.id, section.correctedText);
+        updateSendState({ announceChange: announceSendState });
+        return;
+      }
+
+      if (prefersReducedMotion.matches) {
+        if (!section.correctedText) {
+          removeEmailBlock(section, { announceSendState });
+        } else {
+          block.querySelector('.text-part').textContent = section.correctedText;
+          insertedBlocks.set(section.id, section.correctedText);
+          updateSendState({ announceChange: announceSendState });
+        }
+        return;
+      }
+
+      const textPart = block.querySelector('.text-part');
+      const cursor = document.createElement('span');
+      cursor.className = 'correction-cursor blink';
+      cursor.textContent = '|';
+      block.appendChild(cursor);
+
+      await wait(TIMINGS.correctionPreHighlight);
+      textPart.classList.add('highlight-delete');
+      await wait(TIMINGS.correctionDeleteHighlight);
+      await wait(TIMINGS.correctionPreDelete);
+
+      textPart.classList.remove('highlight-delete');
+      textPart.textContent = '';
+      await wait(TIMINGS.correctionPostDelete);
+
+      cursor.classList.remove('blink');
+      cursor.classList.add('steady');
+      const correctionChunks = [section.correctedText];
+      for (let chunkIndex = 0; chunkIndex < correctionChunks.length; chunkIndex += 1) {
+        const chunk = correctionChunks[chunkIndex];
+        for (let i = 0; i < chunk.length; i += 1) {
+          textPart.textContent += chunk[i];
+          await wait(TIMINGS.typingMsPerChar);
+          const char = chunk[i];
+          const prevChar = i > 0 ? chunk[i - 1] : '';
+          const isWhitespace = /\s/.test(char);
+          if (isWhitespace && i < chunk.length - 1 && !/\s/.test(prevChar)) {
+            await wait(TIMINGS.typingWhitespacePause);
+          }
+        }
+        if (chunkIndex < correctionChunks.length - 1) {
+          await wait(TIMINGS.correctionBetweenChunks);
+        }
+      }
+
+      cursor.classList.remove('steady');
+      cursor.classList.add('blink');
+      await wait(180);
+      cursor.remove();
+
+      if (!section.correctedText) {
+        removeEmailBlock(section, { announceSendState });
+      } else {
+        insertedBlocks.set(section.id, section.correctedText);
+        updateSendState({ announceChange: announceSendState });
+      }
+    }
+
+    async function runAction(actionType) {
+      const trigger = activeTrigger;
+      const section = activeSection;
+      if (!trigger || !section || isAnimating || trigger.getAttribute('aria-disabled') === 'true') return;
+
+      setMenuBusy(true);
+      setAnimating(true);
+
+      await runDraftHighlight(trigger);
+      const isCheckAction = actionType === 'check';
+      const block = ensureEmailBlock(section, section.rawText, { announceSendState: !isCheckAction });
+      const announceStepDelay = 260;
+
+      if (actionType === 'copy') {
+        announce(`${section.sectionName} copy-pasted into email`);
+      } else {
+        announce(`checking ${section.sectionName}`);
+
+        if (section.id === 'medical') {
+          announce('correcting the hallucinations', announceStepDelay);
+        }
+
+        if (section.id === 'sign-off') {
+          announce('correcting the bias', announceStepDelay);
+        }
+
+        await performCorrection(section, block, { announceSendState: false });
+
+        if (section.id === 'preamble' || section.id === 'follow-up') {
+          announce(`removing inappropriate ${section.sectionName} from email`, announceStepDelay);
+        }
+
+        if (section.id === 'patient-info' || section.id === 'additional') {
+          announce(`${section.sectionName} added to email`, announceStepDelay);
+        }
+
+        if (section.id === 'medical' || section.id === 'sign-off') {
+          announce(`corrected ${section.sectionName} added to email`, announceStepDelay);
+        }
+
+        announce(sendBtn.disabled ? 'Send disabled' : 'Send enabled', announceStepDelay);
+      }
+
+      markCompleted(trigger, section.sectionName, { announceCompletion: false });
+      helperText.hidden = emailContent.children.length > 0;
+      setAnimating(false);
+      await announceQueue;
+      setMenuBusy(false);
+      closeMenu({ returnFocus: false, announceClose: false });
+      focusNextDraftBlock(trigger);
+    }
+
+    renderDraftList();
+
+    document.getElementById('action-copy').addEventListener('click', () => runAction('copy'));
+    document.getElementById('action-check').addEventListener('click', () => runAction('check'));
+
+    menu.addEventListener('keydown', (event) => {
+      if (isMenuBusy) {
+        event.preventDefault();
+        return;
+      }
+      const index = menuItems.indexOf(document.activeElement);
+
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeMenu();
+        return;
+      }
+
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        menuItems[(index + 1) % menuItems.length].focus();
+      }
+
+      if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        menuItems[(index - 1 + menuItems.length) % menuItems.length].focus();
+      }
+
+      if (event.key === 'Home') {
+        event.preventDefault();
+        menuItems[0].focus();
+      }
+
+      if (event.key === 'End') {
+        event.preventDefault();
+        menuItems[menuItems.length - 1].focus();
+      }
+
+      if (event.key === 'Tab') {
+        event.preventDefault();
+        const next = event.shiftKey
+          ? (index - 1 + menuItems.length) % menuItems.length
+          : (index + 1) % menuItems.length;
+        menuItems[next].focus();
+      }
+
+      if ((event.key === 'Enter' || event.key === ' ') && document.activeElement?.matches('[role="menuitem"]')) {
+        event.preventDefault();
+        document.activeElement.click();
+      }
+    });
+
+    document.addEventListener('pointerdown', (event) => {
+      if (menu.hidden || isMenuBusy) return;
+      if (!menu.contains(event.target) && !event.target.closest('.draft-item-btn')) {
+        closeMenu({ returnFocus: false });
+      }
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && !menu.hidden && !isMenuBusy) {
+        event.preventDefault();
+        closeMenu();
+      }
+    });
+  </script>
+</body>
+</html>
