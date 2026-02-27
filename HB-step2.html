@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HITL Training - Checking for Hallucinations and Bias</title>
+  <style>
+    :root {
+      --background: hsl(220 14% 96%);
+      --foreground: hsl(222 47% 11%);
+      --card: hsl(0 0% 100%);
+      --muted-foreground: hsl(220 9% 46%);
+      --border: hsl(220 13% 91%);
+      --primary: hsl(217 91% 60%);
+      --primary-foreground: hsl(0 0% 100%);
+      --draft-bubble-bg: hsl(217 91% 97%);
+      --draft-bubble-border: hsl(217 91% 90%);
+      --hover-highlight: hsl(217 91% 60% / 0.15);
+      --focus-ring: hsl(217 91% 45%);
+      --completed-bg: hsl(220 14% 92%);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--background);
+      color: var(--foreground);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    :focus-visible {
+      outline: 3px solid var(--focus-ring);
+      outline-offset: 2px;
+      border-radius: 0.25rem;
+    }
+
+    .top-header {
+      position: fixed;
+      inset: 0 0 auto 0;
+      height: 3.5rem;
+      padding: 0 1.5rem;
+      border-bottom: 1px solid var(--border);
+      background: var(--card);
+      display: flex;
+      align-items: center;
+      z-index: 10;
+    }
+
+    .top-header h1 {
+      margin: 0;
+      font-size: 1.125rem;
+      font-weight: 700;
+    }
+
+    .layout {
+      margin-top: 3.5rem;
+      height: calc(100vh - 3.5rem);
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      background: var(--background);
+    }
+
+    .panel {
+      min-height: 0;
+      overflow: auto;
+      padding: 0.5rem;
+    }
+
+    .panel-right {
+      border-left: 1px solid var(--border);
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+    }
+
+    .draft-wrap {
+      padding: 0.5rem;
+    }
+
+    .avatar-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .avatar {
+      width: 2rem;
+      height: 2rem;
+      border-radius: 999px;
+      background: #90278e;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 0.9rem;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .draft-heading {
+      margin: 0;
+      font-size: 1rem;
+    }
+
+    .draft-subtitle {
+      margin: 0.1rem 0 0;
+      color: var(--muted-foreground);
+      font-size: 0.875rem;
+    }
+
+    .draft-bubble {
+      border-radius: 0.75rem;
+      padding: 1rem;
+      background: var(--draft-bubble-bg);
+      border: 1px solid var(--draft-bubble-border);
+    }
+
+    .draft-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: grid;
+      gap: 0.75rem;
+    }
+
+    .draft-item-btn {
+      width: 100%;
+      text-align: left;
+      border: 0;
+      background: transparent;
+      border-radius: 0.375rem;
+      padding: 0.5rem;
+      margin: -0.25rem -0.5rem;
+      cursor: pointer;
+      color: inherit;
+      transition: background-color 0.2s, opacity 0.2s;
+      font-size: 0.875rem;
+      line-height: 1.4;
+      min-height: 44px;
+    }
+
+    .draft-item-btn:hover {
+      background: var(--hover-highlight);
+    }
+
+    .draft-item-btn[aria-disabled="true"] {
+      opacity: 0.6;
+      background: var(--completed-bg);
+      color: var(--muted-foreground);
+      cursor: not-allowed;
+    }
+
+    .draft-item-btn[aria-disabled="true"]:hover {
+      background: var(--completed-bg);
+    }
+
+    .draft-item-btn.locked {
+      cursor: wait;
+    }
+
+    .draft-item-title {
+      margin: 0 0 0.35rem;
+      font-size: 0.925rem;
+      font-weight: 600;
+    }
+
+    .email-shell {
+      display: flex;
+      flex-direction: column;
+      min-height: 100%;
+      padding: 0.5rem;
+      gap: 0;
+    }
+
+    .email-header {
+      border-radius: 0.5rem 0.5rem 0 0;
+      padding: 1rem;
+    }
+
+    .email-header h2 {
+      margin: 0 0 1rem;
+      font-size: 1rem;
+    }
+
+    .meta-row {
+      display: grid;
+      grid-template-columns: 4.5rem 1fr;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
+      font-size: 0.875rem;
+    }
+
+    .meta-key { color: var(--muted-foreground); }
+
+    .email-body {
+      flex: 1;
+      min-height: 10rem;
+      border-top: 0;
+      padding: 1rem;
+    }
+
+    .helper-text {
+      margin: 0;
+      color: var(--muted-foreground);
+      font-size: 0.95rem;
+      max-width: 46ch;
+    }
+
+    .status-text {
+      margin-top: 1rem;
+      font-size: 0.9rem;
+      color: var(--muted-foreground);
+    }
+
+    .email-footer {
+      border-top: 0;
+      border-radius: 0 0 0.5rem 0.5rem;
+      padding: 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .icon-group {
+      display: inline-flex;
+      gap: 0.5rem;
+    }
+
+    .icon-btn,
+    .send-btn {
+      border: 1px solid var(--border);
+      background: var(--card);
+      border-radius: 0.5rem;
+      padding: 0.65rem 0.85rem;
+      font-size: 0.95rem;
+      color: var(--muted-foreground);
+      min-height: 44px;
+      min-width: 44px;
+    }
+
+    .send-btn {
+      padding: 0.75rem 2rem;
+      border-color: transparent;
+      background: var(--primary);
+      color: var(--primary-foreground);
+      font-weight: 600;
+      min-width: auto;
+    }
+
+    .send-btn:disabled,
+    .icon-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .context-menu {
+      position: fixed;
+      min-width: 160px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      box-shadow: 0 15px 30px -12px rgb(0 0 0 / 0.25);
+      padding: 0.5rem;
+      display: grid;
+      gap: 0.5rem;
+      z-index: 20;
+    }
+
+    .context-menu button {
+      border: 0;
+      border-radius: 0.375rem;
+      background: hsl(220 14% 96%);
+      color: inherit;
+      text-align: left;
+      padding: 0.5rem 0.75rem;
+      font-size: 0.875rem;
+      cursor: pointer;
+      min-height: 36px;
+    }
+
+    .context-menu button:hover {
+      background: var(--hover-highlight);
+    }
+
+    [hidden] { display: none !important; }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    @media (max-width: 900px) {
+      .layout {
+        grid-template-columns: 1fr;
+        height: auto;
+        min-height: calc(100vh - 3.5rem);
+      }
+
+      .panel { max-height: none; }
+
+      .panel-right {
+        border-left: 0;
+        border-top: 1px solid var(--border);
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="top-header">
+    <h1>Being a HITL - defend against hallucination and bias</h1>
+  </header>
+
+  <main class="layout" id="main-content">
+    <section class="panel panel-left" aria-labelledby="email-heading" role="region">
+      <div class="email-shell">
+        <div class="card email-header">
+          <h2 id="email-heading">New Message</h2>
+          <div class="meta-row"><span class="meta-key">To:</span><span>cardiology.referrals@nhs.net</span></div>
+          <div class="meta-row"><span class="meta-key">Subject:</span><span>eRS Referral - Cardiology</span></div>
+        </div>
+
+        <div class="card email-body" aria-describedby="email-helper interaction-state">
+          <p id="email-helper" class="helper-text">Choose "Copy-paste" or "Check content" from the draft to fill this email.</p>
+          <p id="interaction-state" class="status-text">No draft section selected yet.</p>
+          <div id="action-log" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+        </div>
+
+        <div class="card email-footer">
+          <div class="icon-group" aria-label="Email toolbar">
+            <button class="icon-btn" type="button" disabled aria-label="Attach file">📎</button>
+            <button class="icon-btn" type="button" disabled aria-label="Formatting">✎</button>
+          </div>
+          <button class="send-btn" type="button" disabled>Send</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel panel-right" aria-labelledby="draft-area-heading" role="region">
+      <div class="draft-wrap">
+        <div class="avatar-row" aria-hidden="true">
+          <span class="avatar">AI</span>
+          <div>
+            <h2 id="draft-area-heading" class="draft-heading">AI Assistant</h2>
+            <p class="draft-subtitle">Draft generated</p>
+          </div>
+        </div>
+
+        <div class="draft-bubble" aria-label="Draft content">
+          <ul class="draft-list">
+            <li>
+              <button class="draft-item-btn" id="draft-1" data-section="Opening and reason for referral" aria-haspopup="menu" aria-controls="context-menu" aria-expanded="false">
+                <h3 class="draft-item-title">1. Opening and reason for referral</h3>
+                <span>Dear Cardiology Team, please review this patient for possible arrhythmia after episodes of palpitations.</span>
+              </button>
+            </li>
+            <li>
+              <button class="draft-item-btn" id="draft-2" data-section="Symptoms summary" aria-haspopup="menu" aria-controls="context-menu" aria-expanded="false">
+                <h3 class="draft-item-title">2. Symptoms summary</h3>
+                <span>Symptoms include intermittent palpitations, light-headedness, and occasional exertional breathlessness.</span>
+              </button>
+            </li>
+            <li>
+              <button class="draft-item-btn" id="draft-3" data-section="Medical details" aria-haspopup="menu" aria-controls="context-menu" aria-expanded="false">
+                <h3 class="draft-item-title">3. Medical details</h3>
+                <span>History suggests no known cardiovascular disease and normal blood tests last month.</span>
+              </button>
+            </li>
+            <li>
+              <button class="draft-item-btn" id="draft-4" data-section="Current medication" aria-haspopup="menu" aria-controls="context-menu" aria-expanded="false">
+                <h3 class="draft-item-title">4. Current medication</h3>
+                <span>Currently taking ramipril and atorvastatin. No known drug allergies documented.</span>
+              </button>
+            </li>
+            <li>
+              <button class="draft-item-btn" id="draft-5" data-section="Requested action" aria-haspopup="menu" aria-controls="context-menu" aria-expanded="false">
+                <h3 class="draft-item-title">5. Requested action</h3>
+                <span>Please assess and advise regarding next diagnostic steps and management plan.</span>
+              </button>
+            </li>
+            <li>
+              <button class="draft-item-btn" id="draft-6" data-section="Email sign-off" aria-haspopup="menu" aria-controls="context-menu" aria-expanded="false">
+                <h3 class="draft-item-title">6. Email sign-off</h3>
+                <span>Kind regards, GP Practice Team.</span>
+              </button>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="context-menu" class="context-menu" role="menu" aria-label="Draft actions" hidden>
+    <button type="button" role="menuitem" id="action-copy">Copy-paste</button>
+    <button type="button" role="menuitem" id="action-check">Check content</button>
+  </div>
+
+  <script>
+    const draftButtons = [...document.querySelectorAll('.draft-item-btn')];
+    const menu = document.getElementById('context-menu');
+    const menuItems = [...menu.querySelectorAll('[role="menuitem"]')];
+    const interactionState = document.getElementById('interaction-state');
+    const actionLog = document.getElementById('action-log');
+
+    let activeTrigger = null;
+    let isAnimating = false;
+
+    function setExpanded(trigger = null) {
+      draftButtons.forEach((btn) => {
+        btn.setAttribute('aria-expanded', btn === trigger ? 'true' : 'false');
+      });
+    }
+
+    function closeMenu({ returnFocus = true } = {}) {
+      if (menu.hidden) return;
+      menu.hidden = true;
+      setExpanded(null);
+      if (returnFocus && activeTrigger) {
+        activeTrigger.focus();
+      }
+      activeTrigger = null;
+    }
+
+    function isUnavailable(button) {
+      return button.getAttribute('aria-disabled') === 'true' || isAnimating;
+    }
+
+    function openMenu(button) {
+      if (isUnavailable(button)) return;
+      const rect = button.getBoundingClientRect();
+      menu.style.top = `${Math.min(window.innerHeight - 120, rect.bottom + 6)}px`;
+      menu.style.left = `${Math.min(window.innerWidth - 180, rect.left)}px`;
+      menu.hidden = false;
+      activeTrigger = button;
+      setExpanded(button);
+      menuItems[0].focus();
+    }
+
+    function markCompleted(button, actionLabel) {
+      button.setAttribute('aria-disabled', 'true');
+      button.classList.remove('locked');
+      const section = button.dataset.section;
+      interactionState.textContent = `${section} completed via ${actionLabel}.`;
+      actionLog.textContent = `${section} completed.`;
+    }
+
+    function setAnimating(nextState) {
+      isAnimating = nextState;
+      draftButtons.forEach((btn) => {
+        if (btn.getAttribute('aria-disabled') === 'true') return;
+        btn.classList.toggle('locked', nextState);
+      });
+      if (nextState) {
+        interactionState.textContent = 'Action in progress. Draft selection is temporarily locked.';
+      }
+    }
+
+    function runAction(actionLabel) {
+      const trigger = activeTrigger;
+      if (!trigger) return;
+
+      closeMenu({ returnFocus: false });
+      setAnimating(true);
+      actionLog.textContent = `${trigger.dataset.section} ${actionLabel} started.`;
+
+      window.setTimeout(() => {
+        markCompleted(trigger, actionLabel);
+        setAnimating(false);
+        trigger.focus();
+      }, 600);
+    }
+
+    draftButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        if (menu.hidden || activeTrigger !== button) {
+          openMenu(button);
+        } else {
+          closeMenu();
+        }
+      });
+
+      button.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          if (menu.hidden || activeTrigger !== button) {
+            openMenu(button);
+          } else {
+            closeMenu();
+          }
+          return;
+        }
+
+        if (event.key === 'ArrowDown') {
+          event.preventDefault();
+          openMenu(button);
+        }
+      });
+    });
+
+    menu.addEventListener('keydown', (event) => {
+      const index = menuItems.indexOf(document.activeElement);
+
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeMenu();
+        return;
+      }
+
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        menuItems[(index + 1) % menuItems.length].focus();
+      }
+
+      if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        menuItems[(index - 1 + menuItems.length) % menuItems.length].focus();
+      }
+
+      if (event.key === 'Home') {
+        event.preventDefault();
+        menuItems[0].focus();
+      }
+
+      if (event.key === 'End') {
+        event.preventDefault();
+        menuItems[menuItems.length - 1].focus();
+      }
+
+      if (event.key === 'Tab') {
+        event.preventDefault();
+        const next = event.shiftKey
+          ? (index - 1 + menuItems.length) % menuItems.length
+          : (index + 1) % menuItems.length;
+        menuItems[next].focus();
+      }
+    });
+
+    document.getElementById('action-copy').addEventListener('click', () => runAction('Copy-paste'));
+    document.getElementById('action-check').addEventListener('click', () => runAction('Check content'));
+
+    document.addEventListener('pointerdown', (event) => {
+      if (menu.hidden) return;
+      if (!menu.contains(event.target) && !event.target.closest('.draft-item-btn')) {
+        closeMenu({ returnFocus: false });
+      }
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && !menu.hidden) {
+        event.preventDefault();
+        closeMenu();
+      }
+    });
+  </script>
+</body>
+</html>
