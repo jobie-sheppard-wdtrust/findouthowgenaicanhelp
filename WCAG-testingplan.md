@@ -1,4 +1,4 @@
-# WCAG 2.2 AA Testing Guide
+# WCAG 2.2 AA Testing Plan
 
 Source of truth used for WCAG mapping: `wcag-guide` (WCAG 2.2 Quick Reference content and success criteria list). This guide applies those WCAG 2.2 AA success criteria to three specs in this repo: `HB-spec-v2`, `PD-spec-v2`, and `RisksofGenAI-Spec`.
 
