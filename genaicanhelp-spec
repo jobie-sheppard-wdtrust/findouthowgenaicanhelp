@@ -1026,3 +1026,33 @@ These requirements are normative and MUST be implemented in addition to all beha
 * Provide a persistent visible instruction associated with message input, present before submission and available whenever textarea is enabled.
 * Required instruction text (exact):
   * `This simulation only responds to the preset prompts shown on screen. Click a preset prompt, or paste a full preset prompt exactly (case-insensitive).`
+
+## 13) Accessibility Implementation Contract Addendum (normative)
+This addendum is normative for implementation and WCAG test execution. If any earlier wording in this spec conflicts with this addendum, this addendum takes precedence.
+
+### 13.1 Semantic structure contract
+- The UI MUST expose one `header`, one `main` conversation area, and one footer/composer region.
+- The conversation area MUST use `role="log"` as the primary transcript announcement surface.
+- Preset prompts MUST be implemented as a labelled button group when visible.
+
+### 13.2 Keyboard interaction contract
+- Preset prompts and send control MUST follow standard button keyboard behavior (`Enter`/`Space` activate).
+- Textarea and send shortcut behavior MUST follow this interaction’s existing send-key rules.
+- Hidden prompt controls during assistant response MUST NOT be keyboard-focusable.
+
+### 13.3 Focus management contract
+- Initial load SHOULD place focus in textarea.
+- After send, focus SHOULD remain in textarea for continued interaction.
+- When auto-scroll is paused because the user is reading older messages, a keyboard-focusable control MUST be available with accessible name `Jump to latest message`.
+
+### 13.4 Accessible name/description mapping
+- Icon-only controls (send/attachment) MUST expose explicit accessible names.
+- Message entries MUST expose sender context plus message text to assistive technologies.
+
+### 13.5 State announcements contract
+- Assistant typing status MUST be announced politely once per response cycle.
+- Completed assistant messages MUST be announced once when complete (not on partial visual typing frames).
+
+### 13.6 Error/edge-case contract
+- Rapid repeated send attempts (e.g., repeated Enter) MUST resolve to one accepted send event per response cycle.
+- Preset prompts MUST be hidden while assistant response is active.

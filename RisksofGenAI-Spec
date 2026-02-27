@@ -412,3 +412,36 @@ Orientation
 The interaction works in both portrait and landscape orientations, with no forced orientation and no “rotate device” messaging.
 
 
+
+11) Accessibility Implementation Contract Addendum (normative)
+This addendum is normative for implementation and WCAG test execution. If any earlier wording in this spec conflicts with this addendum, this addendum takes precedence.
+
+1. Semantic structure contract
+- The page MUST expose one `header` and one `main` landmark.
+- Scenario content MUST be inside `main` with a programmatic heading.
+- Risk-interaction controls MUST be grouped in labelled sections.
+- Revealed hidden-risk content MUST remain in the same section context as its trigger option.
+
+2. Keyboard interaction contract
+- Risk options MUST use radio-button semantics in the accessibility tree.
+- Every risk option MUST be reachable and activatable by keyboard.
+- Activating a risk option reveals its hidden-risk panel.
+- Activating the same selected option again MUST minimise/collapse the revealed panel.
+
+3. Focus management contract
+- Triggering reveal/collapse MUST keep focus on the activated risk option.
+- If a pop-up/dialog is used, it MUST trap focus while open and restore focus to its trigger on close.
+- Reset/Try again MUST move focus to the top scenario heading.
+
+4. Accessible name/description mapping
+- Each risk option MUST expose a unique accessible name derived from visible highlighted text.
+- Expanded/collapsed state for option-associated panel MUST be programmatically conveyed (`aria-expanded` or equivalent).
+- Revealed panel MUST be programmatically associated with its controlling option (`aria-controls` or equivalent mapping).
+
+5. State announcements contract
+- Dynamic risk scoring announcements are not required because dynamic risk scoring is not part of this interaction.
+- Reveal/collapse state changes SHOULD be announced via programmatic expanded/collapsed state.
+
+8. Error/edge-case contract
+- Rapid option changes MUST resolve deterministically (last user action wins).
+- Partially completed interactions MUST remain keyboard operable with clear unmet-state communication.

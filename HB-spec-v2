@@ -658,3 +658,58 @@ Pointer cancellation
 Reduced motion and long animations
 - If the user has a reduced-motion preference enabled, non-essential animations are removed (no highlight sweeps, no fade/slide-in, no cursor blinking/typing simulation); final states appear immediately.
 
+
+11) Accessibility Implementation Contract Addendum (normative)
+This addendum is normative for implementation and WCAG test execution. If any earlier wording in this spec conflicts with this addendum, this addendum takes precedence.
+
+1. Semantic structure contract
+- The page MUST expose one `header` landmark containing the visible heading text.
+- The primary content MUST be within one `main` landmark.
+- In pre-send view, `main` MUST contain two labelled regions/sections:
+  - Draft region name: `Draft generated`.
+  - Email region name: `New message`.
+- In post-send feedback view, `main` MUST contain two labelled regions/sections:
+  - Left region name: `Draft review`.
+  - Right region name: `Feedback`.
+- Each view MUST have one programmatic top-level heading (`h1`) matching the visible page context.
+
+2. Keyboard interaction contract
+- Draft blocks MUST be keyboard-focusable while active and activate context menu on `Enter` or `Space`.
+- Context menu MUST support:
+  - `ArrowUp`/`ArrowDown` to move between options.
+  - `Enter`/`Space` to activate focused option.
+  - `Escape` to close.
+- `Send` MUST activate by pointer click, `Enter`, or `Space` when focused.
+- Deactivated draft blocks MUST NOT open the context menu from pointer or keyboard.
+
+3. Focus management contract
+- Opening context menu MUST move focus to first menu option.
+- Closing context menu (outside click, `Escape`, or activation) MUST restore focus to triggering draft block.
+- Opening feedback modal MUST:
+  - Move focus to modal heading.
+  - Trap focus within modal until close/continue.
+  - Restore focus to triggering draft block after close/continue.
+- On transition to post-send feedback view, focus MUST move to the feedback heading.
+
+4. Accessible name/description mapping
+- Draft block accessible name MUST be the block’s visible text summary/title.
+- Context menu options MUST include block context in accessible name, e.g.:
+  - `Copy-paste for <block name>`
+  - `Check content for <block name>`
+- Send control accessible name MUST be `Send message`.
+- Feedback modal MUST expose programmatic name from visible title `Feedback` and description from visible helper/body text.
+
+5. State announcements contract
+- Correction flow (`Check content`) MUST announce one summary status only, once per completed correction:
+  - Recommended text: `Section corrected for hallucination/bias.`
+- Block completion/deactivation SHOULD announce once:
+  - Recommended text: `<Section name> completed.`
+- Send completion and feedback-view transition MUST announce once as polite status.
+- Error/conflict states MUST use assertive announcement (`role="alert"` or equivalent).
+
+8. Error/edge-case contract
+- A draft block becomes deactivated immediately after insertion/check completion and cannot be selected again.
+- Clicking or key-activating an already deactivated block MUST do nothing (no menu, no duplicate insertion).
+- While modal is open, draft blocks MUST NOT open menu.
+- While animation lock is active, draft blocks MUST NOT open menu.
+- Rapid repeated activations of a still-active control MUST resolve deterministically to one accepted action.

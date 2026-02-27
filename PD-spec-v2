@@ -412,3 +412,37 @@ Colour and non-text contrast
 
 Input alternatives
 • Functionality MUST NOT depend on drag/gesture path; all interactions are single-point activation compatible. (KFP-12)
+
+11) Accessibility Implementation Contract Addendum (normative)
+This addendum is normative for implementation and WCAG test execution. If any earlier wording in this spec conflicts with this addendum, this addendum takes precedence.
+
+1. Semantic structure contract
+- The interaction MUST expose one `header`, one `main`, and one footer/composer region.
+- `main` MUST contain the conversation/transcript region with a programmatic label (recommended: `Conversation`).
+- Prompt controls MUST be grouped in a labelled group/region.
+
+2. Keyboard interaction contract
+- `Enter` MUST send when focus is in the textarea or on the send button.
+- `Shift+Enter` in the textarea MUST be rejected and treated as an invalid keyboard text-entry action for this interaction.
+- The send button MUST activate on pointer click, `Enter`, or `Space` when focused.
+- No auto-send behaviour is permitted.
+
+3. Focus management contract
+- Sending a message MUST NOT move focus to `body`; focus remains in composer flow.
+- If controls are hidden/disabled during response states, focus MUST move predictably to the next available composer/transcript focus target.
+- No focus trap is permitted outside explicit modal/dialog states.
+
+4. Accessible name/description mapping
+- Icon-only send control MUST have explicit accessible name (recommended: `Send message`).
+- Prompt controls MUST use visible label text as accessible name.
+- Transcript/log region MUST expose a programmatic label (recommended: `Conversation`).
+
+5. State announcements contract
+- Typing indicator MUST be announced once per response cycle (no repeated announcements while it remains visible).
+- New assistant/user message additions SHOULD be announced politely via the transcript/log pattern.
+- Invalid `Shift+Enter` attempt MUST present a programmatically determinable error message.
+
+8. Error/edge-case contract
+- Empty or whitespace-only send attempts MUST be rejected with no state corruption.
+- Locked/disabled controls MUST reject pointer and keyboard activation.
+- Rapid repeated `Enter`/send activation MUST resolve to one accepted send event per cycle.
