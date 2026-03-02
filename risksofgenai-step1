@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GenAI Chatbot</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --background: hsl(220 20% 97%);
+      --foreground: hsl(220 20% 10%);
+      --card: hsl(0 0% 100%);
+      --border: hsl(220 15% 90%);
+      --primary: hsl(221 83% 53%);
+      --primary-foreground: hsl(0 0% 100%);
+      --muted-foreground: hsl(220 10% 50%);
+      --chat-bot: hsl(220 15% 95%);
+      --chat-bot-foreground: hsl(220 20% 15%);
+      --focus-ring: hsl(221 83% 45%);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, sans-serif;
+      background: var(--background);
+      color: var(--foreground);
+      line-height: 1.5;
+    }
+
+    .page {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      height: 100vh;
+    }
+
+    .chat-window {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      max-width: 48rem;
+      width: 100%;
+      margin: 0 auto;
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      background: transparent;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      overflow: hidden;
+    }
+
+    .window-titlebar {
+      flex-shrink: 0;
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.5);
+      backdrop-filter: blur(8px);
+      display: flex;
+      flex-direction: column;
+      gap: 0.125rem;
+    }
+
+    .window-titlebar h1 {
+      font-size: 1.125rem;
+      font-weight: 600;
+    }
+
+    .window-titlebar p {
+      font-size: 0.875rem;
+      color: var(--muted-foreground);
+    }
+
+    .window-body {
+      flex: 1;
+      overflow-y: auto;
+      scroll-behavior: smooth;
+      padding: 1.5rem 1rem;
+    }
+
+    .messages {
+      width: 100%;
+      max-width: 48rem;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .message-row {
+      width: 100%;
+      min-width: 0;
+      display: flex;
+      gap: 0.75rem;
+      align-items: flex-start;
+      opacity: 0;
+      transform: translateY(10px);
+      animation: messageIn 0.3s ease-out forwards;
+    }
+
+    .avatar {
+      flex-shrink: 0;
+      width: 2.25rem;
+      height: 2.25rem;
+      border-radius: 50%;
+      background: #90278e;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .avatar svg {
+      width: 1.25rem;
+      height: 1.25rem;
+      fill: none;
+      stroke: var(--primary-foreground);
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .bubble {
+      flex: 0 1 auto;
+      display: inline-flex;
+      width: max-content;
+      max-width: 32rem;
+      min-width: 0;
+      padding: 0.75rem 1rem;
+      border-radius: 1rem;
+      border-top-left-radius: 0.375rem;
+      background: var(--chat-bot);
+      color: var(--chat-bot-foreground);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      font-size: 0.9375rem;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      word-break: break-word;
+      overflow-wrap: break-word;
+    }
+
+    .chat-footer {
+      flex-shrink: 0;
+      padding: 0 1rem 1.5rem;
+      background: transparent;
+      border-top: 0;
+    }
+
+    .chat-footer-inner {
+      max-width: 48rem;
+      margin: 0 auto;
+      position: relative;
+      padding-top: 3.5rem;
+    }
+
+    .prompts {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      justify-content: center;
+      animation: fadeIn 0.3s ease-out;
+      background: transparent;
+      pointer-events: auto;
+    }
+
+    .prompt-btn {
+      padding: 0.5rem 1rem;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 9999px;
+      font-size: 0.875rem;
+      color: var(--foreground);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .prompt-btn:hover {
+      background: var(--primary);
+      color: var(--primary-foreground);
+      border-color: var(--primary);
+    }
+
+    .input-wrapper {
+      position: relative;
+      background: var(--card);
+      border-radius: 1rem;
+      border: 1px solid var(--border);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      overflow: hidden;
+    }
+
+    label {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      border: 0;
+      white-space: nowrap;
+    }
+
+    textarea {
+      width: 100%;
+      resize: none;
+      background: transparent;
+      border: none;
+      padding: 1rem 1.25rem;
+      padding-right: 3.5rem;
+      font-size: 0.9375rem;
+      font-family: inherit;
+      color: var(--foreground);
+      outline: none;
+      min-height: 56px;
+      max-height: 200px;
+    }
+
+    textarea::placeholder {
+      color: var(--muted-foreground);
+    }
+
+    .send-btn {
+      position: absolute;
+      right: 0.75rem;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 2.5rem;
+      height: 2.5rem;
+      border-radius: 0.75rem;
+      background: var(--primary);
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .send-btn:hover {
+      opacity: 0.9;
+    }
+
+    .send-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .send-btn svg {
+      width: 1.25rem;
+      height: 1.25rem;
+      stroke: var(--primary-foreground);
+      stroke-width: 2;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    :focus-visible {
+      outline: 3px solid var(--focus-ring);
+      outline-offset: 2px;
+    }
+
+    @keyframes messageIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @media (max-width: 640px) {
+      .chat-window {
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
+      }
+
+      .window-titlebar {
+        padding: 0.75rem 1rem;
+      }
+
+      .window-body {
+        padding: 1rem 0.75rem;
+      }
+
+      .chat-footer {
+        padding: 0 0.75rem 1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="chat-window" aria-labelledby="page-title" aria-describedby="page-helper">
+      <header class="window-titlebar">
+        <h1 id="page-title">GenAI Chatbot</h1>
+        <p id="page-helper">See the risks when GenAI helps with this task</p>
+      </header>
+
+      <section class="window-body" aria-label="Chat transcript">
+        <div class="messages">
+          <article class="message-row" aria-label="Assistant message">
+            <div class="avatar" aria-hidden="true">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
+            </div>
+            <p class="bubble">How can I help?</p>
+          </article>
+        </div>
+
+      </section>
+
+      <footer class="chat-footer" aria-label="Message composer">
+        <div class="chat-footer-inner">
+          <div class="prompts" aria-label="Preset task prompts">
+            <button class="prompt-btn" type="button">Summarise this review into a clinic letter</button>
+          </div>
+
+          <div class="input-wrapper">
+            <label for="messageInput">Type your message</label>
+            <textarea id="messageInput" rows="1" placeholder="Type your message..." aria-describedby="page-helper"></textarea>
+            <button class="send-btn" type="button" aria-label="Send message" disabled>
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <line x1="22" y1="2" x2="11" y2="13"></line>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </footer>
+    </section>
+  </main>
+</body>
+</html>
