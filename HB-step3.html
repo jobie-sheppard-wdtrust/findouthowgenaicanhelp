@@ -1011,8 +1011,7 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
       setAnimating(false);
       await announceQueue;
       setMenuBusy(false);
-      closeMenu({ returnFocus: false, announceClose: false });
-      focusNextDraftBlock(trigger);
+      closeMenu({ returnFocus: true, announceClose: false });
     }
 
     renderDraftList();
