@@ -802,7 +802,6 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
       setBackgroundInert(true);
       modalOverlay.hidden = false;
       modalTitle.focus();
-      announce(`Feedback dialog opened for ${section.sectionName}.`);
     }
 
     function closeFeedbackModal({ processCheckAction = true } = {}) {
