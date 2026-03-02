@@ -815,9 +815,17 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
       if (processCheckAction && pending?.section && pending?.trigger) {
         activeSection = pending.section;
         activeTrigger = pending.trigger;
+
+        // Silently re-open the context menu so focus can park outside
+        // all landmarks during the announcement flow (mirrors step 3 pattern).
+        const rect = pending.trigger.getBoundingClientRect();
+        menu.style.top = `${Math.min(window.innerHeight - 120, rect.bottom + 6)}px`;
+        menu.style.left = `${Math.min(window.innerWidth - 230, rect.left)}px`;
+        menu.hidden = false;
+        setExpanded(pending.trigger);
         setMenuBusy(true);
-        // Move focus to a stable, visible control before hiding the modal to avoid SR landmark fallback chatter.
-        pending.trigger.focus({ preventScroll: true });
+        menuItems[1].focus();
+
         modalOverlay.hidden = true;
         runAction('check', { menuAlreadyBusy: true });
       } else {
