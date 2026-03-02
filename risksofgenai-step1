@@ -35,21 +35,21 @@
       display: flex;
       flex-direction: column;
       min-height: 100vh;
-      height: 100vh;
     }
 
     .chat-window {
       display: flex;
       flex-direction: column;
-      height: 100%;
       max-width: 48rem;
       width: 100%;
       margin: 0 auto;
+      min-height: 100vh;
+      min-height: 100dvh;
       border: 1px solid var(--border);
       border-radius: 1rem;
       background: transparent;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-      overflow: hidden;
+      overflow: visible;
     }
 
     .window-titlebar {
@@ -75,9 +75,19 @@
 
     .window-body {
       flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      padding: 1rem;
+    }
+
+    .messages-scroll {
+      flex: 1;
+      min-height: 0;
       overflow-y: auto;
       scroll-behavior: smooth;
-      padding: 1.5rem 1rem;
+      padding: 0.5rem 0;
     }
 
     .messages {
@@ -142,7 +152,7 @@
 
     .chat-footer {
       flex-shrink: 0;
-      padding: 0 1rem 1.5rem;
+      padding: 0;
       background: transparent;
       border-top: 0;
     }
@@ -150,15 +160,12 @@
     .chat-footer-inner {
       max-width: 48rem;
       margin: 0 auto;
-      position: relative;
-      padding-top: 3.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
     }
 
     .prompts {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
       display: flex;
       flex-wrap: wrap;
       gap: 0.5rem;
@@ -300,11 +307,7 @@
       }
 
       .window-body {
-        padding: 1rem 0.75rem;
-      }
-
-      .chat-footer {
-        padding: 0 0.75rem 1rem;
+        padding: 0.75rem;
       }
     }
   </style>
@@ -317,36 +320,37 @@
         <p id="page-helper">See the risks when GenAI helps with this task</p>
       </header>
 
-      <section class="window-body" aria-label="Chat transcript">
-        <div class="messages">
-          <article class="message-row" aria-label="Assistant message">
-            <div class="avatar" aria-hidden="true">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
+      <section class="window-body" aria-label="Chat transcript and composer">
+        <div class="messages-scroll" aria-label="Chat transcript">
+          <div class="messages">
+            <article class="message-row" aria-label="Assistant message">
+              <div class="avatar" aria-hidden="true">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
+              </div>
+              <p class="bubble">How can I help?</p>
+            </article>
+          </div>
+        </div>
+
+        <footer class="chat-footer" aria-label="Message composer">
+          <div class="chat-footer-inner">
+            <div class="prompts" aria-label="Preset task prompts">
+              <button class="prompt-btn" type="button">Summarise this review into a clinic letter</button>
             </div>
-            <p class="bubble">How can I help?</p>
-          </article>
-        </div>
 
+            <div class="input-wrapper">
+              <label for="messageInput">Type your message</label>
+              <textarea id="messageInput" rows="1" placeholder="Type your message..." aria-describedby="page-helper"></textarea>
+              <button class="send-btn" type="button" aria-label="Send message" disabled>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <line x1="22" y1="2" x2="11" y2="13"></line>
+                  <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </footer>
       </section>
-
-      <footer class="chat-footer" aria-label="Message composer">
-        <div class="chat-footer-inner">
-          <div class="prompts" aria-label="Preset task prompts">
-            <button class="prompt-btn" type="button">Summarise this review into a clinic letter</button>
-          </div>
-
-          <div class="input-wrapper">
-            <label for="messageInput">Type your message</label>
-            <textarea id="messageInput" rows="1" placeholder="Type your message..." aria-describedby="page-helper"></textarea>
-            <button class="send-btn" type="button" aria-label="Send message" disabled>
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <line x1="22" y1="2" x2="11" y2="13"></line>
-                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-              </svg>
-            </button>
-          </div>
-        </div>
-      </footer>
     </section>
   </main>
 </body>
