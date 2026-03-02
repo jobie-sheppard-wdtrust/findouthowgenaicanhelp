@@ -245,7 +245,7 @@
       animation: fade-in-block 0.3s ease-out;
     }
 
-    .email-block .text-part.highlight-delete {
+    .email-block .highlight-delete {
       background: var(--highlight-bg);
     }
 
@@ -257,7 +257,6 @@
     .correction-cursor.blink {
       animation: cursor-blink 1s step-end infinite;
     }
-
     .correction-cursor.steady {
       opacity: 1;
     }
@@ -469,7 +468,7 @@
         id: 'medical',
         title: '3. Medical details',
         sectionName: 'Medical details',
-        rawText: `Reason for referral\nUrgent routine cardiology assessment for longstanding atrial fibrillation and recent episodes of chest pain on exertion.\nRelevant history\nHistory of hypertension, type 1 diabetes, asthma, and previous myocardial infarction in 2018 (per patient report). Family history of sudden cardiac death. Non-smoker.\nCurrent management\nMetformin 1 g twice daily.\nRamipril 10 mg once daily.\nSalbutamol inhaler PRN.\nRelevant investigations\nRecent ECG showed atrial fibrillation with ST elevation. Echocardiogram performed last month demonstrated normal left ventricular function with severe aortic stenosis.`,
+        rawText: `Reason for referral\nUrgent cardiology assessment for longstanding atrial fibrillation and recent episodes of chest pain on exertion.\nRelevant history\nHistory of hypertension, type 1 diabetes, asthma, and previous myocardial infarction in 2018 (per patient report). Family history of sudden cardiac death. Non-smoker.\nCurrent management\nMetformin 1 g twice daily.\nRamipril 10 mg once daily.\nSalbutamol inhaler PRN.\nRelevant investigations\nRecent ECG showed atrial fibrillation with controlled ventricular rate. Echocardiogram performed last month demonstrated normal left ventricular function with moderate aortic stenosis.`,
         correctedText: `Reason for referral\nUrgent cardiology assessment for longstanding atrial fibrillation and recent episodes of chest pain on exertion.\nRelevant history\nHistory of hypertension, type 2 diabetes, and previous myocardial infarction in 2018 (per patient report). Family history of sudden cardiac death. Non-smoker.\nCurrent management\nMetformin 1 g twice daily.\nRamipril 10 mg once daily.\nBisoprolol 5 mg once daily.\nRelevant investigations\nRecent ECG showed atrial fibrillation with controlled ventricular rate.\nEchocardiogram performed last month demonstrated mildly reduced left ventricular function with moderate aortic stenosis.`
       },
       {
@@ -726,6 +725,81 @@
       updateSendState({ announceChange: announceSendState });
     }
 
+    function tokenizeForCorrection(text) {
+      return text.match(/\s+|[^\s]+/g) || [];
+    }
+
+    function mergeAdjacentOperations(operations) {
+      const merged = [];
+      operations.forEach((operation) => {
+        if (!operation.text) return;
+        const previous = merged[merged.length - 1];
+        if (previous && previous.type === operation.type) {
+          previous.text += operation.text;
+        } else {
+          merged.push({ ...operation });
+        }
+      });
+      return merged;
+    }
+
+    function buildDiffOperations(originalText, correctedText) {
+      const originalTokens = tokenizeForCorrection(originalText);
+      const correctedTokens = tokenizeForCorrection(correctedText);
+      const rowCount = originalTokens.length;
+      const colCount = correctedTokens.length;
+      const lcs = Array.from({ length: rowCount + 1 }, () => Array(colCount + 1).fill(0));
+
+      for (let row = rowCount - 1; row >= 0; row -= 1) {
+        for (let col = colCount - 1; col >= 0; col -= 1) {
+          if (originalTokens[row] === correctedTokens[col]) {
+            lcs[row][col] = lcs[row + 1][col + 1] + 1;
+          } else {
+            lcs[row][col] = Math.max(lcs[row + 1][col], lcs[row][col + 1]);
+          }
+        }
+      }
+
+      const operations = [];
+      let row = 0;
+      let col = 0;
+
+      while (row < rowCount && col < colCount) {
+        if (originalTokens[row] === correctedTokens[col]) {
+          operations.push({ type: 'equal', text: originalTokens[row] });
+          row += 1;
+          col += 1;
+        } else if (lcs[row + 1][col] >= lcs[row][col + 1]) {
+          operations.push({ type: 'delete', text: originalTokens[row] });
+          row += 1;
+        } else {
+          operations.push({ type: 'insert', text: correctedTokens[col] });
+          col += 1;
+        }
+      }
+
+      while (row < rowCount) {
+        operations.push({ type: 'delete', text: originalTokens[row] });
+        row += 1;
+      }
+
+      while (col < colCount) {
+        operations.push({ type: 'insert', text: correctedTokens[col] });
+        col += 1;
+      }
+
+      return mergeAdjacentOperations(operations);
+    }
+
+    function escapeHtml(text) {
+      return text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
     async function performCorrection(section, block, { announceSendState = true } = {}) {
       if (section.rawText === section.correctedText) {
         insertedBlocks.set(section.id, section.correctedText);
@@ -750,31 +824,56 @@
       cursor.textContent = '|';
       block.appendChild(cursor);
 
+      const operations = buildDiffOperations(section.rawText, section.correctedText);
+      let currentText = section.rawText;
+      let cursorIndex = 0;
+
       await wait(TIMINGS.correctionPreHighlight);
-      textPart.classList.add('highlight-delete');
-      await wait(TIMINGS.correctionDeleteHighlight);
-      await wait(TIMINGS.correctionPreDelete);
 
-      textPart.classList.remove('highlight-delete');
-      textPart.textContent = '';
-      await wait(TIMINGS.correctionPostDelete);
+      for (let opIndex = 0; opIndex < operations.length; opIndex += 1) {
+        const operation = operations[opIndex];
 
-      cursor.classList.remove('blink');
-      cursor.classList.add('steady');
-      const correctionChunks = [section.correctedText];
-      for (let chunkIndex = 0; chunkIndex < correctionChunks.length; chunkIndex += 1) {
-        const chunk = correctionChunks[chunkIndex];
-        for (let i = 0; i < chunk.length; i += 1) {
-          textPart.textContent += chunk[i];
+        if (operation.type === 'equal') {
+          cursorIndex += operation.text.length;
+          continue;
+        }
+
+        if (operation.type === 'delete') {
+          const deleteStart = cursorIndex;
+          const deleteEnd = deleteStart + operation.text.length;
+          const beforeDelete = currentText.slice(0, deleteStart);
+          const deleteText = currentText.slice(deleteStart, deleteEnd);
+          const afterDelete = currentText.slice(deleteEnd);
+
+          textPart.innerHTML = `${escapeHtml(beforeDelete)}<span class="highlight-delete">${escapeHtml(deleteText)}</span>${escapeHtml(afterDelete)}`;
+          await wait(TIMINGS.correctionDeleteHighlight);
+          await wait(TIMINGS.correctionPreDelete);
+
+          currentText = beforeDelete + afterDelete;
+          textPart.textContent = currentText;
+          await wait(TIMINGS.correctionPostDelete);
+          continue;
+        }
+
+        cursor.classList.remove('blink');
+        cursor.classList.add('steady');
+
+        for (let i = 0; i < operation.text.length; i += 1) {
+          const char = operation.text[i];
+          currentText = `${currentText.slice(0, cursorIndex)}${char}${currentText.slice(cursorIndex)}`;
+          cursorIndex += 1;
+          textPart.textContent = currentText;
           await wait(TIMINGS.typingMsPerChar);
-          const char = chunk[i];
-          const prevChar = i > 0 ? chunk[i - 1] : '';
+
+          const prevChar = i > 0 ? operation.text[i - 1] : '';
           const isWhitespace = /\s/.test(char);
-          if (isWhitespace && i < chunk.length - 1 && !/\s/.test(prevChar)) {
+          if (isWhitespace && i < operation.text.length - 1 && !/\s/.test(prevChar)) {
             await wait(TIMINGS.typingWhitespacePause);
           }
         }
-        if (chunkIndex < correctionChunks.length - 1) {
+
+        const nextActionable = operations.slice(opIndex + 1).find((op) => op.type !== 'equal');
+        if (nextActionable) {
           await wait(TIMINGS.correctionBetweenChunks);
         }
       }
