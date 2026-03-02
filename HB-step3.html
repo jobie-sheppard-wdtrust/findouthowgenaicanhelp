@@ -666,6 +666,7 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
       document.getElementById('action-copy').setAttribute('aria-label', `Copy-paste for ${section.sectionName}`);
       document.getElementById('action-check').setAttribute('aria-label', `Check content for ${section.sectionName}`);
       menuItems[0].focus();
+      announce(`Context menu opened for ${section.sectionName}.`);
     }
 
     function setAnimating(nextState) {
