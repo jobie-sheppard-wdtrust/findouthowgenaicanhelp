@@ -461,15 +461,45 @@
         id: 'patient-info',
         title: '2. Patient info',
         sectionName: 'Patient info',
-        rawText: `Referral: Routine Cardiology Outpatient Appointment (eRS)\nPatient details: [to be added]\nName:\nAge:\nAddress:\nNHS Number:`,
-        correctedText: `Referral: Routine Cardiology Outpatient Appointment (eRS)\nPatient details: [to be added]\nName:\nAge:\nAddress:\nNHS Number:`
+        rawText: `Referral: Routine Cardiology Outpatient Appointment (eRS)
+Patient details: [to be added]
+Name:
+Age:
+Address:
+NHS Number:`,
+        correctedText: `Referral: Routine Cardiology Outpatient Appointment (eRS)
+Patient details: [to be added]
+Name:
+Age:
+Address:
+NHS Number:`
       },
       {
         id: 'medical',
         title: '3. Medical details',
         sectionName: 'Medical details',
-        rawText: `Reason for referral\nUrgent cardiology assessment for longstanding atrial fibrillation and recent episodes of chest pain on exertion.\nRelevant history\nHistory of hypertension, type 1 diabetes, asthma, and previous myocardial infarction in 2018 (per patient report). Family history of sudden cardiac death. Non-smoker.\nCurrent management\nMetformin 1 g twice daily.\nRamipril 10 mg once daily.\nSalbutamol inhaler PRN.\nRelevant investigations\nRecent ECG showed atrial fibrillation with controlled ventricular rate. Echocardiogram performed last month demonstrated normal left ventricular function with moderate aortic stenosis.`,
-        correctedText: `Reason for referral\nUrgent cardiology assessment for longstanding atrial fibrillation and recent episodes of chest pain on exertion.\nRelevant history\nHistory of hypertension, type 2 diabetes, and previous myocardial infarction in 2018 (per patient report). Family history of sudden cardiac death. Non-smoker.\nCurrent management\nMetformin 1 g twice daily.\nRamipril 10 mg once daily.\nBisoprolol 5 mg once daily.\nRelevant investigations\nRecent ECG showed atrial fibrillation with controlled ventricular rate.\nEchocardiogram performed last month demonstrated mildly reduced left ventricular function with moderate aortic stenosis.`
+        rawText: `Reason for referral
+Urgent cardiology assessment for longstanding atrial fibrillation and recent episodes of chest pain on exertion.
+Relevant history
+History of hypertension, type 2 diabetes, asthma, and previous myocardial infarction in 2018 (per patient report). Family history of sudden cardiac death. Non-smoker.
+Current management
+Metformin 1 g twice daily.
+Ramipril 10 mg once daily.
+Salbutamol inhaler PRN.
+Relevant investigations
+Recent ECG showed atrial fibrillation with controlled ventricular rate. 
+Echocardiogram performed last month demonstrated normal left ventricular function with moderate aortic stenosis.`,
+        correctedText: `Reason for referral
+Urgent cardiology assessment for longstanding atrial fibrillation and recent episodes of chest pain on exertion.
+Relevant history
+History of hypertension, type 2 diabetes, and previous myocardial infarction in 2018 (per patient report). Family history of sudden cardiac death. Non-smoker.
+Current management
+Metformin 1 g twice daily.
+Ramipril 10 mg once daily.
+Bisoprolol 5 mg once daily.
+Relevant investigations
+Recent ECG showed atrial fibrillation with controlled ventricular rate.
+Echocardiogram performed last month demonstrated mildly reduced left ventricular function with moderate aortic stenosis.`
       },
       {
         id: 'additional',
@@ -743,9 +773,52 @@
       return merged;
     }
 
+    const pinnedReplacements = [
+      {
+        source: 'Salbutamol inhaler PRN.',
+        target: 'Bisoprolol 5 mg once daily.'
+      }
+    ];
+
+    function applyPinnedReplacements(text, key) {
+      let output = text;
+      pinnedReplacements.forEach((replacement, index) => {
+        const marker = `__PINNED_REPLACEMENT_${index}__`;
+        const phrase = key === 'source' ? replacement.source : replacement.target;
+        output = output.replace(phrase, marker);
+      });
+      return output;
+    }
+
+    function expandPinnedOperation(type, token) {
+      const replacementIndex = pinnedReplacements.findIndex((_, index) => token.includes(`__PINNED_REPLACEMENT_${index}__`));
+      if (replacementIndex === -1) return [{ type, text: token }];
+
+      const replacement = pinnedReplacements[replacementIndex];
+      const marker = `__PINNED_REPLACEMENT_${replacementIndex}__`;
+      const [beforeMarker, afterMarker] = token.split(marker);
+      const expanded = [];
+
+      if (beforeMarker) expanded.push({ type, text: beforeMarker });
+
+      if (type === 'equal') {
+        expanded.push({ type: 'delete', text: replacement.source });
+        expanded.push({ type: 'insert', text: replacement.target });
+      } else if (type === 'delete') {
+        expanded.push({ type: 'delete', text: replacement.source });
+      } else {
+        expanded.push({ type: 'insert', text: replacement.target });
+      }
+
+      if (afterMarker) expanded.push({ type, text: afterMarker });
+      return expanded;
+    }
+
     function buildDiffOperations(originalText, correctedText) {
-      const originalTokens = tokenizeForCorrection(originalText);
-      const correctedTokens = tokenizeForCorrection(correctedText);
+      const normalizedOriginalText = applyPinnedReplacements(originalText, 'source');
+      const normalizedCorrectedText = applyPinnedReplacements(correctedText, 'target');
+      const originalTokens = tokenizeForCorrection(normalizedOriginalText);
+      const correctedTokens = tokenizeForCorrection(normalizedCorrectedText);
       const rowCount = originalTokens.length;
       const colCount = correctedTokens.length;
       const lcs = Array.from({ length: rowCount + 1 }, () => Array(colCount + 1).fill(0));
@@ -766,25 +839,25 @@
 
       while (row < rowCount && col < colCount) {
         if (originalTokens[row] === correctedTokens[col]) {
-          operations.push({ type: 'equal', text: originalTokens[row] });
+          operations.push(...expandPinnedOperation('equal', originalTokens[row]));
           row += 1;
           col += 1;
         } else if (lcs[row + 1][col] >= lcs[row][col + 1]) {
-          operations.push({ type: 'delete', text: originalTokens[row] });
+          operations.push(...expandPinnedOperation('delete', originalTokens[row]));
           row += 1;
         } else {
-          operations.push({ type: 'insert', text: correctedTokens[col] });
+          operations.push(...expandPinnedOperation('insert', correctedTokens[col]));
           col += 1;
         }
       }
 
       while (row < rowCount) {
-        operations.push({ type: 'delete', text: originalTokens[row] });
+        operations.push(...expandPinnedOperation('delete', originalTokens[row]));
         row += 1;
       }
 
       while (col < colCount) {
-        operations.push({ type: 'insert', text: correctedTokens[col] });
+        operations.push(...expandPinnedOperation('insert', correctedTokens[col]));
         col += 1;
       }
 
