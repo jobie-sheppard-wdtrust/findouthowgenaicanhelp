@@ -816,9 +816,8 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
         activeSection = pending.section;
         activeTrigger = pending.trigger;
         setMenuBusy(true);
-        announce(`checking ${pending.section.sectionName}`);
         modalOverlay.hidden = true;
-        runAction('check', { skipInitialStatus: true, menuAlreadyBusy: true });
+        runAction('check', { menuAlreadyBusy: true });
       } else {
         modalOverlay.hidden = true;
         if (restoreTarget) {
