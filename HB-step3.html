@@ -611,7 +611,7 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
       });
     }
 
-    function closeMenu({ returnFocus = true, announceClose = true, clearActive = true } = {}) {
+    function closeMenu({ returnFocus = true, announceClose = true } = {}) {
       if (menu.hidden) return;
       menu.hidden = true;
       setExpanded(null);
@@ -621,10 +621,8 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
       if (returnFocus && activeTrigger) {
         activeTrigger.focus();
       }
-      if (clearActive) {
-        activeTrigger = null;
-        activeSection = null;
-      }
+      activeTrigger = null;
+      activeSection = null;
     }
 
     function setMenuBusy(isBusy) {
@@ -965,20 +963,12 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
       }
     }
 
-    function handleMenuContinue(actionType) {
-      setMenuBusy(true);
-      closeMenu({ returnFocus: false, announceClose: false, clearActive: false });
-      runAction(actionType, { menuBusySetByHandoff: true });
-    }
-
-    async function runAction(actionType, { menuBusySetByHandoff = false } = {}) {
+    async function runAction(actionType) {
       const trigger = activeTrigger;
       const section = activeSection;
       if (!trigger || !section || isAnimating || trigger.getAttribute('aria-disabled') === 'true') return;
 
-      if (!menuBusySetByHandoff) {
-        setMenuBusy(true);
-      }
+      setMenuBusy(true);
       setAnimating(true);
 
       await runDraftHighlight(trigger);
@@ -1021,14 +1011,13 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
       setAnimating(false);
       await announceQueue;
       setMenuBusy(false);
-      closeMenu({ returnFocus: false, announceClose: false });
-      focusNextDraftBlock(trigger);
+      closeMenu({ returnFocus: true, announceClose: false });
     }
 
     renderDraftList();
 
-    document.getElementById('action-copy').addEventListener('click', () => handleMenuContinue('copy'));
-    document.getElementById('action-check').addEventListener('click', () => handleMenuContinue('check'));
+    document.getElementById('action-copy').addEventListener('click', () => runAction('copy'));
+    document.getElementById('action-check').addEventListener('click', () => runAction('check'));
 
     menu.addEventListener('keydown', (event) => {
       if (isMenuBusy) {
