@@ -559,6 +559,14 @@
       .panel-left.feedback-active {
         grid-template-columns: 1fr;
       }
+
+      .panel-left.feedback-active #feedback-panel {
+        order: 1;
+      }
+
+      .panel-left.feedback-active #draft-wrap {
+        order: 2;
+      }
     }
   </style>
 </head>
@@ -1544,14 +1552,30 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
         card.dataset.sectionId = outcome.id;
 
         const statusEmoji = outcome.success ? '✅' : '❌';
-        const statusText = outcome.success ? 'Success' : 'Needs improvement';
         const bodyText = outcome.success ? outcome.successText : outcome.failureText;
-        card.setAttribute('aria-label', `${statusEmoji} ${statusText}. ${outcome.sectionName}. ${bodyText}`);
 
         const heading = document.createElement('h3');
+        heading.id = `feedback-card-title-${outcome.id}`;
         heading.textContent = `${statusEmoji} ${outcome.sectionName}`;
         const body = document.createElement('p');
+        body.id = `feedback-card-description-${outcome.id}`;
         body.textContent = bodyText;
+
+        card.setAttribute('aria-labelledby', heading.id);
+        card.setAttribute('aria-describedby', body.id);
+
+        const preserveCardFocus = () => {
+          window.requestAnimationFrame(() => {
+            card.focus();
+          });
+        };
+        card.addEventListener('click', preserveCardFocus);
+        card.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            preserveCardFocus();
+          }
+        });
 
         card.appendChild(heading);
         card.appendChild(body);
@@ -1564,6 +1588,7 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
       });
 
       announce('Feedback displayed.');
+      feedbackTitle.tabIndex = 0;
       feedbackTitle.focus();
     }
 
@@ -1592,6 +1617,7 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
       sendBtn.disabled = true;
       feedbackCards.innerHTML = '';
       feedbackPanel.hidden = true;
+      feedbackTitle.tabIndex = -1;
       mainContent.classList.remove('feedback-mode');
       draftWrap.removeAttribute('inert');
       const leftPanel = document.querySelector('.panel-left');
