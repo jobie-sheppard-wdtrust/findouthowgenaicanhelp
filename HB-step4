@@ -75,6 +75,71 @@
       border-left: 1px solid var(--border);
     }
 
+    .feedback-view {
+      display: grid;
+      gap: 1rem;
+      max-width: 600px;
+      margin: 20vh auto 0;
+    }
+
+    .feedback-subheading {
+      margin: 0;
+      font-size: 1.125rem;
+      line-height: 1.5;
+    }
+
+    .feedback-cards {
+      display: grid;
+      gap: 1rem;
+    }
+
+    .feedback-card {
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      background: var(--card);
+      padding: 0.75rem;
+      transition: box-shadow 0.3s ease, background-color 0.2s ease;
+    }
+
+    .feedback-card.success { border-left: 4px solid hsl(142 71% 45%); }
+    .feedback-card.fail { border-left: 4px solid hsl(0 84% 60%); }
+    .feedback-card.linked,
+    .feedback-card:focus-visible {
+      box-shadow: 0 0 0 3px hsl(217 91% 60% / 0.25);
+    }
+
+    .feedback-card-title {
+      margin: 0 0 0.5rem;
+      font-size: 1rem;
+    }
+
+    .feedback-card-text {
+      margin: 0;
+      font-size: 0.875rem;
+      line-height: 1.5;
+    }
+
+    .try-again-btn {
+      width: 100%;
+      margin-top: 1rem;
+      min-height: 44px;
+      border-radius: 0.5rem;
+      border: 1px solid transparent;
+      background: var(--primary);
+      color: var(--primary-foreground);
+      font-weight: 600;
+      padding: 0.75rem 1rem;
+      cursor: pointer;
+    }
+
+    .feedback-mode .layout {
+      overflow: auto;
+    }
+
+    .feedback-mode .panel {
+      overflow: visible;
+    }
+
     .card {
       background: var(--card);
       border: 1px solid var(--border);
@@ -172,6 +237,10 @@
 
     .draft-item-btn.highlighting {
       background: var(--highlight-bg);
+    }
+
+    .draft-item-btn.feedback-linked {
+      background: hsl(217 91% 60% / 0.15);
     }
 
     .draft-item-btn[aria-disabled="true"] {
@@ -475,6 +544,7 @@
           <span class="avatar" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg></span>
           <div>
             <h2 id="draft-area-heading" class="draft-heading">AI Assistant</h2>
+            <h2 id="draft-review-heading" class="draft-heading" hidden>Draft review</h2>
             <p class="draft-subtitle">Draft generated</p>
           </div>
         </div>
@@ -485,8 +555,8 @@
       </div>
     </section>
 
-    <section class="panel panel-right" aria-labelledby="email-heading" role="region">
-      <div class="email-shell">
+    <section class="panel panel-right" aria-labelledby="email-heading" role="region" id="right-panel-region">
+      <div class="email-shell" id="email-view">
         <div class="card email-header">
           <h2 id="email-heading">New Message</h2>
           <div class="meta-row"><span class="meta-key">To:</span><span>cardiology.referrals@nhs.net</span></div>
@@ -507,6 +577,13 @@
           </div>
           <button class="send-btn" id="send-btn" type="button" disabled aria-label="Send message">Send</button>
         </div>
+      </div>
+
+      <div id="feedback-view" class="feedback-view" hidden>
+        <h2 id="feedback-panel-title" tabindex="-1">Feedback</h2>
+        <p id="feedback-subheading" class="feedback-subheading"></p>
+        <div id="feedback-cards" class="feedback-cards"></div>
+        <button id="try-again-btn" class="try-again-btn" type="button">Try again</button>
       </div>
     </section>
   </main>
@@ -635,6 +712,15 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
     const menuItems = [...menu.querySelectorAll('[role="menuitem"]')];
     const mainContent = document.getElementById('main-content');
     const pageHeader = document.querySelector('.top-header');
+    const emailView = document.getElementById('email-view');
+    const feedbackView = document.getElementById('feedback-view');
+    const feedbackCards = document.getElementById('feedback-cards');
+    const feedbackSubheading = document.getElementById('feedback-subheading');
+    const feedbackPanelTitle = document.getElementById('feedback-panel-title');
+    const tryAgainBtn = document.getElementById('try-again-btn');
+    const rightPanelRegion = document.getElementById('right-panel-region');
+    const draftReviewHeading = document.getElementById('draft-review-heading');
+    const draftAreaHeading = document.getElementById('draft-area-heading');
     const modalOverlay = document.getElementById('feedback-modal-overlay');
     const modal = document.getElementById('feedback-modal');
     const modalTitle = document.getElementById('feedback-modal-title');
@@ -649,8 +735,10 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
     let isModalOpen = false;
     let pendingModalAction = null;
     const completedSections = new Set();
+    const sectionActions = new Map();
     const insertedBlocks = new Map();
     let announceQueue = Promise.resolve();
+    let isFeedbackView = false;
 
     function announce(message, delay = 0) {
       announceQueue = announceQueue
@@ -778,7 +866,7 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
     }
 
     function openMenu(button) {
-      if (isUnavailable(button) || isMenuBusy || isModalOpen) return;
+      if (isUnavailable(button) || isMenuBusy || isModalOpen || isFeedbackView) return;
       const section = sections.find((item) => item.id === button.dataset.id);
       const rect = button.getBoundingClientRect();
       menu.style.top = `${Math.min(window.innerHeight - 120, rect.bottom + 6)}px`;
@@ -1311,12 +1399,145 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
       }
 
       markCompleted(trigger, section.sectionName, { announceCompletion: false });
+      sectionActions.set(section.id, actionType);
       helperText.hidden = emailContent.children.length > 0;
       setAnimating(false);
       await announceQueue;
       setMenuBusy(false);
       closeMenu({ returnFocus: false, announceClose: false });
       focusNextDraftBlock(trigger);
+    }
+
+    function getFeedbackEntry(section) {
+      const action = sectionActions.get(section.id);
+      const included = insertedBlocks.has(section.id) && insertedBlocks.get(section.id).trim().length > 0;
+
+      if (section.id === 'preamble') {
+        return included && action === 'copy'
+          ? { ok: false, text: 'This preamble shouldn’t be included. It is a GenAI artifact that erodes trust when left in professional communications.' }
+          : { ok: true, text: 'Good - you did not include this preamble. Including this would erode trust with colleagues or patients.' };
+      }
+
+      if (section.id === 'patient-info') {
+        if (!included) return { ok: false, text: 'You did not include this essential referral header in your email.' };
+        if (action !== 'check') return { ok: false, text: 'You included this header, but forgot to fill it in with patient details. This can delay the urgent referral.' };
+        return { ok: true, text: 'Good - you remembered to fill in the patient information in your email.' };
+      }
+
+      if (section.id === 'medical') {
+        if (!included) return { ok: false, text: 'You did not include this crucial section of the email, even though it needed hallucinated details correcting.' };
+        if (action !== 'check') return { ok: false, text: 'You included this section but did not check it for errors, including hallucinated clinical details.' };
+        return { ok: true, text: 'Perfect - you corrected hallucinations in this section and kept clinically appropriate details.' };
+      }
+
+      if (section.id === 'additional') {
+        if (!included) return { ok: false, text: 'You did not include this important context for the specialist.' };
+        return { ok: true, text: 'Good - you included this important context section.' };
+      }
+
+      if (section.id === 'sign-off') {
+        if (!included) return { ok: false, text: 'You missed this closing section, even though it also needed bias correction.' };
+        if (action !== 'check') return { ok: false, text: 'You included this section without checking it. “Merry Christmas” is subtle bias and makes assumptions.' };
+        return { ok: true, text: 'Great work - you corrected the inappropriate Christmas greeting and removed subtle bias.' };
+      }
+
+      return included && action === 'copy'
+        ? { ok: false, text: 'This GenAI follow-up should not have been included as-is. It erodes trust in professional communication.' }
+        : { ok: true, text: 'Good - you did not include the GenAI follow-up as raw output.' };
+    }
+
+    function renderFeedbackCards(results) {
+      feedbackCards.innerHTML = '';
+      results.forEach(({ section, ok, text }) => {
+        const card = document.createElement('article');
+        card.className = `feedback-card ${ok ? 'success' : 'fail'}`;
+        card.id = `feedback-card-${section.id}`;
+        card.tabIndex = 0;
+        card.dataset.id = section.id;
+        card.setAttribute('aria-labelledby', `feedback-card-title-${section.id}`);
+        card.setAttribute('aria-describedby', `feedback-card-text-${section.id}`);
+
+        card.innerHTML = `
+          <h3 id="feedback-card-title-${section.id}" class="feedback-card-title">${ok ? '✅ Success' : '❌ Needs improvement'} — ${section.sectionName}</h3>
+          <p id="feedback-card-text-${section.id}" class="feedback-card-text">${text}</p>
+        `;
+
+        const relatedButton = document.getElementById(`draft-${section.id}`);
+        if (relatedButton) {
+          relatedButton.setAttribute('aria-details', card.id);
+        }
+
+        card.addEventListener('mouseenter', () => highlightDraftAndCard(section.id, true));
+        card.addEventListener('mouseleave', () => highlightDraftAndCard(section.id, false));
+        card.addEventListener('focus', () => highlightDraftAndCard(section.id, true));
+        card.addEventListener('blur', () => highlightDraftAndCard(section.id, false));
+
+        feedbackCards.appendChild(card);
+      });
+    }
+
+    function highlightDraftAndCard(sectionId, active) {
+      const draftButton = document.getElementById(`draft-${sectionId}`);
+      const card = document.getElementById(`feedback-card-${sectionId}`);
+      if (draftButton) {
+        draftButton.classList.toggle('feedback-linked', active);
+      }
+      if (card) {
+        card.classList.toggle('linked', active);
+      }
+    }
+
+    function setFeedbackView(enabled) {
+      isFeedbackView = enabled;
+      document.body.classList.toggle('feedback-mode', enabled);
+      emailView.hidden = enabled;
+      feedbackView.hidden = !enabled;
+      rightPanelRegion.setAttribute('aria-labelledby', enabled ? 'feedback-panel-title' : 'email-heading');
+      const leftPanel = document.querySelector('.panel-left');
+      if (enabled) {
+        leftPanel.setAttribute('aria-labelledby', 'draft-review-heading');
+        draftAreaHeading.hidden = true;
+        draftReviewHeading.hidden = false;
+      } else {
+        leftPanel.setAttribute('aria-labelledby', 'draft-area-heading');
+        draftAreaHeading.hidden = false;
+        draftReviewHeading.hidden = true;
+      }
+    }
+
+    function evaluateAndShowFeedback() {
+      if (isFeedbackView) return;
+      const results = sections.map((section) => {
+        const entry = getFeedbackEntry(section);
+        return { section, ...entry };
+      });
+      const allSuccess = results.every((result) => result.ok);
+      feedbackSubheading.textContent = allSuccess
+        ? 'Well done! You succeeded in your role as the Human In The Loop, ensuring the output was appropriate and accurate. Explore the risks you avoided below'
+        : 'Not quite – you have missed a few details here. Being the Human In The Loop means you need to check output quality as if you wrote it yourself. Check below to see how you can improve.';
+      renderFeedbackCards(results);
+      setFeedbackView(true);
+      feedbackPanelTitle.focus();
+      announce('Feedback displayed.');
+    }
+
+    function resetInteraction() {
+      insertedBlocks.clear();
+      sectionActions.clear();
+      completedSections.clear();
+      emailContent.innerHTML = '';
+      helperText.hidden = false;
+      interactionState.textContent = 'No draft section selected yet.';
+      getDraftButtons().forEach((button) => {
+        button.removeAttribute('aria-disabled');
+        button.classList.remove('locked', 'highlighting', 'feedback-linked');
+      });
+      feedbackCards.innerHTML = '';
+      setFeedbackView(false);
+      closeMenu({ returnFocus: false, announceClose: false, clearActive: true });
+      updateSendState({ announceChange: false });
+      announce('Reset. Draft and email cleared.');
+      document.querySelector('.top-header h1').focus({ preventScroll: true });
     }
 
     renderDraftList();
@@ -1437,6 +1658,34 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
     modalCancel.addEventListener('click', () => {
       closeFeedbackModal({ processCheckAction: false });
     });
+
+    getDraftButtons().forEach((button) => {
+      button.addEventListener('mouseenter', () => {
+        if (isFeedbackView) {
+          highlightDraftAndCard(button.dataset.id, true);
+        }
+      });
+      button.addEventListener('mouseleave', () => {
+        if (isFeedbackView) {
+          highlightDraftAndCard(button.dataset.id, false);
+        }
+      });
+      button.addEventListener('focus', () => {
+        if (isFeedbackView) {
+          highlightDraftAndCard(button.dataset.id, true);
+        }
+      });
+      button.addEventListener('blur', () => {
+        if (isFeedbackView) {
+          highlightDraftAndCard(button.dataset.id, false);
+        }
+      });
+    });
+
+    sendBtn.addEventListener('click', evaluateAndShowFeedback);
+    tryAgainBtn.addEventListener('click', resetInteraction);
+
+    document.querySelector('.top-header h1').setAttribute('tabindex', '-1');
   </script>
 </body>
 </html>
