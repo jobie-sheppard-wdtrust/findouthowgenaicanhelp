@@ -184,10 +184,18 @@
       cursor: wait;
     }
 
+    /* Keep draft titles in the DOM for structure, but never render them visually.
+       This prevents regressions where numbered helper titles become visible in the bubble UI. */
     .draft-item-title {
-      margin: 0 0 0.35rem;
-      font-size: 0.925rem;
-      font-weight: 600;
+      position: absolute !important;
+      width: 1px !important;
+      height: 1px !important;
+      padding: 0 !important;
+      margin: -1px !important;
+      overflow: hidden !important;
+      clip: rect(0, 0, 0, 0) !important;
+      white-space: nowrap !important;
+      border: 0 !important;
     }
 
     .draft-item-text {
@@ -812,6 +820,7 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
         button.setAttribute('aria-label', section.sectionName);
         button.setAttribute('aria-describedby', `draft-text-${section.id}`);
 
+        // Keep titles non-visual: the draft bubble intentionally renders only section body text.
         const text = document.createElement('span');
         text.className = 'draft-item-text';
         text.id = `draft-text-${section.id}`;
@@ -1057,7 +1066,7 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
       return sections.findIndex((section) => section.id === id);
     }
 
-    function ensureEmailBlock(section, text, { announceSendState = true } = {}) {
+    function ensureEmailBlock(section, text, { announceSendState = true, persistState = true } = {}) {
       let block = document.getElementById(`email-block-${section.id}`);
       if (!block) {
         block = document.createElement('article');
@@ -1084,16 +1093,20 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
         block.classList.add('fade-in');
       }
 
-      setSectionEmailState(section.id, text, { announceSendState });
+      if (persistState) {
+        setSectionEmailState(section.id, text, { announceSendState });
+      }
       return block;
     }
 
-    function removeEmailBlock(section, { announceSendState = true } = {}) {
+    function removeEmailBlock(section, { announceSendState = true, persistState = true } = {}) {
       const block = document.getElementById(`email-block-${section.id}`);
       if (block) {
         block.remove();
       }
-      setSectionEmailState(section.id, '', { announceSendState });
+      if (persistState) {
+        setSectionEmailState(section.id, '', { announceSendState });
+      }
     }
 
     function normalizeText(text) {
@@ -1302,24 +1315,20 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
         .replace(/'/g, '&#39;');
     }
 
-    async function performCorrection(section, block, { announceSendState = true } = {}) {
+    async function performCorrection(section, block) {
       const rawText = normalizeText(section.rawText);
       const correctedText = normalizeText(section.correctedText);
       const operations = buildDiffOperations(rawText, correctedText);
+      const finalText = normalizeSectionEmailText(correctedText);
+      const removed = finalText.length === 0;
 
       if (rawText === correctedText) {
-        setSectionEmailState(section.id, section.correctedText, { announceSendState });
-        return operations;
+        return { operations, finalText, removed };
       }
 
       if (prefersReducedMotion.matches) {
-        if (!correctedText) {
-          removeEmailBlock(section, { announceSendState });
-        } else {
-          block.querySelector('.text-part').textContent = correctedText;
-          setSectionEmailState(section.id, section.correctedText, { announceSendState });
-        }
-        return operations;
+        block.querySelector('.text-part').textContent = correctedText;
+        return { operations, finalText, removed };
       }
 
       const textPart = block.querySelector('.text-part');
@@ -1387,13 +1396,7 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
       await wait(180);
       cursor.remove();
 
-      if (!correctedText) {
-        removeEmailBlock(section, { announceSendState });
-      } else {
-        setSectionEmailState(section.id, section.correctedText, { announceSendState });
-      }
-
-      return operations;
+      return { operations, finalText, removed };
     }
 
     async function runAction(actionType, options = {}) {
@@ -1407,54 +1410,88 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
       }
       setAnimating(true);
 
-      await runDraftHighlight(trigger);
-      const isCheckAction = actionType === 'check';
-      const block = ensureEmailBlock(section, section.rawText, { announceSendState: !isCheckAction });
-      const announceStepDelay = 260;
+      let actionSucceeded = false;
+      let correctionResult = {
+        operations: [],
+        finalText: normalizeSectionEmailText(section.rawText),
+        removed: normalizeSectionEmailText(section.rawText).length === 0
+      };
 
-      if (actionType === 'copy') {
-        announce(`${section.sectionName} copy-pasted into email`);
-      } else {
-        if (!skipInitialStatus) {
-          announce(`checking ${section.sectionName}`);
-        }
+      try {
+        await runDraftHighlight(trigger);
+        const isCheckAction = actionType === 'check';
+        const block = ensureEmailBlock(section, section.rawText, { announceSendState: false, persistState: false });
+        const announceStepDelay = 260;
 
-        if (section.id === 'medical') {
-          announce('correcting the hallucinations', announceStepDelay);
-        }
-
-        if (section.id === 'sign-off') {
-          announce('correcting the bias', announceStepDelay);
-        }
-
-        const correctionOperations = await performCorrection(section, block, { announceSendState: false });
-
-        if (section.id === 'preamble' || section.id === 'follow-up') {
-          announce(`removing inappropriate ${section.sectionName} from email`, announceStepDelay);
-        }
-
-        if (section.id === 'patient-info' || section.id === 'additional') {
-          announce(`${section.sectionName} added to email`, announceStepDelay);
-        }
-
-        if (section.id === 'medical' || section.id === 'sign-off') {
-          const correctionSummary = buildCorrectionSummary(section, correctionOperations);
-          if (correctionSummary) {
-            announce(correctionSummary, announceStepDelay);
+        if (actionType === 'copy') {
+          announce(`${section.sectionName} copy-pasted into email`);
+        } else {
+          if (!skipInitialStatus) {
+            announce(`checking ${section.sectionName}`);
           }
-          announce(`corrected ${section.sectionName} added to email`, announceStepDelay);
+
+          if (section.id === 'medical') {
+            announce('correcting the hallucinations', announceStepDelay);
+          }
+
+          if (section.id === 'sign-off') {
+            announce('correcting the bias', announceStepDelay);
+          }
+
+          correctionResult = await performCorrection(section, block);
+
+          if (section.id === 'preamble' || section.id === 'follow-up') {
+            announce(`removing inappropriate ${section.sectionName} from email`, announceStepDelay);
+          }
+
+          if (section.id === 'patient-info' || section.id === 'additional') {
+            announce(`${section.sectionName} added to email`, announceStepDelay);
+          }
+
+          if (section.id === 'medical' || section.id === 'sign-off') {
+            const correctionSummary = buildCorrectionSummary(section, correctionResult.operations);
+            if (correctionSummary) {
+              announce(correctionSummary, announceStepDelay);
+            }
+            announce(`corrected ${section.sectionName} added to email`, announceStepDelay);
+          }
+
         }
 
-        announce(sendBtn.disabled ? 'Send disabled' : 'Send enabled', announceStepDelay);
-      }
+        actionSucceeded = true;
+      } finally {
+        const isCheckAction = actionType === 'check';
+        const canonicalFinalText = isCheckAction
+          ? normalizeSectionEmailText(correctionResult.finalText)
+          : normalizeSectionEmailText(section.rawText);
+        let shouldRemove = isCheckAction ? correctionResult.removed : canonicalFinalText.length === 0;
 
-      completedByAction.set(section.id, actionType);
-      markCompleted(trigger, section.sectionName, { announceCompletion: false });
-      setAnimating(false);
-      await announceQueue;
-      setMenuBusy(false);
-      closeMenu({ returnFocus: false, announceClose: false });
-      focusNextDraftBlock(trigger);
+        if (isCheckAction && (section.id === 'preamble' || section.id === 'follow-up') && canonicalFinalText.length === 0) {
+          shouldRemove = true;
+        }
+
+        // Check may transiently render raw text; final send eligibility must reflect only persisted final text.
+        if (shouldRemove) {
+          removeEmailBlock(section, { announceSendState: false, persistState: false });
+          sectionEmailState.set(section.id, '');
+        } else {
+          ensureEmailBlock(section, canonicalFinalText, { announceSendState: false, persistState: false });
+          sectionEmailState.set(section.id, canonicalFinalText);
+        }
+
+        recomputeUiState({ announceSendState: true });
+
+        if (actionSucceeded) {
+          completedByAction.set(section.id, actionType);
+          markCompleted(trigger, section.sectionName, { announceCompletion: false });
+        }
+
+        setAnimating(false);
+        await announceQueue;
+        setMenuBusy(false);
+        closeMenu({ returnFocus: false, announceClose: false });
+        focusNextDraftBlock(trigger);
+      }
     }
 
 
