@@ -644,9 +644,11 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
         button.setAttribute('aria-controls', 'context-menu');
         button.setAttribute('aria-expanded', 'false');
         button.setAttribute('aria-label', section.sectionName);
+        button.setAttribute('aria-describedby', `draft-text-${section.id}`);
 
         const text = document.createElement('span');
         text.className = 'draft-item-text';
+        text.id = `draft-text-${section.id}`;
         text.textContent = section.rawText;
 
         button.appendChild(text);
