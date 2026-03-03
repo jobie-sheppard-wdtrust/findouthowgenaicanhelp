@@ -371,16 +371,31 @@
       line-height: 1.5;
     }
 
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.75rem;
+    }
+
+    .modal-cancel,
     .modal-continue {
-      width: 100%;
       min-height: 44px;
-      border: 1px solid transparent;
       border-radius: 0.5rem;
-      background: var(--primary);
-      color: var(--primary-foreground);
       font-weight: 600;
       padding: 0.75rem 1rem;
       cursor: pointer;
+    }
+
+    .modal-cancel {
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--foreground);
+    }
+
+    .modal-continue {
+      border: 1px solid transparent;
+      background: var(--primary);
+      color: var(--primary-foreground);
     }
 
     [hidden] { display: none !important; }
@@ -493,7 +508,10 @@
       <h2 id="feedback-modal-title" class="modal-title" tabindex="0">Feedback</h2>
       <p id="feedback-modal-message" class="modal-body"></p>
       <p id="feedback-modal-helper" class="modal-helper">The section will be corrected when you continue</p>
-      <button id="feedback-modal-continue" class="modal-continue" type="button">Continue</button>
+      <div class="modal-actions">
+        <button id="feedback-modal-cancel" class="modal-cancel" type="button">Cancel</button>
+        <button id="feedback-modal-continue" class="modal-continue" type="button">Continue</button>
+      </div>
     </div>
   </div>
 
@@ -602,6 +620,7 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
     const modalTitle = document.getElementById('feedback-modal-title');
     const modalMessage = document.getElementById('feedback-modal-message');
     const modalContinue = document.getElementById('feedback-modal-continue');
+    const modalCancel = document.getElementById('feedback-modal-cancel');
 
     let activeTrigger = null;
     let activeSection = null;
@@ -810,7 +829,6 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
       if (!isModalOpen) return;
       const pending = pendingModalAction;
       isModalOpen = false;
-      setBackgroundInert(false);
       const restoreTarget = getLogicalFocusTarget(pending?.trigger);
       pendingModalAction = null;
 
@@ -829,12 +847,13 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
         menuItems[1].focus();
 
         modalOverlay.hidden = true;
+        setBackgroundInert(false);
         runAction('check', { menuAlreadyBusy: true });
       } else {
         modalOverlay.hidden = true;
+        setBackgroundInert(false);
         if (pending?.trigger && pending.trigger.isConnected && pending.trigger.getAttribute('aria-disabled') !== 'true') {
           pending.trigger.focus();
-          openMenu(pending.trigger);
         } else if (restoreTarget) {
           restoreTarget.focus();
         }
@@ -1029,6 +1048,90 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
       return mergeAdjacentOperations(operations);
     }
 
+    function collapseSummaryWhitespace(text) {
+      return text.replace(/\s+/g, ' ').trim();
+    }
+
+    function trimConnectorArtifacts(text) {
+      return text
+        .replace(/^[,;:–—-]+\s*/, '')
+        .replace(/\s*[,;:–—-]+$/, '')
+        .trim();
+    }
+
+    function normalizeSummaryFragment(text) {
+      return trimConnectorArtifacts(collapseSummaryWhitespace(text));
+    }
+
+    function isPunctuationOnly(text) {
+      if (!text) return true;
+      const compact = collapseSummaryWhitespace(text).replace(/\s+/g, '');
+      return compact.length === 0 || /^[.,!?;:'"()\[\]{}\-–—/\\]+$/.test(compact);
+    }
+
+    function buildCorrectionSummary(section, operations) {
+      if (!operations || operations.length === 0) return '';
+
+      const correctionRegions = [];
+      let currentRegion = null;
+
+      operations.forEach((operation) => {
+        if (operation.type === 'equal') {
+          if (currentRegion && /^\s+$/.test(operation.text)) {
+            currentRegion.push(operation);
+            return;
+          }
+          if (currentRegion) {
+            correctionRegions.push(currentRegion);
+            currentRegion = null;
+          }
+          return;
+        }
+
+        if (!currentRegion) {
+          currentRegion = [];
+        }
+        currentRegion.push(operation);
+      });
+
+      if (currentRegion) {
+        correctionRegions.push(currentRegion);
+      }
+
+      const phrases = correctionRegions
+        .map((region) => {
+          let deletedText = normalizeSummaryFragment(region.filter((op) => op.type !== 'insert').map((op) => op.text).join(''));
+          let insertedText = normalizeSummaryFragment(region.filter((op) => op.type !== 'delete').map((op) => op.text).join(''));
+
+          if (section?.id === 'sign-off' && /^out\b/i.test(deletedText) && /^out(?:[.!?])?$/i.test(insertedText)) {
+            deletedText = normalizeSummaryFragment(deletedText.replace(/^out\b\s*[-–—.]?\s*/i, ''));
+            insertedText = '';
+          }
+
+          const hasDeletedText = Boolean(deletedText);
+          const hasInsertedText = Boolean(insertedText) && !isPunctuationOnly(insertedText);
+
+          if (hasDeletedText && hasInsertedText) {
+            return `replaced "${deletedText}" with "${insertedText}"`;
+          }
+
+          if (hasDeletedText) {
+            return `removed "${deletedText}"`;
+          }
+
+          if (hasInsertedText) {
+            return `added "${insertedText}"`;
+          }
+
+          return '';
+        })
+        .filter(Boolean);
+
+      if (phrases.length === 0) return '';
+      const correctionCountLabel = phrases.length === 1 ? '1 correction made' : `${phrases.length} corrections made`;
+      return `${correctionCountLabel}: ${phrases.join('; ')}`;
+    }
+
     function escapeHtml(text) {
       return text
         .replace(/&/g, '&amp;')
@@ -1041,11 +1144,12 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
     async function performCorrection(section, block, { announceSendState = true } = {}) {
       const rawText = normalizeText(section.rawText);
       const correctedText = normalizeText(section.correctedText);
+      const operations = buildDiffOperations(rawText, correctedText);
 
       if (rawText === correctedText) {
         insertedBlocks.set(section.id, section.correctedText);
         updateSendState({ announceChange: announceSendState });
-        return;
+        return operations;
       }
 
       if (prefersReducedMotion.matches) {
@@ -1056,7 +1160,7 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
           insertedBlocks.set(section.id, section.correctedText);
           updateSendState({ announceChange: announceSendState });
         }
-        return;
+        return operations;
       }
 
       const textPart = block.querySelector('.text-part');
@@ -1066,7 +1170,6 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
       cursor.textContent = '|';
       block.appendChild(cursor);
 
-      const operations = buildDiffOperations(rawText, correctedText);
       let currentText = rawText;
       let cursorIndex = 0;
 
@@ -1131,6 +1234,8 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
         insertedBlocks.set(section.id, section.correctedText);
         updateSendState({ announceChange: announceSendState });
       }
+
+      return operations;
     }
 
     async function runAction(actionType, options = {}) {
@@ -1164,7 +1269,7 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
           announce('correcting the bias', announceStepDelay);
         }
 
-        await performCorrection(section, block, { announceSendState: false });
+        const correctionOperations = await performCorrection(section, block, { announceSendState: false });
 
         if (section.id === 'preamble' || section.id === 'follow-up') {
           announce(`removing inappropriate ${section.sectionName} from email`, announceStepDelay);
@@ -1175,6 +1280,10 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
         }
 
         if (section.id === 'medical' || section.id === 'sign-off') {
+          const correctionSummary = buildCorrectionSummary(section, correctionOperations);
+          if (correctionSummary) {
+            announce(correctionSummary, announceStepDelay);
+          }
           announce(`corrected ${section.sectionName} added to email`, announceStepDelay);
         }
 
@@ -1303,6 +1412,10 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
 
     modalContinue.addEventListener('click', () => {
       closeFeedbackModal({ processCheckAction: true });
+    });
+
+    modalCancel.addEventListener('click', () => {
+      closeFeedbackModal({ processCheckAction: false });
     });
   </script>
 </body>
