@@ -832,7 +832,10 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
         runAction('check', { menuAlreadyBusy: true });
       } else {
         modalOverlay.hidden = true;
-        if (restoreTarget) {
+        if (pending?.trigger && pending.trigger.isConnected && pending.trigger.getAttribute('aria-disabled') !== 'true') {
+          pending.trigger.focus();
+          openMenu(pending.trigger);
+        } else if (restoreTarget) {
           restoreTarget.focus();
         }
       }
@@ -1253,7 +1256,7 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
     document.addEventListener('pointerdown', (event) => {
       if (isModalOpen) {
         if (event.target === modalOverlay) {
-          closeFeedbackModal({ processCheckAction: true });
+          closeFeedbackModal({ processCheckAction: false });
         }
         return;
       }
@@ -1267,7 +1270,7 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
       if (isModalOpen) {
         if (event.key === 'Escape') {
           event.preventDefault();
-          closeFeedbackModal({ processCheckAction: true });
+          closeFeedbackModal({ processCheckAction: false });
           return;
         }
 
