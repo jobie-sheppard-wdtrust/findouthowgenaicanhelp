@@ -736,7 +736,13 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
       }
     ];
 
-    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const prefersReducedMotion = typeof window.matchMedia === 'function'
+      ? window.matchMedia('(prefers-reduced-motion: reduce)')
+      : {
+        matches: false,
+        addEventListener: () => {},
+        removeEventListener: () => {}
+      };
 
     const draftList = document.getElementById('draft-list');
     const menu = document.getElementById('context-menu');
@@ -768,7 +774,7 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
     let isModalOpen = false;
     let pendingModalAction = null;
     const completedSections = new Set();
-    const insertedBlocks = new Map();
+    const sectionEmailState = new Map();
     const completedByAction = new Map();
     const feedbackAssociations = new Map();
     let announceQueue = Promise.resolve();
@@ -1003,11 +1009,28 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
       }
     }
 
-    function updateSendState({ announceChange = true } = {}) {
-      const hasContent = [...insertedBlocks.values()].some((text) => text.trim().length > 0);
-      const previous = sendBtn.disabled;
-      sendBtn.disabled = !hasContent;
-      if (announceChange && previous !== sendBtn.disabled) {
+    function normalizeSectionEmailText(text) {
+      return String(text ?? '')
+        .replace(/\r\n?/g, '\n')
+        .split('\n')
+        .map((line) => line.trimEnd())
+        .join('\n')
+        .trim();
+    }
+
+    function setSectionEmailState(sectionId, text, { announceSendState = true } = {}) {
+      sectionEmailState.set(sectionId, normalizeSectionEmailText(text));
+      recomputeUiState({ announceSendState });
+    }
+
+    // Product rule: “Send is enabled when at least one non-empty section text is present; never require all sections.”
+    function recomputeUiState({ announceSendState = true } = {}) {
+      const hasAnyEmailContent = [...sectionEmailState.values()].some((text) => text.length > 0);
+      helperText.hidden = hasAnyEmailContent;
+
+      const previousDisabled = sendBtn.disabled;
+      sendBtn.disabled = !hasAnyEmailContent;
+      if (announceSendState && previousDisabled !== sendBtn.disabled) {
         announce(sendBtn.disabled ? 'Send disabled' : 'Send enabled');
       }
     }
@@ -1061,9 +1084,7 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
         block.classList.add('fade-in');
       }
 
-      helperText.hidden = true;
-      insertedBlocks.set(section.id, text);
-      updateSendState({ announceChange: announceSendState });
+      setSectionEmailState(section.id, text, { announceSendState });
       return block;
     }
 
@@ -1072,10 +1093,7 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
       if (block) {
         block.remove();
       }
-      insertedBlocks.set(section.id, '');
-      const hasVisible = [...insertedBlocks.values()].some((text) => text.trim().length > 0);
-      helperText.hidden = hasVisible;
-      updateSendState({ announceChange: announceSendState });
+      setSectionEmailState(section.id, '', { announceSendState });
     }
 
     function normalizeText(text) {
@@ -1290,8 +1308,7 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
       const operations = buildDiffOperations(rawText, correctedText);
 
       if (rawText === correctedText) {
-        insertedBlocks.set(section.id, section.correctedText);
-        updateSendState({ announceChange: announceSendState });
+        setSectionEmailState(section.id, section.correctedText, { announceSendState });
         return operations;
       }
 
@@ -1300,8 +1317,7 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
           removeEmailBlock(section, { announceSendState });
         } else {
           block.querySelector('.text-part').textContent = correctedText;
-          insertedBlocks.set(section.id, section.correctedText);
-          updateSendState({ announceChange: announceSendState });
+          setSectionEmailState(section.id, section.correctedText, { announceSendState });
         }
         return operations;
       }
@@ -1374,8 +1390,7 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
       if (!correctedText) {
         removeEmailBlock(section, { announceSendState });
       } else {
-        insertedBlocks.set(section.id, section.correctedText);
-        updateSendState({ announceChange: announceSendState });
+        setSectionEmailState(section.id, section.correctedText, { announceSendState });
       }
 
       return operations;
@@ -1435,7 +1450,6 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
 
       completedByAction.set(section.id, actionType);
       markCompleted(trigger, section.sectionName, { announceCompletion: false });
-      helperText.hidden = emailContent.children.length > 0;
       setAnimating(false);
       await announceQueue;
       setMenuBusy(false);
@@ -1601,10 +1615,9 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
 
       completedSections.clear();
       completedByAction.clear();
-      insertedBlocks.clear();
+      sectionEmailState.clear();
       feedbackAssociations.clear();
       emailContent.innerHTML = '';
-      helperText.hidden = false;
       interactionState.textContent = 'No draft section selected yet.';
 
       getDraftButtons().forEach((button) => {
@@ -1612,7 +1625,7 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
         button.classList.remove('highlighting', 'locked', 'link-active', 'success', 'failure');
       });
 
-      sendBtn.disabled = true;
+      recomputeUiState({ announceSendState: false });
       feedbackCards.innerHTML = '';
       feedbackPanel.hidden = true;
       feedbackTitle.tabIndex = -1;
