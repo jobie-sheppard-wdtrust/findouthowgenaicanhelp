@@ -913,6 +913,10 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
       updateSendState({ announceChange: announceSendState });
     }
 
+    function normalizeText(text) {
+      return text.split('\n').map((line) => line.trimEnd()).join('\n');
+    }
+
     function tokenizeForCorrection(text) {
       return text.match(/\s+|[^\s]+/g) || [];
     }
@@ -973,8 +977,8 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
     }
 
     function buildDiffOperations(originalText, correctedText) {
-      const normalizedOriginalText = applyPinnedReplacements(originalText, 'source');
-      const normalizedCorrectedText = applyPinnedReplacements(correctedText, 'target');
+      const normalizedOriginalText = applyPinnedReplacements(normalizeText(originalText), 'source');
+      const normalizedCorrectedText = applyPinnedReplacements(normalizeText(correctedText), 'target');
       const originalTokens = tokenizeForCorrection(normalizedOriginalText);
       const correctedTokens = tokenizeForCorrection(normalizedCorrectedText);
       const rowCount = originalTokens.length;
@@ -1031,92 +1035,21 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
         .replace(/'/g, '&#39;');
     }
 
-    function getSectionCorrectionChunks(section) {
-      if (section.id === 'medical') {
-        return [
-          { from: ' asthma,', to: '' },
-          { from: 'Salbutamol inhaler PRN.', to: 'Bisoprolol 5 mg once daily.' },
-          { from: 'rate. \n', to: 'rate.\n' },
-          { from: 'normal left ventricular function', to: 'mildly reduced left ventricular function' }
-        ];
-      }
-
-      if (section.id === 'sign-off') {
-        return [
-          { from: ' - Wishing you a very Merry Christmas!', to: '.' }
-        ];
-      }
-
-      return null;
-    }
-
-    async function applyChunkedCorrections(textPart, cursor, baseText, chunks) {
-      let currentText = baseText;
-      let searchFromIndex = 0;
-
-      for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex += 1) {
-        const chunk = chunks[chunkIndex];
-        const deleteStart = currentText.indexOf(chunk.from, searchFromIndex);
-
-        if (deleteStart === -1) continue;
-
-        const deleteEnd = deleteStart + chunk.from.length;
-        const beforeDelete = currentText.slice(0, deleteStart);
-        const deleteText = currentText.slice(deleteStart, deleteEnd);
-        const afterDelete = currentText.slice(deleteEnd);
-
-        textPart.innerHTML = `${escapeHtml(beforeDelete)}<span class="highlight-delete">${escapeHtml(deleteText)}</span>${escapeHtml(afterDelete)}`;
-        await wait(TIMINGS.correctionDeleteHighlight);
-        await wait(TIMINGS.correctionPreDelete);
-
-        currentText = beforeDelete + afterDelete;
-        textPart.textContent = currentText;
-        await wait(TIMINGS.correctionPostDelete);
-
-        cursor.classList.remove('blink');
-        cursor.classList.add('steady');
-
-        const insertionText = chunk.to || '';
-        let cursorIndex = deleteStart;
-
-        for (let i = 0; i < insertionText.length; i += 1) {
-          const char = insertionText[i];
-          currentText = `${currentText.slice(0, cursorIndex)}${char}${currentText.slice(cursorIndex)}`;
-          cursorIndex += 1;
-          textPart.textContent = currentText;
-          await wait(TIMINGS.typingMsPerChar);
-
-          const prevChar = i > 0 ? insertionText[i - 1] : '';
-          const isWhitespace = /\s/.test(char);
-          if (isWhitespace && i < insertionText.length - 1 && !/\s/.test(prevChar)) {
-            await wait(TIMINGS.typingWhitespacePause);
-          }
-        }
-
-        cursor.classList.remove('steady');
-        cursor.classList.add('blink');
-        searchFromIndex = deleteStart + insertionText.length;
-
-        if (chunkIndex < chunks.length - 1) {
-          await wait(TIMINGS.correctionBetweenChunks);
-        }
-      }
-
-      return currentText;
-    }
-
     async function performCorrection(section, block, { announceSendState = true } = {}) {
-      if (section.rawText === section.correctedText) {
+      const rawText = normalizeText(section.rawText);
+      const correctedText = normalizeText(section.correctedText);
+
+      if (rawText === correctedText) {
         insertedBlocks.set(section.id, section.correctedText);
         updateSendState({ announceChange: announceSendState });
         return;
       }
 
       if (prefersReducedMotion.matches) {
-        if (!section.correctedText) {
+        if (!correctedText) {
           removeEmailBlock(section, { announceSendState });
         } else {
-          block.querySelector('.text-part').textContent = section.correctedText;
+          block.querySelector('.text-part').textContent = correctedText;
           insertedBlocks.set(section.id, section.correctedText);
           updateSendState({ announceChange: announceSendState });
         }
@@ -1124,78 +1057,72 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
       }
 
       const textPart = block.querySelector('.text-part');
+      textPart.textContent = rawText;
       const cursor = document.createElement('span');
       cursor.className = 'correction-cursor blink';
       cursor.textContent = '|';
       block.appendChild(cursor);
 
-      const chunkPlan = getSectionCorrectionChunks(section);
+      const operations = buildDiffOperations(rawText, correctedText);
+      let currentText = rawText;
+      let cursorIndex = 0;
 
       await wait(TIMINGS.correctionPreHighlight);
 
-      if (chunkPlan) {
-        await applyChunkedCorrections(textPart, cursor, section.rawText, chunkPlan);
-      } else {
-        const operations = buildDiffOperations(section.rawText, section.correctedText);
-        let currentText = section.rawText;
-        let cursorIndex = 0;
+      for (let opIndex = 0; opIndex < operations.length; opIndex += 1) {
+        const operation = operations[opIndex];
 
-        for (let opIndex = 0; opIndex < operations.length; opIndex += 1) {
-          const operation = operations[opIndex];
+        if (operation.type === 'equal') {
+          cursorIndex += operation.text.length;
+          continue;
+        }
 
-          if (operation.type === 'equal') {
-            cursorIndex += operation.text.length;
-            continue;
+        if (operation.type === 'delete') {
+          const deleteStart = cursorIndex;
+          const deleteEnd = deleteStart + operation.text.length;
+          const beforeDelete = currentText.slice(0, deleteStart);
+          const deleteText = currentText.slice(deleteStart, deleteEnd);
+          const afterDelete = currentText.slice(deleteEnd);
+
+          textPart.innerHTML = `${escapeHtml(beforeDelete)}<span class="highlight-delete">${escapeHtml(deleteText)}</span>${escapeHtml(afterDelete)}`;
+          await wait(TIMINGS.correctionDeleteHighlight);
+          await wait(TIMINGS.correctionPreDelete);
+
+          currentText = beforeDelete + afterDelete;
+          textPart.textContent = currentText;
+          await wait(TIMINGS.correctionPostDelete);
+          continue;
+        }
+
+        cursor.classList.remove('blink');
+        cursor.classList.add('steady');
+
+        for (let i = 0; i < operation.text.length; i += 1) {
+          const char = operation.text[i];
+          currentText = `${currentText.slice(0, cursorIndex)}${char}${currentText.slice(cursorIndex)}`;
+          cursorIndex += 1;
+          textPart.textContent = currentText;
+          await wait(TIMINGS.typingMsPerChar);
+
+          const prevChar = i > 0 ? operation.text[i - 1] : '';
+          const isWhitespace = /\s/.test(char);
+          if (isWhitespace && i < operation.text.length - 1 && !/\s/.test(prevChar)) {
+            await wait(TIMINGS.typingWhitespacePause);
           }
+        }
 
-          if (operation.type === 'delete') {
-            const deleteStart = cursorIndex;
-            const deleteEnd = deleteStart + operation.text.length;
-            const beforeDelete = currentText.slice(0, deleteStart);
-            const deleteText = currentText.slice(deleteStart, deleteEnd);
-            const afterDelete = currentText.slice(deleteEnd);
-
-            textPart.innerHTML = `${escapeHtml(beforeDelete)}<span class="highlight-delete">${escapeHtml(deleteText)}</span>${escapeHtml(afterDelete)}`;
-            await wait(TIMINGS.correctionDeleteHighlight);
-            await wait(TIMINGS.correctionPreDelete);
-
-            currentText = beforeDelete + afterDelete;
-            textPart.textContent = currentText;
-            await wait(TIMINGS.correctionPostDelete);
-            continue;
-          }
-
-          cursor.classList.remove('blink');
-          cursor.classList.add('steady');
-
-          for (let i = 0; i < operation.text.length; i += 1) {
-            const char = operation.text[i];
-            currentText = `${currentText.slice(0, cursorIndex)}${char}${currentText.slice(cursorIndex)}`;
-            cursorIndex += 1;
-            textPart.textContent = currentText;
-            await wait(TIMINGS.typingMsPerChar);
-
-            const prevChar = i > 0 ? operation.text[i - 1] : '';
-            const isWhitespace = /\s/.test(char);
-            if (isWhitespace && i < operation.text.length - 1 && !/\s/.test(prevChar)) {
-              await wait(TIMINGS.typingWhitespacePause);
-            }
-          }
-
-          const nextActionable = operations.slice(opIndex + 1).find((op) => op.type !== 'equal');
-          if (nextActionable) {
-            await wait(TIMINGS.correctionBetweenChunks);
-          }
+        const nextActionable = operations.slice(opIndex + 1).find((op) => op.type !== 'equal');
+        if (nextActionable) {
+          await wait(TIMINGS.correctionBetweenChunks);
         }
       }
 
       cursor.classList.remove('steady');
       cursor.classList.add('blink');
       await wait(180);
-      textPart.textContent = section.correctedText;
       cursor.remove();
 
-      if (!section.correctedText) {
+      if (!correctedText) {
         removeEmailBlock(section, { announceSendState });
       } else {
         insertedBlocks.set(section.id, section.correctedText);
