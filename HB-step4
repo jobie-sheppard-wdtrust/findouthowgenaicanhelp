@@ -500,13 +500,13 @@
   <script>
     const TIMINGS = {
       draftHighlight: 500,
-      correctionPreHighlight: 1000,
+      correctionPreHighlight: 700,
       correctionDeleteHighlight: 900,
-      correctionPreDelete: 500,
-      correctionPostDelete: 650,
-      typingMsPerChar: 80,
-      typingWhitespacePause: 300,
-      correctionBetweenChunks: 900,
+      correctionPreDelete: 300,
+      correctionPostDelete: 500,
+      typingMsPerChar: 70,
+      typingWhitespacePause: 200,
+      correctionBetweenChunks: 750,
       emailFadeIn: 300
     };
 
