@@ -569,7 +569,7 @@
 
   <main class="layout" id="main-content">
     <section class="panel panel-left" aria-labelledby="draft-area-heading" role="region">
-      <div class="draft-wrap">
+      <div id="draft-wrap" class="draft-wrap">
         <div class="avatar-row" aria-hidden="true">
           <span class="avatar" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg></span>
           <div>
@@ -753,6 +753,7 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
     const feedbackSubheading = document.getElementById('feedback-subheading');
     const feedbackCards = document.getElementById('feedback-cards');
     const tryAgainBtn = document.getElementById('try-again-btn');
+    const draftWrap = document.getElementById('draft-wrap');
 
     let activeTrigger = null;
     let activeSection = null;
@@ -1526,6 +1527,7 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
     function showFeedbackView() {
       const result = evaluateOutcomes();
       mainContent.classList.add('feedback-mode');
+      draftWrap.setAttribute('inert', '');
       const leftPanel = document.querySelector('.panel-left');
       leftPanel.classList.add('feedback-active');
       leftPanel.setAttribute('aria-label', 'Draft review');
@@ -1591,6 +1593,7 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
       feedbackCards.innerHTML = '';
       feedbackPanel.hidden = true;
       mainContent.classList.remove('feedback-mode');
+      draftWrap.removeAttribute('inert');
       const leftPanel = document.querySelector('.panel-left');
       leftPanel.classList.remove('feedback-active');
       leftPanel.removeAttribute('aria-label');
