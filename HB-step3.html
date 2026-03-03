@@ -755,6 +755,10 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
       updateSendState({ announceChange: announceSendState });
     }
 
+    function normalizeText(text) {
+      return text.split('\n').map((line) => line.trimEnd()).join('\n');
+    }
+
     function tokenizeForCorrection(text) {
       return text.match(/\s+|[^\s]+/g) || [];
     }
@@ -815,8 +819,8 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
     }
 
     function buildDiffOperations(originalText, correctedText) {
-      const normalizedOriginalText = applyPinnedReplacements(originalText, 'source');
-      const normalizedCorrectedText = applyPinnedReplacements(correctedText, 'target');
+      const normalizedOriginalText = applyPinnedReplacements(normalizeText(originalText), 'source');
+      const normalizedCorrectedText = applyPinnedReplacements(normalizeText(correctedText), 'target');
       const originalTokens = tokenizeForCorrection(normalizedOriginalText);
       const correctedTokens = tokenizeForCorrection(normalizedCorrectedText);
       const rowCount = originalTokens.length;
@@ -874,17 +878,20 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
     }
 
     async function performCorrection(section, block, { announceSendState = true } = {}) {
-      if (section.rawText === section.correctedText) {
+      const rawText = normalizeText(section.rawText);
+      const correctedText = normalizeText(section.correctedText);
+
+      if (rawText === correctedText) {
         insertedBlocks.set(section.id, section.correctedText);
         updateSendState({ announceChange: announceSendState });
         return;
       }
 
       if (prefersReducedMotion.matches) {
-        if (!section.correctedText) {
+        if (!correctedText) {
           removeEmailBlock(section, { announceSendState });
         } else {
-          block.querySelector('.text-part').textContent = section.correctedText;
+          block.querySelector('.text-part').textContent = correctedText;
           insertedBlocks.set(section.id, section.correctedText);
           updateSendState({ announceChange: announceSendState });
         }
@@ -892,13 +899,14 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
       }
 
       const textPart = block.querySelector('.text-part');
+      textPart.textContent = rawText;
       const cursor = document.createElement('span');
       cursor.className = 'correction-cursor blink';
       cursor.textContent = '|';
       block.appendChild(cursor);
 
-      const operations = buildDiffOperations(section.rawText, section.correctedText);
-      let currentText = section.rawText;
+      const operations = buildDiffOperations(rawText, correctedText);
+      let currentText = rawText;
       let cursorIndex = 0;
 
       await wait(TIMINGS.correctionPreHighlight);
