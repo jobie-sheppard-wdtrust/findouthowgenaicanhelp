@@ -130,7 +130,6 @@
     .draft-bubble {
       display: flex;
       width: 100%;
-      max-width: 100%;
       min-width: 0;
       border-radius: 1rem;
       border-top-left-radius: 0.375rem;
@@ -454,6 +453,10 @@
         order: 2;
         border-left: 0;
         border-top: 1px solid var(--border);
+      }
+
+      .panel {
+        overflow-x: auto;
       }
     }
 
