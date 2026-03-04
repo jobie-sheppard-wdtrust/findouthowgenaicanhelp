@@ -1509,7 +1509,8 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
           sectionEmailState.set(section.id, canonicalFinalText);
         }
 
-        recomputeUiState({ announceSendState: true });
+        const wasSendDisabled = sendBtn.disabled;
+        recomputeUiState({ announceSendState: false });
 
         if (actionSucceeded) {
           completedByAction.set(section.id, actionType);
@@ -1518,6 +1519,11 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
 
         setAnimating(false);
         await announceQueue;
+        if (wasSendDisabled && !sendBtn.disabled) {
+          await wait(700);
+          announce('Send enabled');
+          await announceQueue;
+        }
         setMenuBusy(false);
         closeMenu({ returnFocus: false, announceClose: false });
         focusNextDraftBlock(trigger);
