@@ -438,7 +438,7 @@
       border-left: 1px solid var(--border);
     }
 
-    /* Normal mobile structure: top-level panes stack vertically with draft first and email second. */
+    /* Normal mobile structure: top-level panes stack vertically with email first and draft second. */
     @media (max-width: 800px) {
       .layout {
         grid-template-columns: 1fr;
@@ -446,14 +446,14 @@
         min-height: calc(100vh - 3.5rem);
       }
 
-      .layout > .panel-left {
-        order: 1;
-      }
-
       .layout > .panel-right {
-        order: 2;
+        order: 1;
         border-left: 0;
         border-top: 1px solid var(--border);
+      }
+
+      .layout > .panel-left {
+        order: 2;
       }
     }
 
@@ -605,22 +605,6 @@
 @media (max-width: 800px) {
   .panel {
     overflow-x: auto;
-  }
-
-  .layout {
-    grid-template-columns: 1fr;
-    height: auto;
-    min-height: calc(100vh - 3.5rem);
-  }
-
-  .layout > .panel-right {
-    grid-row: 1;
-    border-left: 0;
-    border-top: 1px solid var(--border);
-  }
-
-  .layout > .panel-left {
-    grid-row: 2;
   }
 
   .panel-left.feedback-active {
