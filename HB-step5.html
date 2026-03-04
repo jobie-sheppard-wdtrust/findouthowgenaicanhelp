@@ -72,9 +72,6 @@
       padding: 1rem;
     }
 
-    .panel-right {
-      border-left: 1px solid var(--border);
-    }
 
     .card {
       background: var(--card);
@@ -436,20 +433,50 @@
     }
 
 
+    /* Normal desktop structure: two top-level panes with draft on the left and email on the right. */
+    .layout > .panel-right {
+      border-left: 1px solid var(--border);
+    }
 
+    /* Normal mobile structure: top-level panes stack vertically with draft first and email second. */
+    @media (max-width: 800px) {
+      .layout {
+        grid-template-columns: 1fr;
+        height: auto;
+        min-height: calc(100vh - 3.5rem);
+      }
+
+      .layout > .panel-left {
+        order: 1;
+      }
+
+      .layout > .panel-right {
+        order: 2;
+        border-left: 0;
+        border-top: 1px solid var(--border);
+      }
+    }
+
+    /* Feedback desktop structure: only the left top-level pane remains, and its internal draft/feedback columns split side by side. */
     .layout.feedback-mode {
       grid-template-columns: 1fr;
     }
 
-    .layout.feedback-mode .panel-right {
+    .layout.feedback-mode > .panel-right {
       display: none;
     }
 
-    .panel-left.feedback-active {
+    .layout.feedback-mode > .panel-left.feedback-active {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
       gap: 2rem;
       align-items: start;
+    }
+
+    .layout.feedback-mode > .panel-left.feedback-active > #draft-wrap,
+    .layout.feedback-mode > .panel-left.feedback-active > #feedback-panel {
+      width: 100%;
+      min-width: 0;
     }
 
     .feedback-panel {
@@ -457,7 +484,6 @@
       border: 1px solid var(--border);
       border-radius: 0.75rem;
       padding: 1.25rem;
-      max-width: 100%;
       align-self: start;
     }
 
@@ -530,6 +556,21 @@
       cursor: pointer;
     }
 
+    /* Feedback mobile structure: feedback mode still uses one top-level pane, while internal draft/feedback blocks stack with feedback first. */
+    @media (max-width: 800px) {
+      .layout.feedback-mode > .panel-left.feedback-active {
+        grid-template-columns: 1fr;
+      }
+
+      .layout.feedback-mode > .panel-left.feedback-active > #feedback-panel {
+        order: 1;
+      }
+
+      .layout.feedback-mode > .panel-left.feedback-active > #draft-wrap {
+        order: 2;
+      }
+    }
+
     [hidden] { display: none !important; }
 
     .sr-only {
@@ -561,34 +602,30 @@
       }
     }
 
-    @media (max-width: 800px) {
-      .panel {
-        overflow-x: auto;
-      }
+@media (max-width: 800px) {
+  .panel {
+    overflow-x: auto;
+  }
 
-      .layout {
-        grid-template-columns: 1fr;
-        height: auto;
-        min-height: calc(100vh - 3.5rem);
-      }
+  .layout {
+    grid-template-columns: 1fr;
+    height: auto;
+    min-height: calc(100vh - 3.5rem);
+  }
 
-      .panel-right {
-        border-left: 0;
-        border-top: 1px solid var(--border);
-      }
+  .layout > .panel-right {
+    grid-row: 1;
+  }
 
-      .panel-left.feedback-active {
-        grid-template-columns: 1fr;
-      }
+  .layout > .panel-left {
+    grid-row: 2;
+  }
 
-      .panel-left.feedback-active #feedback-panel {
-        order: 1;
-      }
-
-      .panel-left.feedback-active #draft-wrap {
-        order: 2;
-      }
-    }
+  .panel-right {
+    border-left: 0;
+    border-top: 1px solid var(--border);
+  }
+}
   </style>
 </head>
 <body>
