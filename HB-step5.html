@@ -432,35 +432,12 @@
     }
 
 
-    /* Normal desktop structure: two top-level panes with draft on the left and email on the right. */
+    /* normal desktop/mobile */
     .layout > .panel-right {
       border-left: 1px solid var(--border);
     }
 
-    /* Normal mobile structure: top-level panes stack vertically with email first and draft second. */
-    @media (max-width: 800px) {
-      .layout {
-        grid-template-columns: 1fr;
-        height: auto;
-        min-height: calc(100vh - 3.5rem);
-      }
-
-      .layout > .panel-right {
-        order: 1;
-        border-left: 0;
-        border-top: 1px solid var(--border);
-      }
-
-      .layout > .panel-left {
-        order: 2;
-      }
-
-      .panel {
-        overflow-x: auto;
-      }
-    }
-
-    /* Feedback desktop structure: only the left top-level pane remains, and its internal draft/feedback columns split side by side. */
+    /* feedback desktop/mobile */
     .layout.feedback-mode {
       grid-template-columns: 1fr;
     }
@@ -559,8 +536,30 @@
       cursor: pointer;
     }
 
-    /* Feedback mobile structure: feedback mode still uses one top-level pane, while internal draft/feedback blocks stack with feedback first. */
+
     @media (max-width: 800px) {
+      /* normal desktop/mobile */
+      .layout {
+        grid-template-columns: 1fr;
+        height: auto;
+        min-height: calc(100vh - 3.5rem);
+      }
+
+      .layout > .panel-right {
+        order: 1;
+        border-left: 0;
+        border-top: 1px solid var(--border);
+      }
+
+      .layout > .panel-left {
+        order: 2;
+      }
+
+      .panel {
+        overflow-x: auto;
+      }
+
+      /* feedback desktop/mobile */
       .layout.feedback-mode > .panel-left.feedback-active {
         grid-template-columns: 1fr;
       }
@@ -573,6 +572,7 @@
         order: 2;
       }
     }
+
 
     [hidden] { display: none !important; }
 
@@ -604,17 +604,6 @@
         transition: none !important;
       }
     }
-
-@media (max-width: 800px) {
-  .panel {
-    overflow-x: auto;
-  }
-
-  .panel-left.feedback-active {
-    grid-template-columns: 1fr;
-  }
-
-}
   </style>
 </head>
 <body>
