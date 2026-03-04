@@ -615,16 +615,18 @@
 
   .layout > .panel-right {
     grid-row: 1;
+    border-left: 0;
+    border-top: 1px solid var(--border);
   }
 
   .layout > .panel-left {
     grid-row: 2;
   }
 
-  .panel-right {
-    border-left: 0;
-    border-top: 1px solid var(--border);
+  .panel-left.feedback-active {
+    grid-template-columns: 1fr;
   }
+
 }
   </style>
 </head>
