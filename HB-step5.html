@@ -557,9 +557,14 @@
         min-height: calc(100vh - 3.5rem);
       }
 
-      .panel-right {
+      .layout > .panel-right {
+        grid-row: 1;
         border-left: 0;
         border-top: 1px solid var(--border);
+      }
+
+      .layout > .panel-left {
+        grid-row: 2;
       }
 
       .panel-left.feedback-active {
