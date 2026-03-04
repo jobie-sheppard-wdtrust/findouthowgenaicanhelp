@@ -376,14 +376,19 @@
       position: fixed;
       inset: 0;
       background: hsl(222 47% 11% / 0.6);
-      display: grid;
-      place-items: center;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      overflow-y: auto;
+      overflow-x: hidden;
       padding: 1rem;
       z-index: 30;
     }
 
     .modal-card {
-      width: min(100%, 42rem);
+      width: min(100% - 2rem, 42rem);
+      max-width: 100%;
+      margin-block: 1rem;
       background: var(--card);
       border: 1px solid var(--border);
       border-radius: 0.75rem;
@@ -391,6 +396,7 @@
       box-shadow: 0 20px 30px -15px rgb(0 0 0 / 0.35);
       display: grid;
       gap: 1rem;
+      overflow-wrap: anywhere;
     }
 
     .modal-title {
@@ -402,12 +408,14 @@
     .modal-helper {
       margin: 0;
       line-height: 1.5;
+      overflow-wrap: anywhere;
     }
 
     .modal-actions {
       display: flex;
       justify-content: flex-end;
       gap: 0.75rem;
+      flex-wrap: wrap;
     }
 
     .modal-cancel,
@@ -430,6 +438,28 @@
       background: var(--primary);
       color: var(--primary-foreground);
     }
+
+    @media (max-width: 32rem) {
+      .modal-overlay {
+        padding: 0.75rem;
+      }
+
+      .modal-card {
+        width: min(100% - 1.5rem, 42rem);
+        margin-block: 0.75rem;
+      }
+
+      .modal-actions {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .modal-cancel,
+      .modal-continue {
+        width: 100%;
+      }
+    }
+
 
 
     /* normal desktop/mobile */
@@ -1045,6 +1075,42 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
         } else if (restoreTarget) {
           restoreTarget.focus();
         }
+      }
+    }
+
+
+    function getNearestScrollableContainer(element) {
+      let current = element?.parentElement;
+      while (current) {
+        const style = window.getComputedStyle(current);
+        const canScrollY = /(auto|scroll)/.test(style.overflowY) && current.scrollHeight > current.clientHeight;
+        const canScrollX = /(auto|scroll)/.test(style.overflowX) && current.scrollWidth > current.clientWidth;
+        if (canScrollY || canScrollX) {
+          return current;
+        }
+        current = current.parentElement;
+      }
+      return document.scrollingElement || document.documentElement;
+    }
+
+    function keepFocusedControlInView(target) {
+      if (!target || !modal.contains(target)) return;
+      const scrollContainer = getNearestScrollableContainer(target);
+      if (!scrollContainer) return;
+
+      const targetRect = target.getBoundingClientRect();
+      const containerRect = scrollContainer === document.documentElement || scrollContainer === document.body
+        ? { top: 0, bottom: window.innerHeight, left: 0, right: window.innerWidth }
+        : scrollContainer.getBoundingClientRect();
+
+      const outOfView =
+        targetRect.top < containerRect.top ||
+        targetRect.bottom > containerRect.bottom ||
+        targetRect.left < containerRect.left ||
+        targetRect.right > containerRect.right;
+
+      if (outOfView) {
+        target.scrollIntoView({ block: 'nearest', inline: 'nearest' });
       }
     }
 
@@ -1780,6 +1846,13 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
       if (!menu.contains(event.target) && !event.target.closest('.draft-item-btn')) {
         closeMenu({ returnFocus: false });
       }
+    });
+
+
+    document.addEventListener('focusin', (event) => {
+      if (!isModalOpen) return;
+      if (!modal.contains(event.target)) return;
+      keepFocusedControlInView(event.target);
     });
 
     document.addEventListener('keydown', (event) => {
