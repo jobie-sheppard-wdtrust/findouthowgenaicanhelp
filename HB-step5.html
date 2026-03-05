@@ -527,7 +527,6 @@
       border: 1px solid var(--assistant-icon-bg);
       border-radius: 1rem;
       border-top-left-radius: 0.375rem;
-      border-left: 2px dotted hsl(220 10% 55%);
       padding: 1rem;
       box-shadow: 0 2px 8px rgb(0 0 0 / 0.08);
     }
@@ -568,12 +567,11 @@
       word-break: break-word;
     }
 
-    .feedback-draft-card.included {
-      background: hsl(221 83% 95% / 0.7);
-    }
-
+    .feedback-draft-card,
+    .feedback-draft-card.included,
     .feedback-draft-card.excluded {
-      opacity: 0.9;
+      background: hsl(221 83% 95% / 0.7);
+      opacity: 1;
     }
 
     .feedback-card.link-active.success,
