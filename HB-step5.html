@@ -472,18 +472,18 @@
       grid-template-columns: 1fr;
     }
 
-    .layout.feedback-mode > .panel-right {
+    .layout.feedback-mode > .panel-right,
+    .layout.feedback-mode > .panel-left.feedback-active > #draft-wrap {
       display: none;
     }
 
     .layout.feedback-mode > .panel-left.feedback-active {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-      gap: 2rem;
-      align-items: start;
+      display: block;
+      width: 100%;
+      max-width: 100%;
+      padding: 1.25rem;
     }
 
-    .layout.feedback-mode > .panel-left.feedback-active > #draft-wrap,
     .layout.feedback-mode > .panel-left.feedback-active > #feedback-panel {
       width: 100%;
       min-width: 0;
@@ -494,7 +494,8 @@
       border: 1px solid var(--border);
       border-radius: 0.75rem;
       padding: 1.25rem;
-      align-self: start;
+      width: 100%;
+      animation: fade-in-block 160ms ease-out;
     }
 
     .feedback-panel h2 {
@@ -503,32 +504,52 @@
       line-height: 1.2;
     }
 
-    .feedback-subheading {
+    .feedback-subheading,
+    .feedback-instructions {
       margin: 0 0 1rem;
       font-size: 1.125rem;
       line-height: 1.5;
     }
 
+    .feedback-instructions {
+      color: var(--muted-foreground);
+      font-size: 1rem;
+    }
+
     .feedback-cards {
       display: grid;
       gap: 1rem;
+      background: var(--chat-bot);
+      border-radius: 1rem;
+      border-top-left-radius: 0.375rem;
+      padding: 1rem;
+      box-shadow: 0 2px 8px rgb(0 0 0 / 0.08);
     }
 
-    .feedback-card {
+    .feedback-card,
+    .feedback-draft-card {
       border: 1px solid var(--border);
       border-radius: 0.5rem;
       padding: 0.875rem;
       background: hsl(0 0% 100%);
-      transition: box-shadow 0.3s, background-color 0.2s;
+      transition: box-shadow 0.2s, background-color 0.2s;
     }
 
-    .feedback-card h3 {
-      margin: 0 0 0.35rem;
+    .feedback-card h3,
+    .feedback-draft-card .feedback-draft-text {
+      margin: 0;
       font-size: 1rem;
+      line-height: 1.5;
+    }
+
+    .feedback-draft-text {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      word-break: break-word;
     }
 
     .feedback-card p {
-      margin: 0;
+      margin: 0.35rem 0 0;
       font-size: 0.875rem;
       line-height: 1.5;
     }
@@ -541,14 +562,24 @@
       border-left: 4px solid hsl(0 84% 60%);
     }
 
+    .feedback-draft-card.included {
+      border-left: 4px solid hsl(221 83% 53%);
+      background: hsl(221 83% 97%);
+    }
+
+    .feedback-draft-card.excluded {
+      opacity: 0.88;
+      border-style: dashed;
+    }
+
     .feedback-card.link-active.success,
-    .draft-item-btn.link-active.success {
+    .feedback-draft-card.link-active.success {
       box-shadow: 0 0 0 3px hsl(142 71% 45% / 0.35);
       background: hsl(142 71% 95%);
     }
 
     .feedback-card.link-active.failure,
-    .draft-item-btn.link-active.failure {
+    .feedback-draft-card.link-active.failure {
       box-shadow: 0 0 0 3px hsl(0 84% 60% / 0.35);
       background: hsl(0 84% 96%);
     }
@@ -591,15 +622,7 @@
 
       /* feedback desktop/mobile */
       .layout.feedback-mode > .panel-left.feedback-active {
-        grid-template-columns: 1fr;
-      }
-
-      .layout.feedback-mode > .panel-left.feedback-active > #feedback-panel {
-        order: 1;
-      }
-
-      .layout.feedback-mode > .panel-left.feedback-active > #draft-wrap {
-        order: 2;
+        padding: 1rem;
       }
     }
 
@@ -638,7 +661,7 @@
 </head>
 <body>
   <header class="top-header">
-    <h1 tabindex="-1">Being a HITL - defend against hallucination and bias</h1>
+    <h1 id="page-title" tabindex="-1">Being a HITL - defend against hallucination and bias</h1>
   </header>
 
   <main class="layout" id="main-content">
@@ -660,6 +683,7 @@
       <section id="feedback-panel" class="feedback-panel" role="region" aria-labelledby="feedback-panel-title" hidden>
         <h2 id="feedback-panel-title" tabindex="-1">Feedback</h2>
         <p id="feedback-subheading" class="feedback-subheading"></p>
+        <p id="feedback-instructions" class="feedback-instructions">Review each feedback card and then the matching draft section shown immediately below it.</p>
         <div id="feedback-cards" class="feedback-cards"></div>
         <button id="try-again-btn" class="try-again-btn" type="button">Try again</button>
       </section>
@@ -832,8 +856,11 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
     const feedbackTitle = document.getElementById('feedback-panel-title');
     const feedbackSubheading = document.getElementById('feedback-subheading');
     const feedbackCards = document.getElementById('feedback-cards');
+    const feedbackInstructions = document.getElementById('feedback-instructions');
     const tryAgainBtn = document.getElementById('try-again-btn');
-    const draftWrap = document.getElementById('draft-wrap');
+    const pageTitle = document.getElementById('page-title');
+    const DEFAULT_PAGE_TITLE = 'Being a HITL - defend against hallucination and bias';
+    const FEEDBACK_PAGE_TITLE = 'Review your feedback';
 
     let activeTrigger = null;
     let activeSection = null;
@@ -1665,42 +1692,41 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
     function setLinkedState(sectionId, isActive) {
       const link = feedbackAssociations.get(sectionId);
       if (!link) return;
-      link.button.classList.toggle('link-active', isActive);
-      link.card.classList.toggle('link-active', isActive);
+      link.feedbackCard.classList.toggle('link-active', isActive);
+      link.draftCard.classList.toggle('link-active', isActive);
     }
 
-    function wireFeedbackLinking(sectionId, button, card) {
-      feedbackAssociations.set(sectionId, { button, card });
+    function wireFeedbackPairHover(sectionId, feedbackCard, draftCard) {
+      feedbackAssociations.set(sectionId, { feedbackCard, draftCard });
       const activate = () => setLinkedState(sectionId, true);
       const deactivate = () => setLinkedState(sectionId, false);
-      button.addEventListener('mouseenter', activate);
-      button.addEventListener('mouseleave', deactivate);
-      button.addEventListener('focus', activate);
-      button.addEventListener('blur', deactivate);
-      card.addEventListener('mouseenter', activate);
-      card.addEventListener('mouseleave', deactivate);
-      card.addEventListener('focus', activate);
-      card.addEventListener('blur', deactivate);
+      feedbackCard.addEventListener('mouseenter', activate);
+      feedbackCard.addEventListener('mouseleave', deactivate);
+      draftCard.addEventListener('mouseenter', activate);
+      draftCard.addEventListener('mouseleave', deactivate);
     }
 
     function showFeedbackView() {
       const result = evaluateOutcomes();
       mainContent.classList.add('feedback-mode');
-      draftWrap.setAttribute('inert', '');
       const leftPanel = document.querySelector('.panel-left');
       leftPanel.classList.add('feedback-active');
-      leftPanel.setAttribute('aria-label', 'Draft review');
+      leftPanel.setAttribute('aria-label', 'Feedback review');
       feedbackPanel.hidden = false;
       feedbackSubheading.textContent = result.isSuccess ? FEEDBACK_COPY.successSubheading : FEEDBACK_COPY.failureSubheading;
+      feedbackInstructions.textContent = 'Review each feedback card and then the matching draft section shown immediately below it.';
       feedbackCards.innerHTML = '';
       feedbackAssociations.clear();
+      pageTitle.textContent = FEEDBACK_PAGE_TITLE;
 
       result.outcomes.forEach((outcome) => {
-        const card = document.createElement('article');
-        card.className = `feedback-card ${outcome.success ? 'success' : 'failure'}`;
-        card.id = `feedback-card-${outcome.id}`;
-        card.tabIndex = 0;
-        card.dataset.sectionId = outcome.id;
+        const sourceSection = sections.find((section) => section.id === outcome.id);
+        const includedInEmail = completedByAction.has(outcome.id);
+
+        const feedbackCard = document.createElement('article');
+        feedbackCard.className = `feedback-card ${outcome.success ? 'success' : 'failure'}`;
+        feedbackCard.id = `feedback-card-${outcome.id}`;
+        feedbackCard.dataset.sectionId = outcome.id;
 
         const statusEmoji = outcome.success ? '✅' : '❌';
         const bodyText = outcome.success ? outcome.successText : outcome.failureText;
@@ -1712,30 +1738,27 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
         body.id = `feedback-card-description-${outcome.id}`;
         body.textContent = bodyText;
 
-        card.setAttribute('aria-labelledby', heading.id);
-        card.setAttribute('aria-describedby', body.id);
+        feedbackCard.setAttribute('aria-labelledby', heading.id);
+        feedbackCard.setAttribute('aria-describedby', body.id);
 
-        const preserveCardFocus = () => {
-          window.requestAnimationFrame(() => {
-            card.focus();
-          });
-        };
-        card.addEventListener('click', preserveCardFocus);
-        card.addEventListener('keydown', (event) => {
-          if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault();
-            preserveCardFocus();
-          }
-        });
+        const draftCard = document.createElement('article');
+        draftCard.className = `feedback-draft-card ${includedInEmail ? 'included' : 'excluded'} ${outcome.success ? 'success' : 'failure'}`;
+        draftCard.id = `feedback-draft-${outcome.id}`;
+        draftCard.dataset.sectionId = outcome.id;
+        draftCard.setAttribute('aria-label', `${outcome.sectionName} draft text`);
 
-        card.appendChild(heading);
-        card.appendChild(body);
-        feedbackCards.appendChild(card);
+        const draftText = document.createElement('p');
+        draftText.className = 'feedback-draft-text';
+        draftText.textContent = sourceSection ? sourceSection.rawText : '';
 
-        const button = document.getElementById(`draft-${outcome.id}`);
-        button.classList.toggle('success', outcome.success);
-        button.classList.toggle('failure', !outcome.success);
-        wireFeedbackLinking(outcome.id, button, card);
+        draftCard.appendChild(draftText);
+        feedbackCard.appendChild(heading);
+        feedbackCard.appendChild(body);
+
+        feedbackCards.appendChild(feedbackCard);
+        feedbackCards.appendChild(draftCard);
+
+        wireFeedbackPairHover(outcome.id, feedbackCard, draftCard);
       });
 
       announce('Feedback displayed.');
@@ -1769,11 +1792,11 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
       feedbackPanel.hidden = true;
       feedbackTitle.tabIndex = -1;
       mainContent.classList.remove('feedback-mode');
-      draftWrap.removeAttribute('inert');
       const leftPanel = document.querySelector('.panel-left');
       leftPanel.classList.remove('feedback-active');
       leftPanel.removeAttribute('aria-label');
-      pageHeader.querySelector('h1').focus();
+      pageTitle.textContent = DEFAULT_PAGE_TITLE;
+      pageTitle.focus();
       announce('Reset. Draft and email cleared.');
     }
 
