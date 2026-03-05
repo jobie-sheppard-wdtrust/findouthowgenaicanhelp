@@ -453,8 +453,11 @@
       position: fixed;
       inset: 0;
       z-index: 100;
-      display: grid;
-      place-items: center;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      overflow-y: auto;
+      overflow-x: hidden;
       padding: 1rem;
     }
 
@@ -467,6 +470,8 @@
     .feedback-card {
       position: relative;
       width: min(100%, 32rem);
+      max-width: 100%;
+      margin-block: 1rem;
       background: var(--card);
       border: 1px solid var(--border);
       border-radius: 1rem;
@@ -674,6 +679,41 @@
       let focusBeforeModal = null;
       const selectedFields = new Set();
 
+      function getNearestScrollableContainer(element) {
+        let current = element && element.parentElement;
+        while (current) {
+          const style = window.getComputedStyle(current);
+          const canScrollY = /(auto|scroll)/.test(style.overflowY) && current.scrollHeight > current.clientHeight;
+          const canScrollX = /(auto|scroll)/.test(style.overflowX) && current.scrollWidth > current.clientWidth;
+          if (canScrollY || canScrollX) {
+            return current;
+          }
+          current = current.parentElement;
+        }
+        return document.scrollingElement || document.documentElement;
+      }
+
+      function keepFocusedControlInView(target) {
+        if (!target || !feedbackModal.contains(target)) return;
+        const scrollContainer = getNearestScrollableContainer(target);
+        if (!scrollContainer) return;
+
+        const targetRect = target.getBoundingClientRect();
+        const containerRect = scrollContainer === document.documentElement || scrollContainer === document.body
+          ? { top: 0, bottom: window.innerHeight, left: 0, right: window.innerWidth }
+          : scrollContainer.getBoundingClientRect();
+
+        const outOfView =
+          targetRect.top < containerRect.top ||
+          targetRect.bottom > containerRect.bottom ||
+          targetRect.left < containerRect.left ||
+          targetRect.right > containerRect.right;
+
+        if (outOfView) {
+          target.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+        }
+      }
+
       function queueAnnouncement(message, delayMs = 120) {
         announceJob = announceJob.then(() => new Promise((resolve) => {
           window.setTimeout(() => {
@@ -808,6 +848,7 @@
         if (headerEl) headerEl.setAttribute('inert', '');
         if (mainEl) mainEl.setAttribute('inert', '');
         feedbackTitle.focus();
+        keepFocusedControlInView(feedbackTitle);
         queueAnnouncement(`Feedback dialog opened. ${titleText}.`, 180);
       }
 
@@ -1065,6 +1106,11 @@
       });
 
       feedbackModal.addEventListener('keydown', onModalKeydown);
+      document.addEventListener('focusin', (event) => {
+        if (!modalOpen) return;
+        if (!feedbackModal.contains(event.target)) return;
+        keepFocusedControlInView(event.target);
+      });
       feedbackModal.addEventListener('click', (event) => {
         if (event.target && event.target.dataset.feedbackClose === 'overlay') {
           closeFeedbackModal();
