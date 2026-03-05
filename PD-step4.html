@@ -594,12 +594,14 @@
           <p class="helper">Learn to protect patient data when using GenAI tools. Only share necessary medical details needed, leave out PID.</p>
         </div>
 
-        <div class="messages" aria-label="Chat transcript">
-          <div class="message">
-            <div class="avatar" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
+        <div class="messages" aria-label="Chat transcript" role="log" aria-live="off" aria-relevant="additions text" aria-atomic="false">
+          <div class="messages-list" role="list">
+            <div class="message" role="listitem">
+              <div class="avatar" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
+              </div>
+              <div class="bubble"><span class="sr-only">GenAI says: </span>How can I help?</div>
             </div>
-            <div class="bubble">How can I help?</div>
           </div>
         </div>
 
@@ -634,7 +636,7 @@
       const promptText = document.getElementById('prompt-text');
       const sendBtn = document.querySelector('.send-btn');
       const srStatus = document.getElementById('sr-status');
-      const messages = document.querySelector('.messages');
+      const messagesList = document.querySelector('.messages-list');
       const patientItems = Array.from(document.querySelectorAll('.patient-item'));
       const resetBtn = document.querySelector('.reset-btn');
       const headerEl = document.querySelector('.header');
@@ -671,6 +673,7 @@
       function appendMessage(text, role) {
         const wrapper = document.createElement('div');
         wrapper.className = `message ${role}`;
+        wrapper.setAttribute('role', 'listitem');
 
         if (role !== 'user') {
           const avatar = document.createElement('div');
@@ -682,10 +685,17 @@
 
         const bubble = document.createElement('div');
         bubble.className = 'bubble';
-        bubble.textContent = text;
+
+        const speakerPrefix = document.createElement('span');
+        speakerPrefix.className = 'sr-only';
+        speakerPrefix.textContent = role === 'user' ? 'You said: ' : 'GenAI says: ';
+        bubble.appendChild(speakerPrefix);
+        const messageTextNode = document.createTextNode(text);
+        bubble.append(messageTextNode);
+        bubble._messageTextNode = messageTextNode;
         wrapper.appendChild(bubble);
 
-        messages.appendChild(wrapper);
+        messagesList.appendChild(wrapper);
         return bubble;
       }
 
@@ -874,6 +884,7 @@
       function showThinking() {
         const wrapper = document.createElement('div');
         wrapper.className = 'message bot';
+        wrapper.setAttribute('role', 'listitem');
 
         const avatar = document.createElement('div');
         avatar.className = 'avatar';
@@ -882,11 +893,11 @@
 
         const bubble = document.createElement('div');
         bubble.className = 'bubble';
-        bubble.innerHTML = '<span class="sr-only">GenAI is writing its response</span><span class="thinking-dots" aria-hidden="true"><span></span><span></span><span></span></span>';
+        bubble.innerHTML = '<span class="sr-only">GenAI says: GenAI is writing its response</span><span class="thinking-dots" aria-hidden="true"><span></span><span></span><span></span></span>';
 
         wrapper.appendChild(avatar);
         wrapper.appendChild(bubble);
-        messages.appendChild(wrapper);
+        messagesList.appendChild(wrapper);
         thinkingMessage = wrapper;
 
         if (!hasThinkingAnnouncement) {
@@ -904,9 +915,14 @@
 
       function typeBotMessage(fullMessage, onDone) {
         const bubble = appendMessage('', 'bot');
+        const messageTextNode = bubble._messageTextNode || document.createTextNode('');
+        if (!bubble._messageTextNode) {
+          bubble.append(messageTextNode);
+          bubble._messageTextNode = messageTextNode;
+        }
 
         if (reduceMotionQuery.matches) {
-          bubble.textContent = fullMessage;
+          messageTextNode.textContent = fullMessage;
           onDone();
           return;
         }
@@ -917,7 +933,7 @@
 
         const typingTimer = window.setInterval(() => {
           index += 1;
-          bubble.textContent = fullMessage.slice(0, index);
+          messageTextNode.textContent = fullMessage.slice(0, index);
 
           if (index >= fullMessage.length) {
             window.clearInterval(typingTimer);
@@ -1000,7 +1016,7 @@
           button.setAttribute('aria-label', `Copy ${field}`);
         });
 
-        const allMessages = Array.from(messages.querySelectorAll('.message'));
+        const allMessages = Array.from(messagesList.querySelectorAll('.message'));
         allMessages.slice(1).forEach((message) => message.remove());
 
         setButtonsDisabled(false);
