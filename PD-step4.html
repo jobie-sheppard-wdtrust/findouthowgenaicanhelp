@@ -490,9 +490,15 @@
     }
 
     .feedback-body {
-      margin: 0.6rem 0 1rem;
+      margin: 0.6rem 0 0.65rem;
       color: #1f2937;
       font-size: 0.95rem;
+    }
+
+    .feedback-note {
+      margin: 0 0 1rem;
+      color: var(--muted-foreground);
+      font-size: 0.9rem;
     }
 
     .retry-btn {
@@ -628,9 +634,10 @@
 
     <div id="feedback-modal" class="feedback-modal" hidden>
       <div class="feedback-overlay" data-feedback-close="overlay"></div>
-      <section class="feedback-card" role="dialog" aria-modal="true" aria-labelledby="feedback-title" aria-describedby="feedback-body" tabindex="-1">
+      <section class="feedback-card" role="dialog" aria-modal="true" aria-labelledby="feedback-title" aria-describedby="feedback-body feedback-note" tabindex="-1">
         <h2 id="feedback-title" class="feedback-title" tabindex="-1"></h2>
         <p id="feedback-body" class="feedback-body"></p>
+        <p id="feedback-note" class="feedback-note">Closing this dialog keeps your generated answer visible in the chat transcript below.</p>
         <button type="button" id="retry-btn" class="retry-btn">Retry</button>
       </section>
     </div>
@@ -780,7 +787,7 @@
           ? focusBeforeModal
           : resetBtn;
         target.focus();
-        queueAnnouncement('Feedback dialog closed. Interaction reset.');
+        queueAnnouncement('Feedback dialog closed. Your generated answer remains available in the chat transcript.');
       }
 
       function openFeedbackModal() {
@@ -809,7 +816,6 @@
 
         if (event.key === 'Escape') {
           event.preventDefault();
-          resetToInitial();
           closeFeedbackModal();
           return;
         }
@@ -1061,7 +1067,6 @@
       feedbackModal.addEventListener('keydown', onModalKeydown);
       feedbackModal.addEventListener('click', (event) => {
         if (event.target && event.target.dataset.feedbackClose === 'overlay') {
-          resetToInitial();
           closeFeedbackModal();
         }
       });
