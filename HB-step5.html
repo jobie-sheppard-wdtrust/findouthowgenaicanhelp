@@ -527,11 +527,15 @@
     }
 
     .feedback-card,
-    .feedback-draft-card {
+    .feedback-draft-card,
+    .feedback-draft-card.included,
+    .feedback-draft-card.excluded {
       border: 1px solid var(--border);
       border-radius: 0.5rem;
       padding: 0.875rem;
-      background: hsl(0 0% 100%);
+      margin-inline: 0.25rem;
+      background: hsl(221 83% 95% / 0.7);
+      opacity: 1;
       transition: box-shadow 0.2s, background-color 0.2s;
     }
 
@@ -552,24 +556,6 @@
       margin: 0.35rem 0 0;
       font-size: 0.875rem;
       line-height: 1.5;
-    }
-
-    .feedback-card.success {
-      border-left: 4px solid hsl(142 71% 45%);
-    }
-
-    .feedback-card.failure {
-      border-left: 4px solid hsl(0 84% 60%);
-    }
-
-    .feedback-draft-card.included {
-      border-left: 4px solid hsl(221 83% 53%);
-      background: hsl(221 83% 97%);
-    }
-
-    .feedback-draft-card.excluded {
-      opacity: 0.88;
-      border-style: dashed;
     }
 
     .feedback-card.link-active.success,
