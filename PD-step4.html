@@ -85,9 +85,9 @@
     }
 
     .reset-btn {
-      border: 1px solid var(--border);
-      background: var(--card);
-      color: var(--foreground);
+      border: 1px solid var(--primary);
+      background: var(--primary);
+      color: var(--primary-foreground);
       border-radius: var(--radius);
       padding: 0.55rem 0.8rem;
       font-size: 0.9rem;
@@ -511,12 +511,33 @@
       cursor: pointer;
     }
 
+
+    .close-feedback-btn {
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--foreground);
+      border-radius: var(--radius);
+      padding: 0.6rem 1rem;
+      font-size: 0.95rem;
+      cursor: pointer;
+      margin-left: 0.5rem;
+    }
+
     @media (max-width: 56rem) {
       .main { grid-template-columns: 1fr; }
       .panel { min-height: auto; }
-      .patient-item { grid-template-columns: 1fr; }
-      .copy-btn { justify-self: start; margin-top: 0; }
-      .patient-row { grid-template-columns: 1fr; row-gap: 0.2rem; }
+      .patient-item { grid-template-columns: 2.5rem minmax(0, 1fr); }
+      .copy-btn {
+        width: 2.5rem;
+        height: 2.5rem;
+        justify-self: start;
+        margin-top: 0;
+      }
+      .patient-row {
+        grid-template-columns: max-content minmax(0, 1fr);
+        row-gap: 0.2rem;
+        padding: 0.6rem 0.7rem;
+      }
     }
   </style>
 </head>
@@ -639,6 +660,7 @@
         <p id="feedback-body" class="feedback-body"></p>
         <p id="feedback-note" class="feedback-note">Closing this dialog keeps your generated answer visible in the chat transcript below.</p>
         <button type="button" id="retry-btn" class="retry-btn">Retry</button>
+        <button type="button" id="close-feedback-btn" class="close-feedback-btn">Close</button>
       </section>
     </div>
   </div>
@@ -662,6 +684,7 @@
       const feedbackTitle = document.getElementById('feedback-title');
       const feedbackBody = document.getElementById('feedback-body');
       const retryBtn = document.getElementById('retry-btn');
+      const closeFeedbackBtn = document.getElementById('close-feedback-btn');
       const reduceMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
 
       let selectionLock = false;
@@ -1063,6 +1086,7 @@
         resetToInitial();
         closeFeedbackModal();
       });
+      closeFeedbackBtn.addEventListener('click', closeFeedbackModal);
 
       feedbackModal.addEventListener('keydown', onModalKeydown);
       feedbackModal.addEventListener('click', (event) => {
