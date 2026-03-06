@@ -453,8 +453,11 @@
       position: fixed;
       inset: 0;
       z-index: 100;
-      display: grid;
-      place-items: center;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      overflow-y: auto;
+      overflow-x: hidden;
       padding: 1rem;
     }
 
@@ -467,6 +470,7 @@
     .feedback-card {
       position: relative;
       width: min(100%, 32rem);
+      margin-block: 1rem;
       background: var(--card);
       border: 1px solid var(--border);
       border-radius: 1rem;
@@ -800,6 +804,42 @@
           .filter((element) => !element.hasAttribute('disabled') && element.getAttribute('aria-hidden') !== 'true');
       }
 
+      function getNearestScrollableContainer(element) {
+        let current = element && element.parentElement;
+        while (current) {
+          const style = window.getComputedStyle(current);
+          const canScrollY = /(auto|scroll)/.test(style.overflowY) && current.scrollHeight > current.clientHeight;
+          const canScrollX = /(auto|scroll)/.test(style.overflowX) && current.scrollWidth > current.clientWidth;
+          if (canScrollY || canScrollX) {
+            return current;
+          }
+          current = current.parentElement;
+        }
+        return document.scrollingElement || document.documentElement;
+      }
+
+      function keepFocusedControlInView(target) {
+        if (!target || !feedbackCard.contains(target)) return;
+
+        const scrollContainer = getNearestScrollableContainer(target);
+        if (!scrollContainer) return;
+
+        const targetRect = target.getBoundingClientRect();
+        const containerRect = scrollContainer === document.documentElement || scrollContainer === document.body
+          ? { top: 0, bottom: window.innerHeight, left: 0, right: window.innerWidth }
+          : scrollContainer.getBoundingClientRect();
+
+        const outOfView =
+          targetRect.top < containerRect.top ||
+          targetRect.bottom > containerRect.bottom ||
+          targetRect.left < containerRect.left ||
+          targetRect.right > containerRect.right;
+
+        if (outOfView) {
+          target.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+        }
+      }
+
       function closeFeedbackModal() {
         if (!modalOpen) return;
         modalOpen = false;
@@ -1093,6 +1133,12 @@
         if (event.target && event.target.dataset.feedbackClose === 'overlay') {
           closeFeedbackModal();
         }
+      });
+
+      document.addEventListener('focusin', (event) => {
+        if (!modalOpen) return;
+        if (!feedbackCard.contains(event.target)) return;
+        keepFocusedControlInView(event.target);
       });
 
       renderPrompt();
