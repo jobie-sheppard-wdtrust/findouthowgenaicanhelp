@@ -281,6 +281,34 @@
       animation: fade-in 0.3s ease-out;
     }
 
+    #mainContent {
+      display: flex;
+      min-height: calc(100vh - 3.5rem);
+      align-items: stretch;
+    }
+
+    .pane {
+      padding: 0.5rem;
+      overflow: visible;
+    }
+
+    .feedback-mode .genai-bubble {
+      background: transparent;
+      border: none;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .feedback-mode .genai-section {
+      background: hsl(var(--genai-bubble));
+      border: 1px solid hsl(var(--genai-border));
+      margin: 0;
+      padding: 0.75rem;
+      border-radius: 0.5rem;
+    }
+
     .hidden { display: none !important; }
     .tooltip-overlay.hidden { pointer-events: none; }
   </style>
@@ -300,9 +328,9 @@
     </header>
 
     <!-- Main Content -->
-    <div style="display: flex; height: calc(100vh - 3.5rem);">
+    <div id="mainContent">
       <!-- Left Panel - GenAI Chat -->
-      <div style="width: 50%; border-right: 1px solid hsl(var(--border)); padding: 0.5rem; overflow: auto;">
+      <div class="pane" style="width: 50%; border-right: 1px solid hsl(var(--border));">
         <div style="height: 100%; display: flex; flex-direction: column;">
           <!-- Chat Header -->
           <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem;">
@@ -360,7 +388,7 @@ Greenfield Surgery</div>
       </div>
 
       <!-- Right Panel - Email Client -->
-      <div style="width: 50%; padding: 0.5rem; overflow: auto;">
+      <div class="pane" style="width: 50%;">
         <div style="height: 100%; display: flex; flex-direction: column;">
           <!-- Email Client Header -->
           <div style="background: hsl(var(--card)); border-radius: 0.5rem 0.5rem 0 0; border: 1px solid hsl(var(--border)); border-bottom: none; padding: 1rem;">
@@ -385,7 +413,7 @@ Greenfield Surgery</div>
           </div>
 
           <!-- Email Body -->
-          <div id="emailBody" style="flex: 1; background: hsl(var(--card)); border: 1px solid hsl(var(--border)); border-top: none; border-bottom: none; padding: 1rem; overflow: auto;">
+          <div id="emailBody" style="flex: 1; background: hsl(var(--card)); border: 1px solid hsl(var(--border)); border-top: none; border-bottom: none; padding: 1rem; overflow: visible;">
             <div id="emptyState" style="height: 100%; display: flex; align-items: center; justify-content: center; color: hsl(var(--muted-foreground));">
               <p>Choose "Copy-paste" or "Check content" from the draft to fill this email.</p>
             </div>
@@ -1324,6 +1352,7 @@ Greenfield Surgery`,
       console.log('GenAI inner container:', genaiInnerContainer);
       
       if (genaiInnerContainer) {
+        document.body.classList.add('feedback-mode');
         // Change from flex column to flex row to accommodate feedback side-by-side
         genaiInnerContainer.style.flexDirection = 'row';
         genaiInnerContainer.style.gap = '2rem';
@@ -1639,6 +1668,8 @@ Greenfield Surgery`,
         }
       }
       
+      document.body.classList.remove('feedback-mode');
+
       // Reset all state
       Object.keys(state.sectionStatus).forEach(section => {
         state.sectionStatus[section] = { copied: false, checked: false, included: false };
