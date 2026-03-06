@@ -57,6 +57,21 @@
       background: var(--background);
     }
 
+
+    body.embed-mode .app {
+      min-height: auto;
+      height: auto;
+      overflow-y: visible;
+    }
+
+    body.embed-mode .main {
+      min-height: auto;
+    }
+
+    body.embed-mode .panel {
+      height: auto;
+    }
+
     .header {
       position: sticky;
       top: 0;
@@ -546,6 +561,12 @@
   </style>
 </head>
 <body>
+  <script>
+    if (window.self !== window.top) {
+      document.body.classList.add('embed-mode');
+    }
+  </script>
+
   <div class="app">
     <header class="header">
       <div class="header-row">
