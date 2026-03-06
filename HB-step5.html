@@ -58,17 +58,14 @@
 
     .layout {
       margin-top: 3.5rem;
-      height: calc(100vh - 3.5rem);
+      min-height: calc(100vh - 3.5rem);
       display: grid;
       grid-template-columns: 1fr 1fr;
       background: var(--background);
     }
 
     .panel {
-      min-height: 0;
       min-width: 0;
-      overflow-y: auto;
-      overflow-x: hidden;
       padding: 1rem;
     }
 
@@ -609,7 +606,7 @@
       }
 
       .panel {
-        overflow-x: auto;
+        overflow: visible;
       }
 
       /* feedback desktop/mobile */
