@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GenAI Chatbot</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --background: hsl(220 20% 97%);
+      --foreground: hsl(220 20% 10%);
+      --card: hsl(0 0% 100%);
+      --border: hsl(220 15% 90%);
+      --primary: hsl(221 83% 53%);
+      --primary-foreground: hsl(0 0% 100%);
+      --muted-foreground: hsl(220 10% 50%);
+      --chat-bot: hsl(220 15% 95%);
+      --chat-bot-foreground: hsl(220 20% 15%);
+      --chat-user: hsl(221 83% 53%);
+      --chat-user-foreground: hsl(0 0% 100%);
+      --focus-ring: hsl(221 83% 45%);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, sans-serif;
+      background: var(--background);
+      color: var(--foreground);
+      line-height: 1.5;
+    }
+
+    .page {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    .chat-window {
+      display: flex;
+      flex-direction: column;
+      max-width: 48rem;
+      width: 100%;
+      margin: 0 auto;
+      min-height: 100vh;
+      min-height: 100dvh;
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      background: transparent;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      overflow: visible;
+    }
+
+    .window-titlebar {
+      flex-shrink: 0;
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.5);
+      backdrop-filter: blur(8px);
+      display: flex;
+      flex-direction: column;
+      gap: 0.125rem;
+    }
+
+    .window-titlebar h1 {
+      font-size: 1.125rem;
+      font-weight: 600;
+    }
+
+    .window-titlebar p {
+      font-size: 0.875rem;
+      color: var(--muted-foreground);
+    }
+
+    .window-body {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      padding: 1rem;
+    }
+
+    .messages-scroll {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      scroll-behavior: smooth;
+      padding: 0.5rem 0;
+    }
+
+    .messages {
+      width: 100%;
+      max-width: 48rem;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .message-row {
+      width: 100%;
+      min-width: 0;
+      display: flex;
+      gap: 0.75rem;
+      align-items: flex-start;
+      opacity: 0;
+      transform: translateY(10px);
+      animation: messageIn 0.5s ease-out forwards;
+    }
+
+    .avatar {
+      flex-shrink: 0;
+      width: 2.25rem;
+      height: 2.25rem;
+      border-radius: 50%;
+      background: #90278e;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .avatar.user {
+      background: var(--primary);
+    }
+
+    .avatar svg {
+      width: 1.25rem;
+      height: 1.25rem;
+      fill: none;
+      stroke: var(--primary-foreground);
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .bubble {
+      flex: 0 1 auto;
+      display: inline-flex;
+      width: max-content;
+      max-width: 32rem;
+      min-width: 0;
+      padding: 0.75rem 1rem;
+      border-radius: 1rem;
+      border-top-left-radius: 0.375rem;
+      background: var(--chat-bot);
+      color: var(--chat-bot-foreground);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      font-size: 0.9375rem;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      word-break: break-word;
+      overflow-wrap: break-word;
+    }
+
+    .message-row.user-message {
+      justify-content: flex-end;
+    }
+
+    .message-row.user-message .bubble {
+      background: var(--chat-user);
+      color: var(--chat-user-foreground);
+      border-top-left-radius: 1rem;
+      border-top-right-radius: 0.375rem;
+    }
+
+    .message-row.user-message .avatar {
+      order: 2;
+    }
+
+    .typing-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      padding: 1rem;
+    }
+
+    .dot {
+      width: 0.5rem;
+      height: 0.5rem;
+      border-radius: 50%;
+      background: var(--muted-foreground);
+      animation: bounce 2s infinite ease-in-out;
+    }
+
+    .chat-footer {
+      flex-shrink: 0;
+      padding: 0;
+      background: transparent;
+      border-top: 0;
+    }
+
+    .chat-footer-inner {
+      max-width: 48rem;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .prompts {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      justify-content: center;
+      animation: fadeIn 0.3s ease-out;
+      background: transparent;
+      pointer-events: auto;
+    }
+
+    .prompts[hidden] {
+      display: none;
+    }
+
+    .prompt-btn {
+      padding: 0.5rem 1rem;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 9999px;
+      font-size: 0.875rem;
+      color: var(--foreground);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .prompt-btn:hover {
+      background: var(--primary);
+      color: var(--primary-foreground);
+      border-color: var(--primary);
+    }
+
+    .input-wrapper {
+      position: relative;
+      background: var(--card);
+      border-radius: 1rem;
+      border: 1px solid var(--border);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      overflow: hidden;
+    }
+
+    label {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      border: 0;
+      white-space: nowrap;
+    }
+
+    textarea {
+      width: 100%;
+      resize: none;
+      background: transparent;
+      border: none;
+      padding: 1rem 1.25rem;
+      padding-right: 3.5rem;
+      font-size: 0.9375rem;
+      font-family: inherit;
+      color: var(--foreground);
+      outline: none;
+      min-height: 56px;
+      max-height: 200px;
+      opacity: 1;
+      transition: opacity 400ms ease;
+    }
+
+    textarea.autofill-fade {
+      opacity: 0;
+    }
+
+    textarea::placeholder {
+      color: var(--muted-foreground);
+    }
+
+    .send-btn {
+      position: absolute;
+      right: 0.75rem;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 2.5rem;
+      height: 2.5rem;
+      border-radius: 0.75rem;
+      background: var(--primary);
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .send-btn:hover {
+      opacity: 0.9;
+    }
+
+    .send-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .send-btn.bulge {
+      animation: bulge 300ms ease-in-out;
+    }
+
+    .send-btn svg {
+      width: 1.25rem;
+      height: 1.25rem;
+      stroke: var(--primary-foreground);
+      stroke-width: 2;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    :focus-visible {
+      outline: 3px solid var(--focus-ring);
+      outline-offset: 2px;
+    }
+
+    .sr-only-live {
+      position: absolute;
+      left: -9999px;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+    }
+
+    @keyframes messageIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes bulge {
+      0% { transform: translateY(-50%) scale(1); }
+      50% { transform: translateY(-50%) scale(1.12); }
+      100% { transform: translateY(-50%) scale(1); }
+    }
+
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-0.2rem); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .chat-window {
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
+      }
+
+      .window-titlebar {
+        padding: 0.75rem 1rem;
+      }
+
+      .window-body {
+        padding: 0.75rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="chat-window" aria-labelledby="page-title" aria-describedby="page-helper">
+      <header class="window-titlebar">
+        <h1 id="page-title">GenAI Chatbot</h1>
+        <p id="page-helper">See the risks when GenAI helps with this task</p>
+      </header>
+
+      <section class="window-body" aria-label="Chat transcript and composer">
+        <div class="messages-scroll" id="messagesScroll" aria-label="Chat transcript">
+          <div class="messages" id="messagesList">
+            <article class="message-row" aria-label="Assistant message">
+              <div class="avatar" aria-hidden="true">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
+              </div>
+              <p class="bubble">How can I help?</p>
+            </article>
+          </div>
+        </div>
+
+        <footer class="chat-footer" aria-label="Message composer">
+          <div class="chat-footer-inner">
+            <div class="prompts" id="prompts" aria-label="Preset task prompts">
+              <button class="prompt-btn" id="presetPrompt" type="button" aria-describedby="presetPromptHint">Summarise this review into a clinic letter</button>
+              <span id="presetPromptHint" class="sr-only-live">Selecting this preset will auto-send after a short delay.</span>
+            </div>
+
+            <div class="input-wrapper">
+              <label for="messageInput">Type your message</label>
+              <textarea id="messageInput" rows="1" placeholder="Type your message..." aria-describedby="page-helper" readonly></textarea>
+              <button class="send-btn" id="sendButton" type="button" aria-label="Send message" disabled>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <line x1="22" y1="2" x2="11" y2="13"></line>
+                  <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </footer>
+      </section>
+    </section>
+  </main>
+
+  <div id="statusAnnouncer" class="sr-only-live" aria-live="polite" aria-atomic="true"></div>
+
+  <script>
+    const presetText = `Can you help me draft a short clinic letter summarising a recent GP review?\nIt is for the patient record and onward sharing with community services, so it should be clear and neutral in tone. Here are my rough notes from the review:\nSamuel Dannam, 83\n– Elderly patient with CVD and CKD\n– Walked to surgery (5 mins)\n– BP normal today\n– Routine long-term condition review\n– No changes made\n– Follow-up planned`;
+    const botResponse = `Sure — here's a short, neutral clinic letter based on your notes\n\nClinic Letter\nThis letter summarises a recent GP review of an elderly patient, Samuel Dannam, 83, with multiple long-term conditions, including cardiovascular disease and chronic kidney disease. Overall, the notes suggest that the patient remains relatively mobile, as they could walk the few minutes to the appointment. Notes identify that their blood pressure has been stable, and that regular follow-ups appointments would be appropriate for the patient.\n\nGiven their age, the patient may benefit from additional community support to help manage day-to-day activities. No changes were made at this review, pending ongoing monitoring. If helpful, I can suggest whether escalation might be needed or I could highlight which factors may be most relevant to monitor closely?`;
+
+    const messagesList = document.getElementById('messagesList');
+    const messagesScroll = document.getElementById('messagesScroll');
+    const messageInput = document.getElementById('messageInput');
+    const sendButton = document.getElementById('sendButton');
+    const prompts = document.getElementById('prompts');
+    const presetPrompt = document.getElementById('presetPrompt');
+    const statusAnnouncer = document.getElementById('statusAnnouncer');
+
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let announcementQueue = [];
+    let announcementActive = false;
+
+    function queueAnnouncement(message, delay = 0) {
+      announcementQueue.push({ message, delay });
+      processAnnouncementQueue();
+    }
+
+    function processAnnouncementQueue() {
+      if (announcementActive || announcementQueue.length === 0) {
+        return;
+      }
+
+      announcementActive = true;
+      const next = announcementQueue.shift();
+      const effectiveDelay = reducedMotion ? 0 : next.delay;
+
+      window.setTimeout(() => {
+        statusAnnouncer.textContent = '';
+        window.setTimeout(() => {
+          statusAnnouncer.textContent = next.message;
+          announcementActive = false;
+          processAnnouncementQueue();
+        }, 40);
+      }, effectiveDelay);
+    }
+
+    function scrollTranscriptToBottom() {
+      messagesScroll.scrollTop = messagesScroll.scrollHeight;
+    }
+
+    function appendMessage({ role, text }) {
+      const article = document.createElement('article');
+      article.className = `message-row${role === 'user' ? ' user-message' : ''}`;
+      article.setAttribute('aria-label', role === 'user' ? 'User message' : 'Assistant message');
+
+      const avatar = document.createElement('div');
+      avatar.className = `avatar${role === 'user' ? ' user' : ''}`;
+      avatar.setAttribute('aria-hidden', 'true');
+      avatar.innerHTML = role === 'user'
+        ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="7" r="4"/></svg>'
+        : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>';
+
+      const bubble = document.createElement('p');
+      bubble.className = 'bubble';
+      bubble.textContent = text;
+
+      article.appendChild(avatar);
+      article.appendChild(bubble);
+      messagesList.appendChild(article);
+      scrollTranscriptToBottom();
+    }
+
+    function addTypingIndicator() {
+      const article = document.createElement('article');
+      article.className = 'message-row';
+      article.id = 'typingIndicatorRow';
+      article.setAttribute('aria-label', 'Assistant is typing');
+
+      const avatar = document.createElement('div');
+      avatar.className = 'avatar';
+      avatar.setAttribute('aria-hidden', 'true');
+      avatar.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>';
+
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble typing-indicator';
+      bubble.setAttribute('aria-hidden', 'true');
+      bubble.innerHTML = '<span class="dot"></span><span class="dot"></span><span class="dot"></span>';
+
+      article.appendChild(avatar);
+      article.appendChild(bubble);
+      messagesList.appendChild(article);
+      scrollTranscriptToBottom();
+    }
+
+    function removeTypingIndicator() {
+      const existing = document.getElementById('typingIndicatorRow');
+      if (existing) {
+        existing.remove();
+      }
+    }
+
+    function runPresetFlow() {
+      presetPrompt.disabled = true;
+      presetPrompt.setAttribute('aria-disabled', 'true');
+      presetsLocked = true;
+
+      if (document.activeElement === presetPrompt) {
+        messageInput.focus();
+      }
+
+      presetPrompt.remove();
+      queueAnnouncement('Prompt selected.', 0);
+
+      messageInput.classList.add('autofill-fade');
+      messageInput.value = presetText;
+      sendButton.disabled = false;
+      scrollTranscriptToBottom();
+
+      const fadeMs = reducedMotion ? 0 : 400;
+      const preBulgeMs = reducedMotion ? 0 : 1400;
+      const bulgeMs = reducedMotion ? 0 : 300;
+      const typingMs = reducedMotion ? 0 : 2000;
+
+      window.setTimeout(() => {
+        messageInput.classList.remove('autofill-fade');
+        queueAnnouncement('Prompt added.', 120);
+      }, fadeMs);
+
+      window.setTimeout(() => {
+        sendButton.classList.add('bulge');
+      }, preBulgeMs);
+
+      window.setTimeout(() => {
+        sendButton.classList.remove('bulge');
+        sendPresetMessage(typingMs);
+      }, preBulgeMs + bulgeMs);
+    }
+
+    function sendPresetMessage(typingMs) {
+      appendMessage({ role: 'user', text: presetText.trim() });
+      queueAnnouncement('Message sent.', 240);
+
+      messageInput.value = '';
+      messageInput.style.height = 'auto';
+      sendButton.disabled = true;
+      prompts.hidden = true;
+
+      addTypingIndicator();
+      queueAnnouncement('Assistant is typing.', 320);
+
+      window.setTimeout(() => {
+        removeTypingIndicator();
+        appendMessage({ role: 'assistant', text: botResponse });
+        queueAnnouncement('Assistant response received.', 420);
+      }, typingMs);
+    }
+
+    let presetsLocked = false;
+
+    presetPrompt.addEventListener('click', () => {
+      if (presetsLocked) {
+        return;
+      }
+      runPresetFlow();
+    });
+    messageInput.addEventListener('beforeinput', (event) => {
+      if (event.inputType.startsWith('insert') || event.inputType.startsWith('delete')) {
+        event.preventDefault();
+      }
+    });
+
+    messageInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key.length === 1) {
+        event.preventDefault();
+      }
+    });
+  </script>
+</body>
+</html>
