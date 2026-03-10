@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GenAI Chatbot</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --background: hsl(220 20% 97%);
+      --foreground: hsl(220 20% 10%);
+      --card: hsl(0 0% 100%);
+      --border: hsl(220 15% 90%);
+      --primary: hsl(221 83% 53%);
+      --primary-foreground: hsl(0 0% 100%);
+      --muted-foreground: hsl(220 10% 50%);
+      --chat-bot: hsl(220 15% 95%);
+      --chat-bot-foreground: hsl(220 20% 15%);
+      --chat-user: hsl(221 83% 53%);
+      --chat-user-foreground: hsl(0 0% 100%);
+      --focus-ring: hsl(221 83% 45%);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, sans-serif;
+      background: var(--background);
+      color: var(--foreground);
+      line-height: 1.5;
+    }
+
+    .page { display: flex; flex-direction: column; min-height: 100vh; }
+
+    .chat-window {
+      display: flex;
+      flex-direction: column;
+      max-width: 48rem;
+      width: 100%;
+      margin: 0 auto;
+      min-height: 100vh;
+      min-height: 100dvh;
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      background: transparent;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      overflow: visible;
+    }
+
+    .window-titlebar {
+      flex-shrink: 0;
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.5);
+      backdrop-filter: blur(8px);
+      display: flex;
+      flex-direction: column;
+      gap: 0.125rem;
+    }
+
+    .window-titlebar h1 { font-size: 1.125rem; font-weight: 600; }
+    .window-titlebar p { font-size: 0.875rem; color: var(--muted-foreground); }
+
+    .window-body {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      padding: 1rem;
+    }
+
+    .messages-scroll {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      scroll-behavior: smooth;
+      padding: 0.5rem 0;
+    }
+
+    .messages {
+      width: 100%;
+      max-width: 48rem;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .message-row {
+      width: 100%;
+      min-width: 0;
+      display: flex;
+      gap: 0.75rem;
+      align-items: flex-start;
+      opacity: 0;
+      transform: translateY(10px);
+      animation: messageIn 0.5s ease-out forwards;
+    }
+
+    .avatar {
+      flex-shrink: 0;
+      width: 2.25rem;
+      height: 2.25rem;
+      border-radius: 50%;
+      background: #90278e;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .avatar.user { background: var(--primary); }
+    .avatar svg {
+      width: 1.25rem;
+      height: 1.25rem;
+      fill: none;
+      stroke: var(--primary-foreground);
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .bubble {
+      flex: 0 1 auto;
+      display: inline-flex;
+      width: max-content;
+      max-width: 32rem;
+      min-width: 0;
+      padding: 0.75rem 1rem;
+      border-radius: 1rem;
+      border-top-left-radius: 0.375rem;
+      background: var(--chat-bot);
+      color: var(--chat-bot-foreground);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      font-size: 0.9375rem;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      word-break: break-word;
+      overflow-wrap: break-word;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .bubble-response { white-space: pre-wrap; }
+
+    .risk-highlight {
+      background: rgba(248, 113, 113, 0.2);
+      border: none;
+      color: inherit;
+      font: inherit;
+      border-radius: 0.25rem;
+      cursor: pointer;
+      padding: 0 0.1rem;
+      text-align: left;
+      display: inline;
+    }
+
+    .risk-highlight.phase-pulse {
+      animation: pulseHighlight 1.8s ease-in-out infinite alternate;
+    }
+
+    .message-row.user-message { justify-content: flex-end; }
+
+    .message-row.user-message .bubble {
+      background: var(--chat-user);
+      color: var(--chat-user-foreground);
+      border-top-left-radius: 1rem;
+      border-top-right-radius: 0.375rem;
+    }
+
+    .message-row.user-message .avatar { order: 2; }
+
+    .typing-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 1rem;
+    }
+
+    .thinking-dots {
+      display: inline-flex;
+      gap: 0.3rem;
+      align-items: center;
+    }
+
+    .thinking-dots span {
+      width: 0.45rem;
+      height: 0.45rem;
+      border-radius: 50%;
+      background: currentColor;
+      opacity: 0.45;
+      animation: thinkingPulse 1s ease-in-out infinite;
+    }
+
+    .thinking-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .thinking-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+    .chat-footer { flex-shrink: 0; padding: 0; background: transparent; border-top: 0; }
+
+    .chat-footer-inner {
+      max-width: 48rem;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .prompts {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      justify-content: center;
+      animation: fadeIn 0.3s ease-out;
+      background: transparent;
+      pointer-events: auto;
+    }
+
+    .prompts[hidden] { display: none; }
+
+    .prompt-btn {
+      padding: 0.5rem 1rem;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 9999px;
+      font-size: 0.875rem;
+      color: var(--foreground);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .prompt-btn:hover { background: var(--primary); color: var(--primary-foreground); border-color: var(--primary); }
+
+    .input-wrapper {
+      position: relative;
+      background: var(--card);
+      border-radius: 1rem;
+      border: 1px solid var(--border);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      overflow: hidden;
+    }
+
+    label {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      border: 0;
+      white-space: nowrap;
+    }
+
+    textarea {
+      width: 100%;
+      resize: none;
+      background: transparent;
+      border: none;
+      padding: 1rem 1.25rem;
+      padding-right: 3.5rem;
+      font-size: 0.9375rem;
+      font-family: inherit;
+      color: var(--foreground);
+      outline: none;
+      min-height: 56px;
+      max-height: 200px;
+      opacity: 1;
+      transition: opacity 400ms ease;
+    }
+
+    textarea.autofill-fade { opacity: 0; }
+    textarea::placeholder { color: var(--muted-foreground); }
+
+    .send-btn {
+      position: absolute;
+      right: 0.75rem;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 2.5rem;
+      height: 2.5rem;
+      border-radius: 0.75rem;
+      background: var(--primary);
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .send-btn:hover { opacity: 0.9; }
+    .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .send-btn.bulge { animation: bulge 300ms ease-in-out; }
+
+    .send-btn svg {
+      width: 1.25rem;
+      height: 1.25rem;
+      stroke: var(--primary-foreground);
+      stroke-width: 2;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    #riskDialogBackdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 1200;
+      pointer-events: none;
+    }
+
+    #riskDialog {
+      position: fixed;
+      width: min(22rem, 90vw);
+      background: var(--card);
+      border: 3px solid rgba(249, 115, 22, 0.75);
+      border-radius: 1rem;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      overflow: hidden;
+      pointer-events: auto;
+    }
+
+    .risk-dialog-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.65rem 0.9rem;
+      border-bottom: 1px solid var(--border);
+      background: hsl(0 0% 100%);
+    }
+
+    .risk-dialog-header h2 { font-size: 0.9375rem; font-weight: 600; }
+
+    .risk-close {
+      width: 2rem;
+      height: 2rem;
+      border-radius: 0.5rem;
+      border: 1px solid var(--border);
+      background: transparent;
+      font-size: 1.25rem;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    .risk-dialog-body { padding: 0.9rem; }
+    .risk-dialog-body h3 { font-size: 0.9375rem; font-weight: 600; margin-bottom: 0.5rem; }
+    .risk-dialog-body p { font-size: 0.875rem; }
+
+    :focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+
+    .sr-only-live {
+      position: absolute;
+      left: -9999px;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+    }
+
+    @keyframes messageIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes bulge {
+      0% { transform: translateY(-50%) scale(1); }
+      50% { transform: translateY(-50%) scale(1.12); }
+      100% { transform: translateY(-50%) scale(1); }
+    }
+
+    @keyframes thinkingPulse {
+      0%, 80%, 100% { transform: scale(0.85); opacity: 0.35; }
+      40% { transform: scale(1); opacity: 0.95; }
+    }
+
+    @keyframes pulseHighlight {
+      0% { background: rgba(248, 113, 113, 0.18); }
+      100% { background: rgba(248, 113, 113, 0.35); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .chat-window { border-radius: 0; border-left: none; border-right: none; }
+      .window-titlebar { padding: 0.75rem 1rem; }
+      .window-body { padding: 0.75rem; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page" id="appRoot">
+    <section class="chat-window" aria-labelledby="page-title" aria-describedby="page-helper">
+      <header class="window-titlebar">
+        <h1 id="page-title">GenAI Chatbot</h1>
+        <p id="page-helper">See the risks when GenAI helps with this task</p>
+      </header>
+
+      <section class="window-body">
+        <div class="messages-scroll" id="messagesScroll" aria-label="Chat transcript">
+          <div class="messages" id="messagesList">
+            <article class="message-row" aria-label="Assistant message">
+              <div class="avatar" aria-hidden="true">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
+              </div>
+              <p class="bubble">How can I help?</p>
+            </article>
+          </div>
+        </div>
+
+        <footer class="chat-footer">
+          <div class="chat-footer-inner">
+            <div class="prompts" id="prompts" role="group" aria-label="Preset prompts">
+              <button class="prompt-btn" id="presetPrompt" type="button" aria-label="Summarise this review into a clinic letter. Auto-sends when activated.">Summarise this review into a clinic letter</button>
+            </div>
+
+            <div class="input-wrapper">
+              <label for="messageInput">Type your message</label>
+              <textarea id="messageInput" rows="1" placeholder="Type your message..." aria-describedby="page-helper" readonly></textarea>
+              <button class="send-btn" id="sendButton" type="button" aria-label="Send message" disabled>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <line x1="22" y1="2" x2="11" y2="13"></line>
+                  <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </footer>
+      </section>
+    </section>
+  </main>
+
+  <div id="riskDialogBackdrop" hidden>
+    <section id="riskDialog" role="dialog" aria-modal="true" aria-labelledby="riskDialogHeading" aria-describedby="riskDialogBody" tabindex="-1">
+      <header class="risk-dialog-header">
+        <h2 id="riskDialogHeading">Spotting hidden risks</h2>
+        <button class="risk-close" id="riskDialogClose" type="button" aria-label="Close risk details">−</button>
+      </header>
+      <div class="risk-dialog-body">
+        <h3 id="riskDialogTitle"></h3>
+        <p id="riskDialogBody"></p>
+      </div>
+    </section>
+  </div>
+
+  <div id="statusAnnouncer" class="sr-only-live" aria-live="polite" aria-atomic="true"></div>
+
+  <script>
+    const presetText = `Can you help me draft a short clinic letter summarising a recent GP review?\nIt is for the patient record and onward sharing with community services, so it should be clear and neutral in tone. Here are my rough notes from the review:\nSamuel Dannam, 83\n– Elderly patient with CVD and CKD\n– Walked to surgery (5 mins)\n– BP normal today\n– Routine long-term condition review\n– No changes made\n– Follow-up planned`;
+    const botResponse = `Sure — here's a short, neutral clinic letter based on your notes\n\nClinic Letter\nThis letter summarises a recent GP review of an elderly patient, Samuel Dannam, 83, with multiple long-term conditions, including cardiovascular disease and chronic kidney disease. Overall, the notes suggest that the patient remains relatively mobile, as they could walk the few minutes to the appointment. Notes identify that their blood pressure has been stable, and that regular follow-ups appointments would be appropriate for the patient.\n\nGiven their age, the patient may benefit from additional community support to help manage day-to-day activities. No changes were made at this review, pending ongoing monitoring. If helpful, I can suggest whether escalation might be needed or I could highlight which factors may be most relevant to monitor closely?`;
+
+    const riskDefinitions = {
+      bpStable: {
+        label: 'Notes identify that their blood pressure has been stable',
+        title: 'Hallucination and Bias',
+        body: `See how GenAI has mistakenly summarised the patient's blood pressure as stable, even though the notes only mentioned a singular reading: 'BP normal today'? Remember that GenAI is always making predictions about the most helpful answer, so it might make up plausible-sounding details or mix up related concepts.`,
+        group: 'hallucination-bias'
+      },
+      ageSupport: {
+        label: 'Given their age, the patient may benefit from additional community support to help manage day-to-day activities.',
+        title: 'Hallucination and Bias',
+        body: 'See how GenAI has drifted here from summarising the notes closely, to making its own assumption about the patient because of their age? This may sound plausible, but it is a subtle form of age bias. It is inaccurate and not supported by the review notes.',
+        group: 'hallucination-bias'
+      },
+      escalation: {
+        label: 'suggest whether escalation might be needed',
+        title: 'Inappropriate Volunteering',
+        body: 'Both of these tasks go beyond simple drafting and summarising, they involve some clinical reasoning. This has risk to the patient if it goes wrong, and so such use cases of consumer GenAI are often illegal, but GenAI did not warn you about this! This is why you need to carefully stop and think about what tasks are appropriate to use GenAI for. We will give you tools to support you with this, later in the module.',
+        group: 'inappropriate-volunteering'
+      },
+      monitor: {
+        label: 'highlight which factors may be most relevant to monitor closely?',
+        title: 'Inappropriate Volunteering',
+        body: 'Both of these tasks go beyond simple drafting and summarising, they involve some clinical reasoning. This has risk to the patient if it goes wrong, and so such use cases of consumer GenAI are often illegal, but GenAI did not warn you about this! This is why you need to carefully stop and think about what tasks are appropriate to use GenAI for. We will give you tools to support you with this, later in the module.',
+        group: 'inappropriate-volunteering'
+      }
+    };
+
+    const highlightPhases = [
+      ['bpStable', 'ageSupport'],
+      ['escalation', 'monitor']
+    ];
+
+    const messagesList = document.getElementById('messagesList');
+    const messagesScroll = document.getElementById('messagesScroll');
+    const messageInput = document.getElementById('messageInput');
+    const sendButton = document.getElementById('sendButton');
+    const prompts = document.getElementById('prompts');
+    const presetPrompt = document.getElementById('presetPrompt');
+    const statusAnnouncer = document.getElementById('statusAnnouncer');
+    const appRoot = document.getElementById('appRoot');
+
+    const riskDialogBackdrop = document.getElementById('riskDialogBackdrop');
+    const riskDialog = document.getElementById('riskDialog');
+    const riskDialogClose = document.getElementById('riskDialogClose');
+    const riskDialogTitle = document.getElementById('riskDialogTitle');
+    const riskDialogBody = document.getElementById('riskDialogBody');
+
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let announcementQueue = [];
+    let announcementActive = false;
+    let presetsLocked = false;
+    let activeHighlightKeys = [];
+    let lastFocusedHighlight = null;
+    let promptSentStatusAnnounced = false;
+    let responseStartedStatusAnnounced = false;
+
+    function queueAnnouncement(message, delay = 0) {
+      announcementQueue.push({ message, delay });
+      processAnnouncementQueue();
+    }
+
+    function processAnnouncementQueue() {
+      if (announcementActive || announcementQueue.length === 0) {
+        return;
+      }
+
+      announcementActive = true;
+      const next = announcementQueue.shift();
+      const effectiveDelay = reducedMotion ? 0 : next.delay;
+
+      window.setTimeout(() => {
+        statusAnnouncer.textContent = '';
+        window.setTimeout(() => {
+          statusAnnouncer.textContent = next.message;
+          announcementActive = false;
+          processAnnouncementQueue();
+        }, 40);
+      }, effectiveDelay);
+    }
+
+    function scrollTranscriptToBottom() {
+      return;
+    }
+
+    function appendMessage({ role, text }) {
+      const article = document.createElement('article');
+      article.className = `message-row${role === 'user' ? ' user-message' : ''}`;
+      article.setAttribute('aria-label', role === 'user' ? 'User message' : 'Assistant message');
+
+      const avatar = document.createElement('div');
+      avatar.className = `avatar${role === 'user' ? ' user' : ''}`;
+      avatar.setAttribute('aria-hidden', 'true');
+      avatar.innerHTML = role === 'user'
+        ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="7" r="4"/></svg>'
+        : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>';
+
+      const bubble = document.createElement('p');
+      bubble.className = 'bubble bubble-response';
+      bubble.textContent = text;
+
+      article.appendChild(avatar);
+      article.appendChild(bubble);
+      messagesList.appendChild(article);
+      scrollTranscriptToBottom();
+      return { article, bubble };
+    }
+
+    function addTypingIndicator() {
+      const article = document.createElement('article');
+      article.className = 'message-row';
+      article.id = 'typingIndicatorRow';
+      article.setAttribute('aria-hidden', 'true');
+
+      const avatar = document.createElement('div');
+      avatar.className = 'avatar';
+      avatar.setAttribute('aria-hidden', 'true');
+      avatar.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>';
+
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble typing-indicator';
+      bubble.setAttribute('aria-hidden', 'true');
+      bubble.innerHTML = '<span class="sr-only-live">Assistant response is loading</span><span class="thinking-dots" aria-hidden="true"><span></span><span></span><span></span></span>';
+
+      article.appendChild(avatar);
+      article.appendChild(bubble);
+      messagesList.appendChild(article);
+      scrollTranscriptToBottom();
+    }
+
+    function removeTypingIndicator() {
+      const existing = document.getElementById('typingIndicatorRow');
+      if (existing) {
+        existing.remove();
+      }
+    }
+
+    function escapeHtml(text) {
+      const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+      return text.replace(/[&<>"']/g, (m) => map[m]);
+    }
+
+    function getRiskTriggerAccessibleName(phrase) {
+      return `Hidden risk: ${phrase}`;
+    }
+
+    function setRiskTriggerExpandedState(activeTrigger = null) {
+      const riskTriggers = messagesList.querySelectorAll('.risk-highlight');
+      riskTriggers.forEach((trigger) => {
+        const isExpanded = Boolean(activeTrigger && trigger === activeTrigger);
+        trigger.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
+      });
+    }
+
+    function renderResponseHighlights(bubble, phaseKeys = []) {
+      const renderOrder = ['bpStable', 'ageSupport', 'escalation', 'monitor'];
+      let html = escapeHtml(botResponse);
+
+      renderOrder.forEach((key) => {
+        if (!activeHighlightKeys.includes(key)) {
+          return;
+        }
+        const risk = riskDefinitions[key];
+        const safeLabel = escapeHtml(risk.label);
+        const highlightedClass = phaseKeys.includes(key) ? 'risk-highlight phase-pulse' : 'risk-highlight';
+        const safeAccessibleName = escapeHtml(getRiskTriggerAccessibleName(risk.label));
+        const replacement = `<button type="button" class="${highlightedClass}" data-risk-key="${key}" aria-label="${safeAccessibleName}" aria-controls="riskDialog" aria-expanded="false">${safeLabel}</button>`;
+        html = html.replace(safeLabel, replacement);
+      });
+
+      bubble.innerHTML = html;
+    }
+
+    function positionRiskDialog(anchorEl) {
+      const gap = 16;
+      const viewportEdge = 16;
+      const anchorRect = anchorEl.getBoundingClientRect();
+      const dialogRect = riskDialog.getBoundingClientRect();
+
+      let left = anchorRect.left;
+      if (left + dialogRect.width > window.innerWidth - viewportEdge) {
+        left = window.innerWidth - viewportEdge - dialogRect.width;
+      }
+      if (left < viewportEdge) {
+        left = viewportEdge;
+      }
+
+      const canPlaceBelow = anchorRect.bottom + gap + dialogRect.height <= window.innerHeight - viewportEdge;
+      const top = canPlaceBelow
+        ? anchorRect.bottom + gap
+        : Math.max(viewportEdge, anchorRect.top - gap - dialogRect.height);
+
+      riskDialog.style.left = `${Math.round(left)}px`;
+      riskDialog.style.top = `${Math.round(top)}px`;
+    }
+
+    function trapDialogFocus(event) {
+      if (event.key !== 'Tab') {
+        return;
+      }
+
+      const focusable = Array.from(riskDialog.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'));
+      if (!focusable.length) {
+        event.preventDefault();
+        riskDialog.focus();
+        return;
+      }
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+
+    function openRiskDialog(key, triggerEl) {
+      const risk = riskDefinitions[key];
+      if (!risk) {
+        return;
+      }
+
+      lastFocusedHighlight = triggerEl;
+      riskDialogTitle.textContent = risk.title;
+      riskDialogBody.textContent = risk.body;
+      riskDialogBackdrop.hidden = false;
+
+      appRoot.setAttribute('aria-hidden', 'true');
+      appRoot.inert = true;
+      document.body.style.overflow = 'hidden';
+      setRiskTriggerExpandedState(triggerEl);
+
+      positionRiskDialog(triggerEl);
+      riskDialogClose.focus();
+      queueAnnouncement(`Risk details opened. ${risk.title}.`, 180);
+    }
+
+    function closeRiskDialog() {
+      riskDialogBackdrop.hidden = true;
+      appRoot.removeAttribute('aria-hidden');
+      appRoot.inert = false;
+      document.body.style.overflow = '';
+      setRiskTriggerExpandedState(null);
+
+      if (lastFocusedHighlight && lastFocusedHighlight.isConnected) {
+        lastFocusedHighlight.focus();
+      } else {
+        sendButton.focus();
+      }
+
+      queueAnnouncement('Risk details closed.', 140);
+    }
+
+    function runHighlightSequence(bubble) {
+      if (!bubble) {
+        return;
+      }
+
+      activeHighlightKeys = [];
+      renderResponseHighlights(bubble, []);
+
+      const phaseGap = reducedMotion ? 0 : 900;
+
+      window.setTimeout(() => {
+        activeHighlightKeys = [...highlightPhases[0]];
+        renderResponseHighlights(bubble, highlightPhases[0]);
+      }, reducedMotion ? 0 : 500);
+
+      window.setTimeout(() => {
+        activeHighlightKeys = [...highlightPhases[0], ...highlightPhases[1]];
+        renderResponseHighlights(bubble, highlightPhases[1]);
+      }, (reducedMotion ? 0 : 500) + phaseGap);
+    }
+
+    function getTypingDurationMs(message) {
+      const words = message.trim().split(/\s+/).filter(Boolean).length;
+      return Math.max(1, Math.round((words / 48) * 1000));
+    }
+
+    function typeAssistantResponse(fullMessage, onStart, onDone) {
+      const assistantMessage = appendMessage({ role: 'assistant', text: '' });
+      const bubble = assistantMessage.bubble;
+      const textNode = document.createTextNode('');
+      bubble.textContent = '';
+      bubble.appendChild(textNode);
+
+      if (reducedMotion) {
+        textNode.textContent = fullMessage;
+        if (typeof onStart === 'function') {
+          onStart(bubble);
+        }
+        if (typeof onDone === 'function') {
+          onDone(bubble);
+        }
+        return;
+      }
+
+      const totalDurationMs = getTypingDurationMs(fullMessage);
+      const intervalMs = Math.max(1, Math.floor(totalDurationMs / Math.max(1, fullMessage.length)));
+      let index = 0;
+      let started = false;
+
+      const typingTimer = window.setInterval(() => {
+        index += 1;
+        textNode.textContent = fullMessage.slice(0, index);
+
+        if (!started) {
+          started = true;
+          if (typeof onStart === 'function') {
+            onStart(bubble);
+          }
+        }
+
+        if (index >= fullMessage.length) {
+          window.clearInterval(typingTimer);
+          if (typeof onDone === 'function') {
+            onDone(bubble);
+          }
+        }
+      }, intervalMs);
+    }
+
+    function runPresetFlow() {
+      presetPrompt.disabled = true;
+      presetPrompt.setAttribute('aria-disabled', 'true');
+      presetsLocked = true;
+
+      if (document.activeElement === presetPrompt) {
+        messageInput.focus();
+      }
+
+      presetPrompt.remove();
+
+      if (!promptSentStatusAnnounced) {
+        queueAnnouncement('Prompt sent to GenAI', 0);
+        promptSentStatusAnnounced = true;
+      }
+
+      messageInput.classList.add('autofill-fade');
+      messageInput.value = presetText;
+      sendButton.disabled = false;
+      scrollTranscriptToBottom();
+
+      const fadeMs = reducedMotion ? 0 : 400;
+      const preBulgeMs = reducedMotion ? 0 : 1400;
+      const bulgeMs = reducedMotion ? 0 : 300;
+      const typingMs = reducedMotion ? 0 : 2000;
+
+      window.setTimeout(() => {
+        messageInput.classList.remove('autofill-fade');
+      }, fadeMs);
+
+      window.setTimeout(() => {
+        sendButton.classList.add('bulge');
+      }, preBulgeMs);
+
+      window.setTimeout(() => {
+        sendButton.classList.remove('bulge');
+        sendPresetMessage(typingMs);
+      }, preBulgeMs + bulgeMs);
+    }
+
+    function sendPresetMessage(typingMs) {
+      responseStartedStatusAnnounced = false;
+      appendMessage({ role: 'user', text: presetText.trim() });
+
+      messageInput.value = '';
+      messageInput.style.height = 'auto';
+      sendButton.disabled = true;
+      prompts.hidden = true;
+
+      addTypingIndicator();
+
+      window.setTimeout(() => {
+        removeTypingIndicator();
+        typeAssistantResponse(botResponse, () => {
+          if (!responseStartedStatusAnnounced) {
+            queueAnnouncement('Assistant response received with hidden risks highlighted', 0);
+            responseStartedStatusAnnounced = true;
+          }
+        }, (bubble) => {
+          runHighlightSequence(bubble);
+        });
+      }, typingMs);
+    }
+
+    function onRiskHighlightActivation(event) {
+      const highlight = event.target.closest('.risk-highlight');
+      if (!highlight) {
+        return;
+      }
+
+      const key = highlight.getAttribute('data-risk-key');
+      openRiskDialog(key, highlight);
+    }
+
+    presetPrompt.addEventListener('click', () => {
+      if (presetsLocked) {
+        return;
+      }
+      runPresetFlow();
+    });
+
+    messagesList.addEventListener('click', onRiskHighlightActivation);
+
+    riskDialogClose.addEventListener('click', closeRiskDialog);
+
+    riskDialog.addEventListener('keydown', (event) => {
+      trapDialogFocus(event);
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeRiskDialog();
+      }
+    });
+
+    window.addEventListener('resize', () => {
+      if (riskDialogBackdrop.hidden || !lastFocusedHighlight || !lastFocusedHighlight.isConnected) {
+        return;
+      }
+      positionRiskDialog(lastFocusedHighlight);
+    });
+
+    messageInput.addEventListener('beforeinput', (event) => {
+      if (event.inputType.startsWith('insert') || event.inputType.startsWith('delete')) {
+        event.preventDefault();
+      }
+    });
+
+    messageInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key.length === 1) {
+        event.preventDefault();
+      }
+    });
+  </script>
+</body>
+</html>
