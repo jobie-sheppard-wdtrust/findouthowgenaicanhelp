@@ -503,6 +503,7 @@
     let presetsLocked = false;
     let activeHighlightKeys = [];
     let lastFocusedHighlight = null;
+    let presetCompletionStatusAnnounced = false;
 
     function queueAnnouncement(message, delay = 0) {
       announcementQueue.push({ message, delay });
@@ -559,7 +560,7 @@
       const article = document.createElement('article');
       article.className = 'message-row';
       article.id = 'typingIndicatorRow';
-      article.setAttribute('aria-label', 'Assistant is typing');
+      article.setAttribute('aria-hidden', 'true');
 
       const avatar = document.createElement('div');
       avatar.className = 'avatar';
@@ -701,14 +702,32 @@
       window.setTimeout(() => {
         activeHighlightKeys = [...highlightPhases[0]];
         renderResponseHighlights(bubble, highlightPhases[0]);
-        queueAnnouncement('First risk highlights are now available in the assistant response.', 220);
+        window.requestAnimationFrame(() => {
+          announcePresetCompletionStatus(bubble);
+        });
       }, reducedMotion ? 0 : 500);
 
       window.setTimeout(() => {
         activeHighlightKeys = [...highlightPhases[0], ...highlightPhases[1]];
         renderResponseHighlights(bubble, highlightPhases[1]);
-        queueAnnouncement('Additional risk highlights are now available in the assistant response.', 260);
+        announcePresetCompletionStatus(bubble);
       }, (reducedMotion ? 0 : 500) + phaseGap);
+    }
+
+    function announcePresetCompletionStatus(bubble) {
+      if (presetCompletionStatusAnnounced || !bubble || !bubble.isConnected) {
+        return;
+      }
+
+      const hasAssistantResponse = bubble.textContent.trim().length > 0;
+      const hasFirstHighlightSet = highlightPhases[0].every((key) => bubble.querySelector(`[data-risk-key="${key}"]`));
+
+      if (!hasAssistantResponse || !hasFirstHighlightSet) {
+        return;
+      }
+
+      presetCompletionStatusAnnounced = true;
+      queueAnnouncement('Prompt sent to GenAI. Assistant response received with hidden risks highlighted.', 0);
     }
 
     function runPresetFlow() {
@@ -721,7 +740,6 @@
       }
 
       presetPrompt.remove();
-      queueAnnouncement('Prompt selected.', 0);
 
       messageInput.classList.add('autofill-fade');
       messageInput.value = presetText;
@@ -735,7 +753,6 @@
 
       window.setTimeout(() => {
         messageInput.classList.remove('autofill-fade');
-        queueAnnouncement('Prompt added.', 120);
       }, fadeMs);
 
       window.setTimeout(() => {
@@ -749,8 +766,8 @@
     }
 
     function sendPresetMessage(typingMs) {
+      presetCompletionStatusAnnounced = false;
       appendMessage({ role: 'user', text: presetText.trim() });
-      queueAnnouncement('Message sent.', 240);
 
       messageInput.value = '';
       messageInput.style.height = 'auto';
@@ -758,12 +775,10 @@
       prompts.hidden = true;
 
       addTypingIndicator();
-      queueAnnouncement('Assistant is typing.', 320);
 
       window.setTimeout(() => {
         removeTypingIndicator();
         const assistantMessage = appendMessage({ role: 'assistant', text: botResponse });
-        queueAnnouncement('Assistant response received. Risk highlights will appear in stages.', 420);
         runHighlightSequence(assistantMessage.bubble);
       }, typingMs);
     }
