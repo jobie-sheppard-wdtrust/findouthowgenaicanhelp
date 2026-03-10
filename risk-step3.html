@@ -121,8 +121,8 @@
 
     .bubble {
       flex: 0 1 auto;
-      display: inline-flex;
-      width: max-content;
+      display: inline-block;
+      width: fit-content;
       max-width: 32rem;
       min-width: 0;
       padding: 0.75rem 1rem;
@@ -136,22 +136,22 @@
       word-wrap: break-word;
       word-break: break-word;
       overflow-wrap: break-word;
-      flex-direction: column;
-      gap: 0.5rem;
     }
 
     .bubble-response { white-space: pre-wrap; }
 
     .risk-highlight {
       background: rgba(248, 113, 113, 0.2);
-      border: none;
       color: inherit;
       font: inherit;
+      line-height: inherit;
       border-radius: 0.25rem;
       cursor: pointer;
-      padding: 0 0.1rem;
-      text-align: left;
+      padding: 0;
       display: inline;
+      vertical-align: baseline;
+      box-decoration-break: clone;
+      -webkit-box-decoration-break: clone;
     }
 
     .risk-highlight.phase-pulse {
@@ -624,7 +624,7 @@
         const safeLabel = escapeHtml(risk.label);
         const highlightedClass = phaseKeys.includes(key) ? 'risk-highlight phase-pulse' : 'risk-highlight';
         const safeAccessibleName = escapeHtml(getRiskTriggerAccessibleName(risk.label));
-        const replacement = `<button type="button" class="${highlightedClass}" data-risk-key="${key}" aria-label="${safeAccessibleName}" aria-controls="riskDialog" aria-expanded="false">${safeLabel}</button>`;
+        const replacement = `<span class="${highlightedClass}" data-risk-key="${key}" role="button" tabindex="0" aria-label="${safeAccessibleName}" aria-controls="riskDialog" aria-expanded="false">${safeLabel}</span>`;
         html = html.replace(safeLabel, replacement);
       });
 
@@ -869,6 +869,20 @@
     });
 
     messagesList.addEventListener('click', onRiskHighlightActivation);
+    messagesList.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') {
+        return;
+      }
+
+      const highlight = event.target.closest('.risk-highlight');
+      if (!highlight) {
+        return;
+      }
+
+      event.preventDefault();
+      const key = highlight.getAttribute('data-risk-key');
+      openRiskDialog(key, highlight);
+    });
 
     riskDialogClose.addEventListener('click', closeRiskDialog);
 
