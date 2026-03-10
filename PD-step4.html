@@ -30,6 +30,7 @@
       color: var(--foreground);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, sans-serif;
       line-height: 1.5;
+      scrollbar-gutter: stable;
     }
 
     :focus-visible {
@@ -55,6 +56,21 @@
       overflow-y: auto;
       overflow-x: hidden;
       background: var(--background);
+    }
+
+
+    body.embed-mode .app {
+      min-height: auto;
+      height: auto;
+      overflow-y: visible;
+    }
+
+    body.embed-mode .main {
+      min-height: auto;
+    }
+
+    body.embed-mode .panel {
+      height: auto;
     }
 
     .header {
@@ -199,6 +215,13 @@
       overflow-wrap: break-word;
       background: var(--chat-bot);
       color: var(--chat-bot-foreground);
+    }
+
+
+    .message.bot .bubble {
+      display: block;
+      width: 100%;
+      max-width: 32rem;
     }
 
     .composer {
@@ -546,6 +569,12 @@
   </style>
 </head>
 <body>
+  <script>
+    if (window.self !== window.top) {
+      document.body.classList.add('embed-mode');
+    }
+  </script>
+
   <div class="app">
     <header class="header">
       <div class="header-row">
@@ -1006,14 +1035,18 @@
         }
 
         const totalDurationMs = getTypingDurationMs(fullMessage);
-        const intervalMs = Math.max(5, Math.floor(totalDurationMs / Math.max(1, fullMessage.length)));
+        const characters = Array.from(fullMessage);
+        const stepCount = Math.max(12, Math.min(90, Math.round(totalDurationMs / 35)));
+        const chunkSize = Math.max(1, Math.ceil(characters.length / stepCount));
+        const ticksNeeded = Math.max(1, Math.ceil(characters.length / chunkSize));
+        const intervalMs = Math.max(16, Math.floor(totalDurationMs / ticksNeeded));
         let index = 0;
 
         const typingTimer = window.setInterval(() => {
-          index += 1;
-          messageTextNode.textContent = fullMessage.slice(0, index);
+          index = Math.min(characters.length, index + chunkSize);
+          messageTextNode.textContent = characters.slice(0, index).join('');
 
-          if (index >= fullMessage.length) {
+          if (index >= characters.length) {
             window.clearInterval(typingTimer);
             onDone();
           }
