@@ -699,6 +699,8 @@
     }
 
     function closeRiskDialog() {
+      const closeAnnouncementMessage = 'Risk details closed.';
+
       riskDialogBackdrop.hidden = true;
       appRoot.removeAttribute('aria-hidden');
       appRoot.inert = false;
@@ -711,7 +713,7 @@
         focusFirstRiskHighlight();
       }
 
-      queueAnnouncement('Risk details closed.', 140);
+      queueAnnouncement(closeAnnouncementMessage, 140);
     }
 
     function focusFirstRiskHighlight() {
