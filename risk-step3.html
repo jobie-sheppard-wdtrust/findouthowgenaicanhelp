@@ -589,6 +589,18 @@
       return text.replace(/[&<>"']/g, (m) => map[m]);
     }
 
+    function getRiskTriggerAccessibleName(phrase) {
+      return `Hidden risk: ${phrase}`;
+    }
+
+    function setRiskTriggerExpandedState(activeTrigger = null) {
+      const riskTriggers = messagesList.querySelectorAll('.risk-highlight');
+      riskTriggers.forEach((trigger) => {
+        const isExpanded = Boolean(activeTrigger && trigger === activeTrigger);
+        trigger.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
+      });
+    }
+
     function renderResponseHighlights(bubble, phaseKeys = []) {
       const renderOrder = ['bpStable', 'ageSupport', 'escalation', 'monitor'];
       let html = escapeHtml(botResponse);
@@ -600,7 +612,8 @@
         const risk = riskDefinitions[key];
         const safeLabel = escapeHtml(risk.label);
         const highlightedClass = phaseKeys.includes(key) ? 'risk-highlight phase-pulse' : 'risk-highlight';
-        const replacement = `<button type="button" class="${highlightedClass}" data-risk-key="${key}" aria-label="View hidden risk: ${escapeHtml(risk.title)}">${safeLabel}</button>`;
+        const safeAccessibleName = escapeHtml(getRiskTriggerAccessibleName(risk.label));
+        const replacement = `<button type="button" class="${highlightedClass}" data-risk-key="${key}" aria-label="${safeAccessibleName}" aria-controls="riskDialog" aria-expanded="false">${safeLabel}</button>`;
         html = html.replace(safeLabel, replacement);
       });
 
@@ -667,6 +680,7 @@
       appRoot.setAttribute('aria-hidden', 'true');
       appRoot.inert = true;
       document.body.style.overflow = 'hidden';
+      setRiskTriggerExpandedState(triggerEl);
 
       positionRiskDialog(triggerEl);
       riskDialogClose.focus();
@@ -678,6 +692,7 @@
       appRoot.removeAttribute('aria-hidden');
       appRoot.inert = false;
       document.body.style.overflow = '';
+      setRiskTriggerExpandedState(null);
 
       if (lastFocusedHighlight && lastFocusedHighlight.isConnected) {
         lastFocusedHighlight.focus();
