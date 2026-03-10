@@ -509,6 +509,8 @@
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     let announcementQueue = [];
     let announcementActive = false;
+    let announcementTimerId = null;
+    let announcementFrameId = null;
     let presetsLocked = false;
     let activeHighlightKeys = [];
     let lastFocusedHighlight = null;
@@ -520,6 +522,25 @@
       processAnnouncementQueue();
     }
 
+    function clearAnnouncementQueue({ clearLiveRegion = false } = {}) {
+      announcementQueue = [];
+      announcementActive = false;
+
+      if (announcementTimerId !== null) {
+        window.clearTimeout(announcementTimerId);
+        announcementTimerId = null;
+      }
+
+      if (announcementFrameId !== null) {
+        window.clearTimeout(announcementFrameId);
+        announcementFrameId = null;
+      }
+
+      if (clearLiveRegion) {
+        statusAnnouncer.textContent = '';
+      }
+    }
+
     function processAnnouncementQueue() {
       if (announcementActive || announcementQueue.length === 0) {
         return;
@@ -529,9 +550,11 @@
       const next = announcementQueue.shift();
       const effectiveDelay = reducedMotion ? 0 : next.delay;
 
-      window.setTimeout(() => {
+      announcementTimerId = window.setTimeout(() => {
+        announcementTimerId = null;
         statusAnnouncer.textContent = '';
-        window.setTimeout(() => {
+        announcementFrameId = window.setTimeout(() => {
+          announcementFrameId = null;
           statusAnnouncer.textContent = next.message;
           announcementActive = false;
           processAnnouncementQueue();
@@ -695,10 +718,13 @@
 
       positionRiskDialog(triggerEl);
       riskDialogClose.focus();
+      clearAnnouncementQueue({ clearLiveRegion: true });
       queueAnnouncement(`Risk details opened. ${risk.title}.`, 180);
     }
 
     function closeRiskDialog() {
+      const closeAnnouncementMessage = 'Risk details closed.';
+
       riskDialogBackdrop.hidden = true;
       appRoot.removeAttribute('aria-hidden');
       appRoot.inert = false;
@@ -711,7 +737,8 @@
         focusFirstRiskHighlight();
       }
 
-      queueAnnouncement('Risk details closed.', 140);
+      clearAnnouncementQueue({ clearLiveRegion: true });
+      queueAnnouncement(closeAnnouncementMessage, 140);
     }
 
     function focusFirstRiskHighlight() {
