@@ -426,7 +426,7 @@
 
             <div class="input-wrapper">
               <label for="messageInput">Type your message</label>
-              <textarea id="messageInput" rows="1" placeholder="Type your message..." aria-describedby="page-helper" readonly></textarea>
+              <textarea id="messageInput" rows="1" placeholder="Type your message..." aria-describedby="page-helper" readonly disabled aria-disabled="true" tabindex="-1"></textarea>
               <button class="send-btn" id="sendButton" type="button" aria-label="Send message" disabled>
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   <line x1="22" y1="2" x2="11" y2="13"></line>
@@ -708,10 +708,17 @@
       if (lastFocusedHighlight && lastFocusedHighlight.isConnected) {
         lastFocusedHighlight.focus();
       } else {
-        sendButton.focus();
+        focusFirstRiskHighlight();
       }
 
       queueAnnouncement('Risk details closed.', 140);
+    }
+
+    function focusFirstRiskHighlight() {
+      const firstHighlight = messagesList.querySelector('.risk-highlight');
+      if (firstHighlight) {
+        firstHighlight.focus();
+      }
     }
 
     function runHighlightSequence(bubble) {
@@ -727,6 +734,7 @@
       window.setTimeout(() => {
         activeHighlightKeys = [...highlightPhases[0]];
         renderResponseHighlights(bubble, highlightPhases[0]);
+        focusFirstRiskHighlight();
       }, reducedMotion ? 0 : 500);
 
       window.setTimeout(() => {
@@ -787,10 +795,6 @@
       presetPrompt.disabled = true;
       presetPrompt.setAttribute('aria-disabled', 'true');
       presetsLocked = true;
-
-      if (document.activeElement === presetPrompt) {
-        messageInput.focus();
-      }
 
       presetPrompt.remove();
 
