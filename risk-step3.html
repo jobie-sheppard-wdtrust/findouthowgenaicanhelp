@@ -172,17 +172,27 @@
     .typing-indicator {
       display: inline-flex;
       align-items: center;
-      gap: 0.25rem;
+      gap: 0.3rem;
       padding: 1rem;
     }
 
-    .dot {
-      width: 0.5rem;
-      height: 0.5rem;
-      border-radius: 50%;
-      background: var(--muted-foreground);
-      animation: bounce 2s infinite ease-in-out;
+    .thinking-dots {
+      display: inline-flex;
+      gap: 0.3rem;
+      align-items: center;
     }
+
+    .thinking-dots span {
+      width: 0.45rem;
+      height: 0.45rem;
+      border-radius: 50%;
+      background: currentColor;
+      opacity: 0.45;
+      animation: thinkingPulse 1s ease-in-out infinite;
+    }
+
+    .thinking-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .thinking-dots span:nth-child(3) { animation-delay: 0.4s; }
 
     .chat-footer { flex-shrink: 0; padding: 0; background: transparent; border-top: 0; }
 
@@ -362,9 +372,9 @@
       100% { transform: translateY(-50%) scale(1); }
     }
 
-    @keyframes bounce {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-0.2rem); }
+    @keyframes thinkingPulse {
+      0%, 80%, 100% { transform: scale(0.85); opacity: 0.35; }
+      40% { transform: scale(1); opacity: 0.95; }
     }
 
     @keyframes pulseHighlight {
@@ -503,6 +513,8 @@
     let presetsLocked = false;
     let activeHighlightKeys = [];
     let lastFocusedHighlight = null;
+    let promptSentStatusAnnounced = false;
+    let responseStartedStatusAnnounced = false;
 
     function queueAnnouncement(message, delay = 0) {
       announcementQueue.push({ message, delay });
@@ -559,7 +571,7 @@
       const article = document.createElement('article');
       article.className = 'message-row';
       article.id = 'typingIndicatorRow';
-      article.setAttribute('aria-label', 'Assistant is typing');
+      article.setAttribute('aria-hidden', 'true');
 
       const avatar = document.createElement('div');
       avatar.className = 'avatar';
@@ -569,7 +581,7 @@
       const bubble = document.createElement('div');
       bubble.className = 'bubble typing-indicator';
       bubble.setAttribute('aria-hidden', 'true');
-      bubble.innerHTML = '<span class="dot"></span><span class="dot"></span><span class="dot"></span>';
+      bubble.innerHTML = '<span class="sr-only-live">Assistant response is loading</span><span class="thinking-dots" aria-hidden="true"><span></span><span></span><span></span></span>';
 
       article.appendChild(avatar);
       article.appendChild(bubble);
@@ -701,14 +713,60 @@
       window.setTimeout(() => {
         activeHighlightKeys = [...highlightPhases[0]];
         renderResponseHighlights(bubble, highlightPhases[0]);
-        queueAnnouncement('First risk highlights are now available in the assistant response.', 220);
       }, reducedMotion ? 0 : 500);
 
       window.setTimeout(() => {
         activeHighlightKeys = [...highlightPhases[0], ...highlightPhases[1]];
         renderResponseHighlights(bubble, highlightPhases[1]);
-        queueAnnouncement('Additional risk highlights are now available in the assistant response.', 260);
       }, (reducedMotion ? 0 : 500) + phaseGap);
+    }
+
+    function getTypingDurationMs(message) {
+      const words = message.trim().split(/\s+/).filter(Boolean).length;
+      return Math.max(1, Math.round((words / 48) * 1000));
+    }
+
+    function typeAssistantResponse(fullMessage, onStart, onDone) {
+      const assistantMessage = appendMessage({ role: 'assistant', text: '' });
+      const bubble = assistantMessage.bubble;
+      const textNode = document.createTextNode('');
+      bubble.textContent = '';
+      bubble.appendChild(textNode);
+
+      if (reducedMotion) {
+        textNode.textContent = fullMessage;
+        if (typeof onStart === 'function') {
+          onStart(bubble);
+        }
+        if (typeof onDone === 'function') {
+          onDone(bubble);
+        }
+        return;
+      }
+
+      const totalDurationMs = getTypingDurationMs(fullMessage);
+      const intervalMs = Math.max(1, Math.floor(totalDurationMs / Math.max(1, fullMessage.length)));
+      let index = 0;
+      let started = false;
+
+      const typingTimer = window.setInterval(() => {
+        index += 1;
+        textNode.textContent = fullMessage.slice(0, index);
+
+        if (!started) {
+          started = true;
+          if (typeof onStart === 'function') {
+            onStart(bubble);
+          }
+        }
+
+        if (index >= fullMessage.length) {
+          window.clearInterval(typingTimer);
+          if (typeof onDone === 'function') {
+            onDone(bubble);
+          }
+        }
+      }, intervalMs);
     }
 
     function runPresetFlow() {
@@ -721,7 +779,11 @@
       }
 
       presetPrompt.remove();
-      queueAnnouncement('Prompt selected.', 0);
+
+      if (!promptSentStatusAnnounced) {
+        queueAnnouncement('Prompt sent to GenAI', 0);
+        promptSentStatusAnnounced = true;
+      }
 
       messageInput.classList.add('autofill-fade');
       messageInput.value = presetText;
@@ -735,7 +797,6 @@
 
       window.setTimeout(() => {
         messageInput.classList.remove('autofill-fade');
-        queueAnnouncement('Prompt added.', 120);
       }, fadeMs);
 
       window.setTimeout(() => {
@@ -749,8 +810,8 @@
     }
 
     function sendPresetMessage(typingMs) {
+      responseStartedStatusAnnounced = false;
       appendMessage({ role: 'user', text: presetText.trim() });
-      queueAnnouncement('Message sent.', 240);
 
       messageInput.value = '';
       messageInput.style.height = 'auto';
@@ -758,13 +819,17 @@
       prompts.hidden = true;
 
       addTypingIndicator();
-      queueAnnouncement('Assistant is typing.', 320);
 
       window.setTimeout(() => {
         removeTypingIndicator();
-        const assistantMessage = appendMessage({ role: 'assistant', text: botResponse });
-        queueAnnouncement('Assistant response received. Risk highlights will appear in stages.', 420);
-        runHighlightSequence(assistantMessage.bubble);
+        typeAssistantResponse(botResponse, () => {
+          if (!responseStartedStatusAnnounced) {
+            queueAnnouncement('Assistant response received with hidden risks highlighted', 0);
+            responseStartedStatusAnnounced = true;
+          }
+        }, (bubble) => {
+          runHighlightSequence(bubble);
+        });
       }, typingMs);
     }
 
