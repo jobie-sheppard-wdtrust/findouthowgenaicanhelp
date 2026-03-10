@@ -396,7 +396,7 @@
         <p id="page-helper">See the risks when GenAI helps with this task</p>
       </header>
 
-      <section class="window-body" aria-label="Chat transcript and composer">
+      <section class="window-body">
         <div class="messages-scroll" id="messagesScroll" aria-label="Chat transcript">
           <div class="messages" id="messagesList">
             <article class="message-row" aria-label="Assistant message">
@@ -408,11 +408,10 @@
           </div>
         </div>
 
-        <footer class="chat-footer" aria-label="Message composer">
+        <footer class="chat-footer">
           <div class="chat-footer-inner">
-            <div class="prompts" id="prompts" aria-label="Preset task prompts">
-              <button class="prompt-btn" id="presetPrompt" type="button" aria-describedby="presetPromptHint">Summarise this review into a clinic letter</button>
-              <span id="presetPromptHint" class="sr-only-live">Selecting this preset will auto-send after a short delay.</span>
+            <div class="prompts" id="prompts" role="group" aria-label="Preset prompts">
+              <button class="prompt-btn" id="presetPrompt" type="button" aria-label="Summarise this review into a clinic letter. Auto-sends when activated.">Summarise this review into a clinic letter</button>
             </div>
 
             <div class="input-wrapper">
