@@ -466,7 +466,7 @@
         <h2 id="riskDialogHeading">Spotting hidden risks</h2>
         <button class="risk-close" id="riskDialogClose" type="button" aria-label="Close risk details">−</button>
       </header>
-      <div class="risk-dialog-body">
+      <div id="riskDialogScrollRegion" class="risk-dialog-body" role="region" aria-labelledby="riskDialogTitle" tabindex="-1">
         <h3 id="riskDialogTitle"></h3>
         <p id="riskDialogBody"></p>
       </div>
@@ -525,6 +525,7 @@
     const riskDialogClose = document.getElementById('riskDialogClose');
     const riskDialogTitle = document.getElementById('riskDialogTitle');
     const riskDialogBody = document.getElementById('riskDialogBody');
+    const riskDialogScrollRegion = document.getElementById('riskDialogScrollRegion');
 
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     let announcementQueue = [];
@@ -675,6 +676,59 @@
       }
     }
 
+    function getRiskDialogScrollCommand(event) {
+      const key = event.key;
+      const code = event.code;
+      const keyCode = event.keyCode || event.which;
+
+      if (key === 'ArrowUp' || key === 'Up' || keyCode === 38) return 'lineUp';
+      if (key === 'ArrowDown' || key === 'Down' || keyCode === 40) return 'lineDown';
+      if (key === 'PageUp' || key === 'Prior' || keyCode === 33) return 'pageUp';
+      if (key === 'PageDown' || key === 'Next' || keyCode === 34) return 'pageDown';
+      if (key === 'Home' || keyCode === 36) return 'home';
+      if (key === 'End' || keyCode === 35) return 'end';
+      if (key === ' ' || key === 'Spacebar' || key === 'Space' || code === 'Space' || keyCode === 32) return 'pageDown';
+      return null;
+    }
+
+    function handleRiskDialogScrollKeys(event) {
+      if (riskDialogBackdrop.hidden) {
+        return false;
+      }
+
+      const command = getRiskDialogScrollCommand(event);
+      if (!command) {
+        return false;
+      }
+
+      const target = event.target;
+      const isTypingField = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target.isContentEditable;
+      if (isTypingField) {
+        return false;
+      }
+
+      const lineStep = 64;
+      const pageStep = Math.max(120, riskDialogScrollRegion.clientHeight - 40);
+
+      if (command === 'lineUp') {
+        riskDialogScrollRegion.scrollBy({ top: -lineStep, behavior: 'auto' });
+      } else if (command === 'lineDown') {
+        riskDialogScrollRegion.scrollBy({ top: lineStep, behavior: 'auto' });
+      } else if (command === 'pageUp') {
+        riskDialogScrollRegion.scrollBy({ top: -pageStep, behavior: 'auto' });
+      } else if (command === 'pageDown') {
+        riskDialogScrollRegion.scrollBy({ top: pageStep, behavior: 'auto' });
+      } else if (command === 'home') {
+        riskDialogScrollRegion.scrollTop = 0;
+      } else if (command === 'end') {
+        riskDialogScrollRegion.scrollTop = riskDialogScrollRegion.scrollHeight;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+      return true;
+    }
+
     function openRiskDialog(key, triggerEl) {
       const risk = riskDefinitions[key];
       if (!risk) {
@@ -684,6 +738,7 @@
       lastFocusedHighlight = triggerEl;
       riskDialogTitle.textContent = risk.title;
       riskDialogBody.textContent = risk.body;
+      riskDialogScrollRegion.scrollTop = 0;
       riskDialogBackdrop.hidden = false;
 
       appRoot.setAttribute('aria-hidden', 'true');
@@ -906,11 +961,31 @@
 
     riskDialog.addEventListener('keydown', (event) => {
       trapDialogFocus(event);
+      if (!event.defaultPrevented) {
+        handleRiskDialogScrollKeys(event);
+      }
       if (event.key === 'Escape') {
         event.preventDefault();
         closeRiskDialog();
       }
     });
+
+    function routeRiskDialogCaptureKeys(event) {
+      if (riskDialogBackdrop.hidden) {
+        return;
+      }
+
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeRiskDialog();
+        return;
+      }
+
+      handleRiskDialogScrollKeys(event);
+    }
+
+    window.addEventListener('keydown', routeRiskDialogCaptureKeys, true);
+    document.addEventListener('keydown', routeRiskDialogCaptureKeys, true);
 
     messageInput.addEventListener('beforeinput', (event) => {
       if (event.inputType.startsWith('insert') || event.inputType.startsWith('delete')) {
