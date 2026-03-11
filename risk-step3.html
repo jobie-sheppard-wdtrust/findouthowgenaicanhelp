@@ -466,7 +466,7 @@
         <h2 id="riskDialogHeading">Spotting hidden risks</h2>
         <button class="risk-close" id="riskDialogClose" type="button" aria-label="Close risk details">−</button>
       </header>
-      <div class="risk-dialog-body">
+      <div class="risk-dialog-body" id="riskDialogScrollRegion" tabindex="-1">
         <h3 id="riskDialogTitle"></h3>
         <p id="riskDialogBody"></p>
       </div>
@@ -523,6 +523,7 @@
     const riskDialogBackdrop = document.getElementById('riskDialogBackdrop');
     const riskDialog = document.getElementById('riskDialog');
     const riskDialogClose = document.getElementById('riskDialogClose');
+    const riskDialogScrollRegion = document.getElementById('riskDialogScrollRegion');
     const riskDialogTitle = document.getElementById('riskDialogTitle');
     const riskDialogBody = document.getElementById('riskDialogBody');
 
@@ -652,12 +653,22 @@
       bubble.innerHTML = html;
     }
 
+    function getDialogTabbableElements() {
+      const candidates = Array.from(riskDialog.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'));
+      return candidates.filter((element) => {
+        if (element.hasAttribute('disabled') || element.getAttribute('aria-hidden') === 'true') {
+          return false;
+        }
+        return element.offsetParent !== null || element.getClientRects().length > 0;
+      });
+    }
+
     function trapDialogFocus(event) {
-      if (event.key !== 'Tab') {
+      if (event.key !== 'Tab' || riskDialogBackdrop.hidden) {
         return;
       }
 
-      const focusable = Array.from(riskDialog.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'));
+      const focusable = getDialogTabbableElements();
       if (!focusable.length) {
         event.preventDefault();
         riskDialog.focus();
@@ -666,10 +677,22 @@
 
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
+      const active = document.activeElement;
+
+      if (!focusable.includes(active)) {
+        event.preventDefault();
+        if (event.shiftKey) {
+          last.focus();
+        } else {
+          first.focus();
+        }
+        return;
+      }
+
+      if (event.shiftKey && active === first) {
         event.preventDefault();
         last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
+      } else if (!event.shiftKey && active === last) {
         event.preventDefault();
         first.focus();
       }
@@ -692,7 +715,12 @@
       document.body.style.overflow = 'hidden';
       setRiskTriggerExpandedState(triggerEl);
 
-      riskDialogClose.focus();
+      window.requestAnimationFrame(() => {
+        if (!riskDialogBackdrop.hidden) {
+          riskDialogScrollRegion.scrollTop = 0;
+          riskDialogScrollRegion.focus();
+        }
+      });
       queueAnnouncement(`Risk details opened. ${risk.title}.`, 180);
     }
 
@@ -717,8 +745,13 @@
     }
 
     function closeRiskDialog() {
+      if (riskDialogBackdrop.hidden) {
+        return;
+      }
+
       const returnTarget = getRiskDialogReturnTarget();
       announceRiskDialogClosed();
+      riskDialogBackdrop.hidden = true;
 
       appRoot.removeAttribute('aria-hidden');
       appRoot.inert = false;
@@ -728,8 +761,6 @@
       if (returnTarget) {
         returnTarget.focus();
       }
-
-      riskDialogBackdrop.hidden = true;
     }
 
     function focusFirstRiskHighlight() {
@@ -904,8 +935,17 @@
 
     riskDialogClose.addEventListener('click', closeRiskDialog);
 
+    // Modal key ownership: browser handles native scroll keys, this handler owns only Tab focus wrap and Escape close.
     riskDialog.addEventListener('keydown', (event) => {
-      trapDialogFocus(event);
+      if (riskDialogBackdrop.hidden) {
+        return;
+      }
+
+      if (event.key === 'Tab') {
+        trapDialogFocus(event);
+        return;
+      }
+
       if (event.key === 'Escape') {
         event.preventDefault();
         closeRiskDialog();
