@@ -314,12 +314,15 @@
     #riskDialog {
       position: fixed;
       width: min(22rem, 90vw);
+      max-height: calc(100dvh - 2rem);
       background: var(--card);
       border: 3px solid rgba(249, 115, 22, 0.75);
       border-radius: 1rem;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
       overflow: hidden;
       pointer-events: auto;
+      display: flex;
+      flex-direction: column;
     }
 
     .risk-dialog-header {
@@ -345,7 +348,13 @@
       cursor: pointer;
     }
 
-    .risk-dialog-body { padding: 0.9rem; }
+    .risk-dialog-body {
+      padding: 0.9rem;
+      overflow-y: auto;
+      flex: 1 1 auto;
+      min-height: 0;
+      overscroll-behavior: contain;
+    }
     .risk-dialog-body h3 { font-size: 0.9375rem; font-weight: 600; margin-bottom: 0.5rem; }
     .risk-dialog-body p { font-size: 0.875rem; }
 
@@ -449,7 +458,7 @@
         <h2 id="riskDialogHeading">Spotting hidden risks</h2>
         <button class="risk-close" id="riskDialogClose" type="button" aria-label="Close risk details">−</button>
       </header>
-      <div class="risk-dialog-body">
+      <div class="risk-dialog-body" id="riskDialogScrollRegion" tabindex="0">
         <h3 id="riskDialogTitle"></h3>
         <p id="riskDialogBody"></p>
       </div>
@@ -508,6 +517,7 @@
     const riskDialogClose = document.getElementById('riskDialogClose');
     const riskDialogTitle = document.getElementById('riskDialogTitle');
     const riskDialogBody = document.getElementById('riskDialogBody');
+    const riskDialogScrollRegion = document.getElementById('riskDialogScrollRegion');
 
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     let announcementQueue = [];
@@ -648,10 +658,16 @@
         left = viewportEdge;
       }
 
-      const canPlaceBelow = anchorRect.bottom + gap + dialogRect.height <= window.innerHeight - viewportEdge;
-      const top = canPlaceBelow
-        ? anchorRect.bottom + gap
-        : Math.max(viewportEdge, anchorRect.top - gap - dialogRect.height);
+      const preferredBelowTop = anchorRect.bottom + gap;
+      const preferredAboveTop = anchorRect.top - gap - dialogRect.height;
+      const maxTop = window.innerHeight - viewportEdge - dialogRect.height;
+
+      let top = preferredBelowTop;
+      if (preferredBelowTop > maxTop) {
+        top = preferredAboveTop;
+      }
+      top = Math.min(top, maxTop);
+      top = Math.max(viewportEdge, top);
 
       riskDialog.style.left = `${Math.round(left)}px`;
       riskDialog.style.top = `${Math.round(top)}px`;
@@ -697,8 +713,49 @@
       setRiskTriggerExpandedState(triggerEl);
 
       positionRiskDialog(triggerEl);
-      riskDialogClose.focus();
+      riskDialogScrollRegion.scrollTop = 0;
+      riskDialogScrollRegion.focus();
       queueAnnouncement(`Risk details opened. ${risk.title}.`, 180);
+    }
+
+
+    function handleRiskDialogScrollKeys(event) {
+      if (riskDialogBackdrop.hidden) {
+        return;
+      }
+
+      const key = event.key;
+      const region = riskDialogScrollRegion;
+      const maxScrollTop = Math.max(0, region.scrollHeight - region.clientHeight);
+      const canScroll = maxScrollTop > 0;
+      const pageStep = Math.max(48, region.clientHeight - 32);
+
+      if (key === 'Home') {
+        event.preventDefault();
+        region.scrollTop = 0;
+        return;
+      }
+
+      if (key === 'End') {
+        event.preventDefault();
+        region.scrollTop = maxScrollTop;
+        return;
+      }
+
+      if (!canScroll) {
+        return;
+      }
+
+      if (key === 'PageDown' || key === 'ArrowDown' || (key === ' ' && !event.shiftKey) || key === 'Spacebar') {
+        event.preventDefault();
+        region.scrollBy({ top: pageStep, behavior: 'auto' });
+        return;
+      }
+
+      if (key === 'PageUp' || key === 'ArrowUp' || (key === ' ' && event.shiftKey)) {
+        event.preventDefault();
+        region.scrollBy({ top: -pageStep, behavior: 'auto' });
+      }
     }
 
     function getRiskDialogReturnTarget() {
@@ -911,6 +968,7 @@
 
     riskDialog.addEventListener('keydown', (event) => {
       trapDialogFocus(event);
+      handleRiskDialogScrollKeys(event);
       if (event.key === 'Escape') {
         event.preventDefault();
         closeRiskDialog();
