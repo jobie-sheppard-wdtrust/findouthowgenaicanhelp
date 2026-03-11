@@ -467,7 +467,7 @@
         <h2 id="riskDialogHeading">Spotting hidden risks</h2>
         <button class="risk-close" id="riskDialogClose" type="button" aria-label="Close risk details">−</button>
       </header>
-      <div id="riskDialogScrollRegion" class="risk-dialog-body" role="region" aria-label="Risk explanation, use arrow keys to scroll" tabindex="0">
+      <div id="riskDialogScrollRegion" class="risk-dialog-body" role="region" aria-label="Risk explanation, use arrow keys to scroll">
         <h3 id="riskDialogTitle"></h3>
         <p id="riskDialogBody"></p>
       </div>
@@ -758,7 +758,7 @@
       document.body.style.overflow = 'hidden';
       setRiskTriggerExpandedState(triggerEl);
 
-      riskDialogScrollRegion.focus();
+      riskDialogClose.focus();
       queueAnnouncement(`Risk details opened. ${risk.title}.`, 180);
     }
 

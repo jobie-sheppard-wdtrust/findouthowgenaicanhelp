@@ -27,10 +27,11 @@ assertPattern(/id="riskDialogBackdrop"[^>]*\shidden/, 'The risk dialog backdrop 
 
 // Accessibility semantics
 assertPattern(/id="riskDialog"[\s\S]*?role="dialog"[\s\S]*?aria-modal="true"[\s\S]*?aria-labelledby="riskDialogHeading"[\s\S]*?aria-describedby="riskDialogBody"/, 'Dialog accessibility semantics must remain intact.');
-assertPattern(/id="riskDialogScrollRegion"[\s\S]*?role="region"[\s\S]*?aria-label="Risk explanation[^"]*"[\s\S]*?tabindex="0"/, 'The scroll region must be tabbable (tabindex=0) for NVDA focus-mode keyboard scroll support.');
+assertPattern(/id="riskDialogScrollRegion"[\s\S]*?role="region"[\s\S]*?aria-label="Risk explanation[^"]*"/, 'The scroll region must preserve its labelled region semantics for assistive technology users.');
+assertNoPattern(/<div[^>]*id="riskDialogScrollRegion"[^>]*tabindex="0"/, 'The scroll region should no longer be a separate tab stop, because it creates a redundant non-actionable focus target.');
 
 // Dialog open behavior
-assertPattern(/function openRiskDialog\([\s\S]*?riskDialogScrollRegion\.scrollTop = 0;[\s\S]*?riskDialogScrollRegion\.focus\(\);/, 'Dialog open must reset body scroll and focus the scroll region.');
+assertPattern(/function openRiskDialog\([\s\S]*?riskDialogScrollRegion\.scrollTop = 0;[\s\S]*?riskDialogClose\.focus\(\);/, 'Dialog open must reset body scroll and move focus to the close button so keyboard users land on an actionable control.');
 
 // Keyboard handling
 assertPattern(/function getRiskDialogScrollCommand\([\s\S]*?ArrowUp[\s\S]*?Up[\s\S]*?keyCode === 38[\s\S]*?PageDown[\s\S]*?keyCode === 34[\s\S]*?function handleRiskDialogScrollKeys\([\s\S]*?event\.preventDefault\(\);/, 'Dialog key handling must include deterministic keyboard scrolling for arrow/page/home/end keys, including legacy key variants.');
