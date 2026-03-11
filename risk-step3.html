@@ -655,10 +655,16 @@
         left = viewportEdge;
       }
 
-      const canPlaceBelow = anchorRect.bottom + gap + dialogRect.height <= window.innerHeight - viewportEdge;
-      const top = canPlaceBelow
-        ? anchorRect.bottom + gap
-        : Math.max(viewportEdge, anchorRect.top - gap - dialogRect.height);
+      const preferredBelowTop = anchorRect.bottom + gap;
+      const preferredAboveTop = anchorRect.top - gap - dialogRect.height;
+      const maxTop = window.innerHeight - viewportEdge - dialogRect.height;
+
+      let top = preferredBelowTop;
+      if (preferredBelowTop > maxTop) {
+        top = preferredAboveTop;
+      }
+      top = Math.min(top, maxTop);
+      top = Math.max(viewportEdge, top);
 
       riskDialog.style.left = `${Math.round(left)}px`;
       riskDialog.style.top = `${Math.round(top)}px`;
@@ -717,6 +723,8 @@
 
       const key = event.key;
       const region = riskDialogScrollRegion;
+      const maxScrollTop = Math.max(0, region.scrollHeight - region.clientHeight);
+      const canScroll = maxScrollTop > 0;
       const pageStep = Math.max(48, region.clientHeight - 32);
 
       if (key === 'Home') {
@@ -727,17 +735,21 @@
 
       if (key === 'End') {
         event.preventDefault();
-        region.scrollTop = region.scrollHeight;
+        region.scrollTop = maxScrollTop;
         return;
       }
 
-      if (key === 'PageDown' || (key === ' ' && !event.shiftKey)) {
+      if (!canScroll) {
+        return;
+      }
+
+      if (key === 'PageDown' || key === 'ArrowDown' || (key === ' ' && !event.shiftKey) || key === 'Spacebar') {
         event.preventDefault();
         region.scrollBy({ top: pageStep, behavior: 'auto' });
         return;
       }
 
-      if (key === 'PageUp' || (key === ' ' && event.shiftKey)) {
+      if (key === 'PageUp' || key === 'ArrowUp' || (key === ' ' && event.shiftKey)) {
         event.preventDefault();
         region.scrollBy({ top: -pageStep, behavior: 'auto' });
       }
