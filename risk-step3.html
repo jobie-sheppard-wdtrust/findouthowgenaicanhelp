@@ -185,9 +185,7 @@
     .risk-highlight {
       background: rgba(248, 113, 113, 0.24);
       color: color-mix(in srgb, currentColor 92%, white);
-      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, sans-serif;
-      font-size: inherit;
-      font-style: inherit;
+      font: inherit;
       font-weight: 500;
       line-height: inherit;
       font-synthesis: none;
@@ -202,7 +200,8 @@
     }
 
     @supports (font-variation-settings: normal) {
-      .risk-highlight {
+      html.inter-variable-ready .risk-highlight {
+        font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, sans-serif;
         font-weight: 450;
         font-variation-settings: "wght" 450;
       }
@@ -596,6 +595,32 @@
     let skipRequested = false;
     const initialMessagesMarkup = messagesList.innerHTML;
     const initialPromptsMarkup = prompts.innerHTML;
+
+    function enableVariableRiskHighlightWeight() {
+      const root = document.documentElement;
+
+      if (!('fonts' in document) || typeof document.fonts.check !== 'function') {
+        return;
+      }
+
+      if (!CSS.supports('font-variation-settings', 'normal')) {
+        return;
+      }
+
+      const interVariationReady = document.fonts.check('450 1em "Inter"');
+      if (interVariationReady) {
+        root.classList.add('inter-variable-ready');
+        return;
+      }
+
+      document.fonts.ready.then(() => {
+        if (document.fonts.check('450 1em "Inter"')) {
+          root.classList.add('inter-variable-ready');
+        }
+      });
+    }
+
+    enableVariableRiskHighlightWeight();
 
     function queueAnnouncement(message, delay = 0) {
       announcementQueue.push({ message, delay });
