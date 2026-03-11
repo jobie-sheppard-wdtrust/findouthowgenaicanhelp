@@ -19,14 +19,15 @@ assertPattern(/#riskDialog\s*\{[\s\S]*?max-height:\s*calc\(100dvh\s*-\s*2rem\);[
 assertPattern(/\.risk-dialog-body\s*\{[\s\S]*?flex:\s*1;[\s\S]*?min-height:\s*0;[\s\S]*?overflow-y:\s*auto;/, 'The risk dialog body must be the sole flex scroll container.');
 assertPattern(/id="riskDialogBackdrop"[^>]*\shidden/, 'The risk dialog backdrop must start hidden in markup to keep the modal closed at load.');
 assertPattern(/id="riskDialog"[\s\S]*?role="dialog"[\s\S]*?aria-modal="true"[\s\S]*?aria-labelledby="riskDialogHeading"[\s\S]*?aria-describedby="riskDialogBody"/, 'Dialog accessibility semantics must remain intact.');
-assertPattern(/id="riskDialogScrollRegion"[\s\S]*?role="region"[\s\S]*?aria-labelledby="riskDialogTitle"[\s\S]*?tabindex="0"/, 'The scroll region must be an intentional focusable reading region with clear semantics.');
-assertPattern(/function openRiskDialog\([\s\S]*?riskDialogScrollRegion\.scrollTop = 0;[\s\S]*?riskDialogScrollRegion\.focus\(\);/, 'Dialog open must reset body scroll once and then focus the scroll region for native keyboard scrolling.');
+assertPattern(/id="riskDialogScrollRegion"[\s\S]*?role="region"[\s\S]*?aria-labelledby="riskDialogTitle"[\s\S]*?tabindex="-1"/, 'The scroll region must be programmatically focusable without adding a redundant tab stop.');
+assertPattern(/function openRiskDialog\([\s\S]*?riskDialogScrollRegion\.scrollTop = 0;[\s\S]*?riskDialogClose\.focus\(\);/, 'Dialog open must reset body scroll once and place initial focus on the close control.');
+assertPattern(/function handleRiskDialogScrollKeys\([\s\S]*?ArrowUp[\s\S]*?ArrowDown[\s\S]*?PageUp[\s\S]*?PageDown[\s\S]*?Home[\s\S]*?End[\s\S]*?event\.preventDefault\(\);/, 'Dialog key handling must include deterministic keyboard scrolling for arrow/page/home/end keys.');
+assertPattern(/riskDialog\.addEventListener\('keydown',[\s\S]*?handleRiskDialogScrollKeys\(event\);[\s\S]*?event\.key === 'Escape'/, 'The dialog keydown handler must combine scroll-key support with Escape close behavior.');
 assertPattern(/document\.body\.style\.overflow = 'hidden';[\s\S]*?document\.body\.style\.overflow = previousBodyOverflow;/, 'Body scroll lock must be explicit and reversible.');
 
 assertNoPattern(/function positionRiskDialog\(/, 'Anchor-based modal positioning function should be removed.');
 assertNoPattern(/positionRiskDialog\(/, 'Anchor-based modal positioning calls should be removed.');
 assertNoPattern(/window\.addEventListener\('resize',[\s\S]*?positionRiskDialog/, 'Resize reposition handlers should be removed with viewport-centered layout.');
-assertNoPattern(/event\.key\s*===\s*'ArrowUp'|event\.key\s*===\s*'ArrowDown'|event\.key\s*===\s*'PageUp'|event\.key\s*===\s*'PageDown'|event\.key\s*===\s*'Home'|event\.key\s*===\s*'End'|event\.key\s*===\s*' '/, 'Dialog key remapping for scroll keys must be removed.');
 assertNoPattern(/riskDialogBody\.focus\(/, 'The dialog body should not be force-focused.');
 assertNoPattern(/riskDialogBody\.scrollTop\s*=|riskDialog\.scrollTop\s*=/, 'Scroll reset logic should not target the wrong node or override position after open.');
 
