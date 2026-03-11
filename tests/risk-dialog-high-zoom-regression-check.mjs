@@ -21,8 +21,9 @@ assertPattern(/id="riskDialogBackdrop"[^>]*\shidden/, 'The risk dialog backdrop 
 assertPattern(/id="riskDialog"[\s\S]*?role="dialog"[\s\S]*?aria-modal="true"[\s\S]*?aria-labelledby="riskDialogHeading"[\s\S]*?aria-describedby="riskDialogBody"/, 'Dialog accessibility semantics must remain intact.');
 assertPattern(/id="riskDialogScrollRegion"[\s\S]*?role="region"[\s\S]*?aria-labelledby="riskDialogTitle"[\s\S]*?tabindex="-1"/, 'The scroll region must be programmatically focusable without adding a redundant tab stop.');
 assertPattern(/function openRiskDialog\([\s\S]*?riskDialogScrollRegion\.scrollTop = 0;[\s\S]*?riskDialogClose\.focus\(\);/, 'Dialog open must reset body scroll once and place initial focus on the close control.');
-assertPattern(/function handleRiskDialogScrollKeys\([\s\S]*?ArrowUp[\s\S]*?ArrowDown[\s\S]*?PageUp[\s\S]*?PageDown[\s\S]*?Home[\s\S]*?End[\s\S]*?event\.preventDefault\(\);/, 'Dialog key handling must include deterministic keyboard scrolling for arrow/page/home/end keys.');
-assertPattern(/riskDialog\.addEventListener\('keydown',[\s\S]*?handleRiskDialogScrollKeys\(event\);[\s\S]*?event\.key === 'Escape'/, 'The dialog keydown handler must combine scroll-key support with Escape close behavior.');
+assertPattern(/function getRiskDialogScrollCommand\([\s\S]*?ArrowUp[\s\S]*?ArrowDown[\s\S]*?PageUp[\s\S]*?PageDown[\s\S]*?Home[\s\S]*?End[\s\S]*?function handleRiskDialogScrollKeys\([\s\S]*?event\.preventDefault\(\);/, 'Dialog key handling must include deterministic keyboard scrolling for arrow/page/home/end keys.');
+assertPattern(/riskDialog\.addEventListener\('keydown',[\s\S]*?event\.key === 'Escape'/, 'The dialog keydown handler must preserve modal focus-trap and Escape close behavior.');
+assertPattern(/window\.addEventListener\('keydown',[\s\S]*?handleRiskDialogScrollKeys\(event\);[\s\S]*?\, true\);/, 'A capture-phase keydown listener must route scroll keys to the dialog body even when focus is not on the scroll region.');
 assertPattern(/document\.body\.style\.overflow = 'hidden';[\s\S]*?document\.body\.style\.overflow = previousBodyOverflow;/, 'Body scroll lock must be explicit and reversible.');
 
 assertNoPattern(/function positionRiskDialog\(/, 'Anchor-based modal positioning function should be removed.');

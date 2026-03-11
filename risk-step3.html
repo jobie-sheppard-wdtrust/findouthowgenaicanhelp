@@ -676,36 +676,56 @@
       }
     }
 
+    function getRiskDialogScrollCommand(event) {
+      const key = event.key;
+      const code = event.code;
+
+      if (key === 'ArrowUp') return 'lineUp';
+      if (key === 'ArrowDown') return 'lineDown';
+      if (key === 'PageUp') return 'pageUp';
+      if (key === 'PageDown') return 'pageDown';
+      if (key === 'Home') return 'home';
+      if (key === 'End') return 'end';
+      if (key === ' ' || key === 'Spacebar' || code === 'Space') return 'pageDown';
+      return null;
+    }
+
     function handleRiskDialogScrollKeys(event) {
-      const keys = ['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' '];
-      if (!keys.includes(event.key)) {
-        return;
+      if (riskDialogBackdrop.hidden) {
+        return false;
+      }
+
+      const command = getRiskDialogScrollCommand(event);
+      if (!command) {
+        return false;
       }
 
       const target = event.target;
       const isTypingField = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target.isContentEditable;
       if (isTypingField) {
-        return;
+        return false;
       }
 
       const lineStep = 64;
       const pageStep = Math.max(120, riskDialogScrollRegion.clientHeight - 40);
 
-      if (event.key === 'ArrowUp') {
+      if (command === 'lineUp') {
         riskDialogScrollRegion.scrollBy({ top: -lineStep, behavior: 'auto' });
-      } else if (event.key === 'ArrowDown') {
+      } else if (command === 'lineDown') {
         riskDialogScrollRegion.scrollBy({ top: lineStep, behavior: 'auto' });
-      } else if (event.key === 'PageUp') {
+      } else if (command === 'pageUp') {
         riskDialogScrollRegion.scrollBy({ top: -pageStep, behavior: 'auto' });
-      } else if (event.key === 'PageDown' || event.key === ' ') {
+      } else if (command === 'pageDown') {
         riskDialogScrollRegion.scrollBy({ top: pageStep, behavior: 'auto' });
-      } else if (event.key === 'Home') {
+      } else if (command === 'home') {
         riskDialogScrollRegion.scrollTop = 0;
-      } else if (event.key === 'End') {
+      } else if (command === 'end') {
         riskDialogScrollRegion.scrollTop = riskDialogScrollRegion.scrollHeight;
       }
 
       event.preventDefault();
+      event.stopPropagation();
+      return true;
     }
 
     function openRiskDialog(key, triggerEl) {
@@ -940,12 +960,28 @@
 
     riskDialog.addEventListener('keydown', (event) => {
       trapDialogFocus(event);
-      handleRiskDialogScrollKeys(event);
+      if (!event.defaultPrevented) {
+        handleRiskDialogScrollKeys(event);
+      }
       if (event.key === 'Escape') {
         event.preventDefault();
         closeRiskDialog();
       }
     });
+
+    window.addEventListener('keydown', (event) => {
+      if (riskDialogBackdrop.hidden) {
+        return;
+      }
+
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeRiskDialog();
+        return;
+      }
+
+      handleRiskDialogScrollKeys(event);
+    }, true);
 
     messageInput.addEventListener('beforeinput', (event) => {
       if (event.inputType.startsWith('insert') || event.inputType.startsWith('delete')) {
