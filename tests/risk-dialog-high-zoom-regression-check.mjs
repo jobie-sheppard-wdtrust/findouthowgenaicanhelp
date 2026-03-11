@@ -22,6 +22,7 @@ assertPattern(/id="riskDialog"[\s\S]*?role="dialog"[\s\S]*?aria-modal="true"[\s\
 assertPattern(/id="riskDialogScrollRegion"[^>]*tabindex="-1"/, 'The dedicated dialog scroll region must be programmatically focusable without creating an extra tab stop.');
 assertPattern(/function openRiskDialog\([\s\S]*?riskDialogScrollRegion\.focus\(\);/, 'Initial dialog focus must land on the dialog scroll region so native keyboard scrolling works at high zoom.');
 assertPattern(/document\.body\.style\.overflow = 'hidden';[\s\S]*?document\.body\.style\.overflow = previousBodyOverflow;/, 'Body scroll lock must be explicit and reversible.');
+assertPattern(/function trapDialogFocus\([\s\S]*?const active = document\.activeElement;[\s\S]*?!focusable\.includes\(active\)[\s\S]*?event\.preventDefault\(\);[\s\S]*?event\.shiftKey[\s\S]*?last\.focus\(\);[\s\S]*?first\.focus\(\);/, 'Focus trapping must redirect Tab from the non-tabbable scroll region to the dialog tabbable boundary in both directions.');
 
 assertNoPattern(/function positionRiskDialog\(/, 'Anchor-based modal positioning function should be removed.');
 assertNoPattern(/positionRiskDialog\(/, 'Anchor-based modal positioning calls should be removed.');
