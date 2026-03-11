@@ -196,9 +196,6 @@
       -webkit-box-decoration-break: clone;
     }
 
-    .risk-highlight.phase-pulse {
-      animation: pulseHighlight 1.8s ease-in-out infinite alternate;
-    }
 
     .message-row.user-message { justify-content: flex-end; }
 
@@ -438,10 +435,6 @@
       40% { transform: scale(1); opacity: 0.95; }
     }
 
-    @keyframes pulseHighlight {
-      0% { background: rgba(248, 113, 113, 0.18); }
-      100% { background: rgba(248, 113, 113, 0.35); }
-    }
 
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after {
@@ -785,7 +778,7 @@
         }
         const risk = riskDefinitions[key];
         const safeLabel = escapeHtml(risk.label);
-        const highlightedClass = phaseKeys.includes(key) ? 'risk-highlight phase-pulse' : 'risk-highlight';
+        const highlightedClass = 'risk-highlight';
         const safeAccessibleName = escapeHtml(getRiskTriggerAccessibleName(risk.label));
         const replacement = `<span class="${highlightedClass}" data-risk-key="${key}" role="button" tabindex="0" aria-label="${safeAccessibleName}" aria-controls="riskDialog" aria-expanded="false">${safeLabel}</span>`;
         html = html.replace(safeLabel, replacement);
