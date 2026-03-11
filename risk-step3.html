@@ -600,8 +600,8 @@
       return text.replace(/[&<>"']/g, (m) => map[m]);
     }
 
-    function getRiskTriggerAccessibleName(phrase) {
-      return `Hidden risk: ${phrase}`;
+    function getRiskTriggerAccessibleName() {
+      return 'Hidden risk details. Activate for explanation.';
     }
 
     function setRiskTriggerExpandedState(activeTrigger = null) {
@@ -623,7 +623,7 @@
         const risk = riskDefinitions[key];
         const safeLabel = escapeHtml(risk.label);
         const highlightedClass = phaseKeys.includes(key) ? 'risk-highlight phase-pulse' : 'risk-highlight';
-        const safeAccessibleName = escapeHtml(getRiskTriggerAccessibleName(risk.label));
+        const safeAccessibleName = escapeHtml(getRiskTriggerAccessibleName());
         const replacement = `<span class="${highlightedClass}" data-risk-key="${key}" role="button" tabindex="0" aria-label="${safeAccessibleName}" aria-controls="riskDialog" aria-expanded="false">${safeLabel}</span>`;
         html = html.replace(safeLabel, replacement);
       });
