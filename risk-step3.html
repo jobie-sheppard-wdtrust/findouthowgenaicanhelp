@@ -369,23 +369,6 @@
 
     :focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
 
-    #scrollDiag {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      z-index: 9999;
-      background: rgba(0, 0, 0, 0.88);
-      color: #0f0;
-      font: 11px/1.4 monospace;
-      padding: 6px 8px;
-      pointer-events: none;
-      white-space: pre-wrap;
-      max-height: 40vh;
-      overflow-y: auto;
-    }
-    #scrollDiag[hidden] { display: none; }
-
     .sr-only-live {
       position: absolute;
       left: -9999px;
@@ -492,7 +475,6 @@
   </div>
 
   <div id="statusAnnouncer" class="sr-only-live" aria-live="assertive" aria-atomic="true"></div>
-  <div id="scrollDiag" aria-hidden="true" hidden></div>
 
   <script>
     const presetText = `Can you help me draft a short clinic letter summarising a recent GP review?\nIt is for the patient record and onward sharing with community services, so it should be clear and neutral in tone. Here are my rough notes from the review:\nSamuel Dannam, 83\n– Elderly patient with CVD and CKD\n– Walked to surgery (5 mins)\n– BP normal today\n– Routine long-term condition review\n– No changes made\n– Follow-up planned`;
@@ -1026,62 +1008,6 @@
       if (event.key === 'Enter' || event.key.length === 1) {
         event.preventDefault();
       }
-    });
-
-    /* ── Diagnostic telemetry (toggle with Ctrl+Shift+D) ── */
-    const scrollDiag = document.getElementById('scrollDiag');
-    let diagVisible = false;
-    let diagLastEvent = '(none)';
-    let diagHandlerFired = false;
-    let diagEventCount = 0;
-
-    const origHandleScroll = handleRiskDialogScrollKeys;
-    handleRiskDialogScrollKeys = function(event) {
-      diagHandlerFired = true;
-      return origHandleScroll(event);
-    };
-
-    function updateDiag() {
-      if (!diagVisible) return;
-      const sr = riskDialogScrollRegion;
-      const sT = sr.scrollTop;
-      const sH = sr.scrollHeight;
-      const cH = sr.clientHeight;
-      const maxS = sH - cH;
-      const pct = maxS > 0 ? Math.round((sT / maxS) * 100) : 0;
-      const ae = document.activeElement;
-      const aeDesc = ae ? (ae.id || ae.tagName.toLowerCase()) : 'null';
-      const dialogOpen = !riskDialogBackdrop.hidden;
-
-      scrollDiag.textContent =
-        `SCROLL DIAG (Ctrl+Shift+D to hide)\n` +
-        `dialog open: ${dialogOpen}\n` +
-        `activeElement: ${aeDesc}\n` +
-        `scrollTop: ${Math.round(sT)} / max: ${Math.round(maxS)}  (${pct}%)\n` +
-        `scrollHeight: ${sH}  clientHeight: ${cH}\n` +
-        `last key event: ${diagLastEvent}\n` +
-        `handler fired: ${diagHandlerFired}  events captured: ${diagEventCount}\n` +
-        `viewport: ${window.innerWidth}x${window.innerHeight}  dpr: ${devicePixelRatio}`;
-    }
-
-    window.addEventListener('keydown', function diagCapture(event) {
-      if (event.ctrlKey && event.shiftKey && event.key === 'D') {
-        diagVisible = !diagVisible;
-        scrollDiag.hidden = !diagVisible;
-        updateDiag();
-        event.preventDefault();
-        return;
-      }
-      if (!riskDialogBackdrop.hidden) {
-        diagEventCount++;
-        diagHandlerFired = false;
-        diagLastEvent = `key="${event.key}" code="${event.code}" kC=${event.keyCode} target=${event.target.id || event.target.tagName} prevented=${event.defaultPrevented}`;
-        requestAnimationFrame(updateDiag);
-      }
-    }, true);
-
-    riskDialogScrollRegion.addEventListener('scroll', function() {
-      requestAnimationFrame(updateDiag);
     });
   </script>
 </body>

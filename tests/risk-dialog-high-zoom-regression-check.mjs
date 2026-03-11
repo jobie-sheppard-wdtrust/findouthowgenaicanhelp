@@ -43,16 +43,15 @@ assertPattern(/document\.body\.style\.overflow = 'hidden';[\s\S]*?document\.body
 // Focus trap handles non-tabbable active element
 assertPattern(/!isInTabbableSet[\s\S]*?event\.shiftKey[\s\S]*?last\.focus\(\)[\s\S]*?first\.focus\(\)/, 'Focus trap must redirect Tab correctly when active element is outside the tabbable set.');
 
-// Diagnostic telemetry
-assertPattern(/id="scrollDiag"/, 'Diagnostic telemetry overlay must be present for debugging.');
-assertPattern(/Ctrl\+Shift\+D/, 'Diagnostic overlay must be toggleable with Ctrl+Shift+D.');
-
 // Removed patterns
 assertNoPattern(/function positionRiskDialog\(/, 'Anchor-based modal positioning function should be removed.');
 assertNoPattern(/positionRiskDialog\(/, 'Anchor-based modal positioning calls should be removed.');
 assertNoPattern(/window\.addEventListener\('resize',[\s\S]*?positionRiskDialog/, 'Resize reposition handlers should be removed with viewport-centered layout.');
 assertNoPattern(/riskDialogBody\.focus\(/, 'The dialog body should not be force-focused.');
 assertNoPattern(/riskDialogBody\.scrollTop\s*=|riskDialog\.scrollTop\s*=/, 'Scroll reset logic should not target the wrong node or override position after open.');
+
+// Diagnostic overlay should be removed (was temporary)
+assertNoPattern(/id="scrollDiag"/, 'Diagnostic telemetry overlay should be removed after debugging is complete.');
 
 const dialogOverflowAutoMatches = html.match(/(#riskDialog|\.risk-dialog-[a-z-]+)\s*\{[\s\S]*?overflow-y:\s*auto;/g) ?? [];
 if (dialogOverflowAutoMatches.length !== 1 || !/\.risk-dialog-body\s*\{/.test(dialogOverflowAutoMatches[0])) {
