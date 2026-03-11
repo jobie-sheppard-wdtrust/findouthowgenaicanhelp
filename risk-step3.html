@@ -199,13 +199,6 @@
       -webkit-box-decoration-break: clone;
     }
 
-    @supports (font-variation-settings: normal) {
-      html.inter-variable-ready .risk-highlight {
-        font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, sans-serif;
-        font-weight: 450;
-        font-variation-settings: "wght" 450;
-      }
-    }
 
 
     .message-row.user-message { justify-content: flex-end; }
@@ -369,7 +362,7 @@
     }
 
     #riskDialog {
-      position: relative;
+      position: fixed;
       width: min(22rem, 90vw);
       max-height: calc(100vh - 2rem);
       max-height: calc(100dvh - 2rem);
@@ -586,6 +579,8 @@
     let presetsLocked = false;
     let activeHighlightKeys = [];
     let lastFocusedHighlight = null;
+    let activeRiskTrigger = null;
+    let previousBodyOverflow = '';
     let promptSentStatusAnnounced = false;
     let responseStartedStatusAnnounced = false;
     let flowStage = 'idle';
@@ -910,6 +905,37 @@
       return true;
     }
 
+    function positionRiskDialog(triggerEl) {
+      if (!triggerEl || riskDialogBackdrop.hidden) {
+        return;
+      }
+
+      const viewportPadding = 12;
+      const popupGap = 8;
+      const triggerRect = triggerEl.getBoundingClientRect();
+      const dialogRect = riskDialog.getBoundingClientRect();
+
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      const availableBelow = viewportHeight - triggerRect.bottom - viewportPadding;
+      const availableAbove = triggerRect.top - viewportPadding;
+      const preferBelow = availableBelow >= dialogRect.height + popupGap || availableBelow >= availableAbove;
+
+      let top = preferBelow
+        ? triggerRect.bottom + popupGap
+        : triggerRect.top - dialogRect.height - popupGap;
+
+      const maxTop = viewportHeight - dialogRect.height - viewportPadding;
+      top = Math.max(viewportPadding, Math.min(top, maxTop));
+
+      let left = triggerRect.left;
+      const maxLeft = viewportWidth - dialogRect.width - viewportPadding;
+      left = Math.max(viewportPadding, Math.min(left, maxLeft));
+
+      riskDialog.style.top = `${top}px`;
+      riskDialog.style.left = `${left}px`;
+    }
+
     function openRiskDialog(key, triggerEl) {
       const risk = riskDefinitions[key];
       if (!risk) {
@@ -917,6 +943,7 @@
       }
 
       lastFocusedHighlight = triggerEl;
+      activeRiskTrigger = triggerEl;
       riskDialogTitle.textContent = risk.title;
       riskDialogBody.textContent = risk.body;
       riskDialogScrollRegion.scrollTop = 0;
@@ -927,6 +954,8 @@
       previousBodyOverflow = document.body.style.overflow;
       document.body.style.overflow = 'hidden';
       setRiskTriggerExpandedState(triggerEl);
+      positionRiskDialog(triggerEl);
+      window.requestAnimationFrame(() => positionRiskDialog(triggerEl));
 
       riskDialogClose.focus();
       queueAnnouncement(`Risk details opened. ${risk.title}.`, 180);
@@ -960,6 +989,7 @@
       appRoot.inert = false;
       document.body.style.overflow = previousBodyOverflow;
       setRiskTriggerExpandedState(null);
+      activeRiskTrigger = null;
 
       if (returnTarget) {
         returnTarget.focus();
@@ -1142,6 +1172,7 @@
       responseStartedStatusAnnounced = false;
       activeHighlightKeys = [];
       lastFocusedHighlight = null;
+      activeRiskTrigger = null;
 
       announcementQueue = [];
       announcementActive = false;
@@ -1235,6 +1266,18 @@
 
     window.addEventListener('keydown', routeRiskDialogCaptureKeys, true);
     document.addEventListener('keydown', routeRiskDialogCaptureKeys, true);
+
+    window.addEventListener('resize', () => {
+      if (!riskDialogBackdrop.hidden && activeRiskTrigger) {
+        positionRiskDialog(activeRiskTrigger);
+      }
+    });
+
+    messagesScroll.addEventListener('scroll', () => {
+      if (!riskDialogBackdrop.hidden && activeRiskTrigger) {
+        positionRiskDialog(activeRiskTrigger);
+      }
+    });
 
     messageInput.addEventListener('beforeinput', (event) => {
       if (event.inputType.startsWith('insert') || event.inputType.startsWith('delete')) {
