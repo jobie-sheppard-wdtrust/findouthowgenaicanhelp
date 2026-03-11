@@ -679,14 +679,15 @@
     function getRiskDialogScrollCommand(event) {
       const key = event.key;
       const code = event.code;
+      const keyCode = event.keyCode || event.which;
 
-      if (key === 'ArrowUp') return 'lineUp';
-      if (key === 'ArrowDown') return 'lineDown';
-      if (key === 'PageUp') return 'pageUp';
-      if (key === 'PageDown') return 'pageDown';
-      if (key === 'Home') return 'home';
-      if (key === 'End') return 'end';
-      if (key === ' ' || key === 'Spacebar' || code === 'Space') return 'pageDown';
+      if (key === 'ArrowUp' || key === 'Up' || keyCode === 38) return 'lineUp';
+      if (key === 'ArrowDown' || key === 'Down' || keyCode === 40) return 'lineDown';
+      if (key === 'PageUp' || key === 'Prior' || keyCode === 33) return 'pageUp';
+      if (key === 'PageDown' || key === 'Next' || keyCode === 34) return 'pageDown';
+      if (key === 'Home' || keyCode === 36) return 'home';
+      if (key === 'End' || keyCode === 35) return 'end';
+      if (key === ' ' || key === 'Spacebar' || key === 'Space' || code === 'Space' || keyCode === 32) return 'pageDown';
       return null;
     }
 
@@ -969,7 +970,7 @@
       }
     });
 
-    window.addEventListener('keydown', (event) => {
+    function routeRiskDialogCaptureKeys(event) {
       if (riskDialogBackdrop.hidden) {
         return;
       }
@@ -981,7 +982,10 @@
       }
 
       handleRiskDialogScrollKeys(event);
-    }, true);
+    }
+
+    window.addEventListener('keydown', routeRiskDialogCaptureKeys, true);
+    document.addEventListener('keydown', routeRiskDialogCaptureKeys, true);
 
     messageInput.addEventListener('beforeinput', (event) => {
       if (event.inputType.startsWith('insert') || event.inputType.startsWith('delete')) {
