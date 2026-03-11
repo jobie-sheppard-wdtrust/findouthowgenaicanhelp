@@ -304,32 +304,31 @@
       stroke-linejoin: round;
     }
 
-    #riskDialogBackdrop[hidden] { display: none; }
-
-    #riskDialogBackdrop {
-      position: fixed;
-      inset: 0;
-      z-index: 1200;
-      display: grid;
-      place-items: center;
-      padding: 1rem;
-      overflow: hidden;
-      background: rgba(15, 23, 42, 0.3);
-      pointer-events: auto;
-    }
-
     #riskDialog {
-      position: relative;
+      position: fixed;
       display: flex;
       flex-direction: column;
       width: min(22rem, 90vw);
-      max-height: calc(100dvh - 2rem);
+      max-height: min(20rem, calc(100dvh - 1rem));
       background: var(--card);
       border: 3px solid rgba(249, 115, 22, 0.75);
       border-radius: 1rem;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
       overflow: hidden;
       pointer-events: auto;
+      z-index: 1200;
+    }
+
+    #riskDialog[hidden] {
+      display: none;
+    }
+
+    #riskDialog.risk-dialog-below {
+      transform-origin: top center;
+    }
+
+    #riskDialog.risk-dialog-above {
+      transform-origin: bottom center;
     }
 
     .risk-dialog-header {
@@ -458,18 +457,16 @@
     </section>
   </main>
 
-  <div id="riskDialogBackdrop" hidden>
-    <section id="riskDialog" role="dialog" aria-modal="true" aria-labelledby="riskDialogHeading" aria-describedby="riskDialogBody" tabindex="-1">
-      <header class="risk-dialog-header">
-        <h2 id="riskDialogHeading">Spotting hidden risks</h2>
-        <button class="risk-close" id="riskDialogClose" type="button" aria-label="Close risk details">−</button>
-      </header>
-      <div class="risk-dialog-body">
-        <h3 id="riskDialogTitle"></h3>
-        <p id="riskDialogBody"></p>
-      </div>
-    </section>
-  </div>
+  <section id="riskDialog" role="region" aria-labelledby="riskDialogHeading" aria-describedby="riskDialogBody" hidden>
+    <header class="risk-dialog-header">
+      <h2 id="riskDialogHeading" tabindex="-1">Spotting hidden risks</h2>
+      <button class="risk-close" id="riskDialogClose" type="button" aria-label="Minimise risk details">−</button>
+    </header>
+    <div class="risk-dialog-body">
+      <h3 id="riskDialogTitle"></h3>
+      <p id="riskDialogBody"></p>
+    </div>
+  </section>
 
   <div id="statusAnnouncer" class="sr-only-live" aria-live="assertive" aria-atomic="true"></div>
 
@@ -516,10 +513,8 @@
     const prompts = document.getElementById('prompts');
     const presetPrompt = document.getElementById('presetPrompt');
     const statusAnnouncer = document.getElementById('statusAnnouncer');
-    const appRoot = document.getElementById('appRoot');
-
-    const riskDialogBackdrop = document.getElementById('riskDialogBackdrop');
     const riskDialog = document.getElementById('riskDialog');
+    const riskDialogHeading = document.getElementById('riskDialogHeading');
     const riskDialogClose = document.getElementById('riskDialogClose');
     const riskDialogTitle = document.getElementById('riskDialogTitle');
     const riskDialogBody = document.getElementById('riskDialogBody');
@@ -530,7 +525,6 @@
     let presetsLocked = false;
     let activeHighlightKeys = [];
     let lastFocusedHighlight = null;
-    let previousBodyOverflow = '';
     let promptSentStatusAnnounced = false;
     let responseStartedStatusAnnounced = false;
 
@@ -650,27 +644,34 @@
       bubble.innerHTML = html;
     }
 
-    function trapDialogFocus(event) {
-      if (event.key !== 'Tab') {
+    function positionRiskDialog(triggerEl) {
+      if (!triggerEl || !triggerEl.isConnected) {
         return;
       }
 
-      const focusable = Array.from(riskDialog.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'));
-      if (!focusable.length) {
-        event.preventDefault();
-        riskDialog.focus();
-        return;
-      }
+      const viewportPadding = 8;
+      const offset = 10;
+      const triggerRect = triggerEl.getBoundingClientRect();
+      const dialogRect = riskDialog.getBoundingClientRect();
+      const dialogHeight = dialogRect.height;
+      const dialogWidth = dialogRect.width;
 
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
+      const belowSpace = window.innerHeight - triggerRect.bottom - offset - viewportPadding;
+      const aboveSpace = triggerRect.top - offset - viewportPadding;
+      const placeBelow = belowSpace >= dialogHeight || belowSpace >= aboveSpace;
+
+      let top = placeBelow
+        ? triggerRect.bottom + offset
+        : triggerRect.top - dialogHeight - offset;
+      let left = triggerRect.left + (triggerRect.width / 2) - (dialogWidth / 2);
+
+      top = Math.max(viewportPadding, Math.min(window.innerHeight - dialogHeight - viewportPadding, top));
+      left = Math.max(viewportPadding, Math.min(window.innerWidth - dialogWidth - viewportPadding, left));
+
+      riskDialog.style.top = `${top}px`;
+      riskDialog.style.left = `${left}px`;
+      riskDialog.classList.toggle('risk-dialog-below', placeBelow);
+      riskDialog.classList.toggle('risk-dialog-above', !placeBelow);
     }
 
     function openRiskDialog(key, triggerEl) {
@@ -682,15 +683,11 @@
       lastFocusedHighlight = triggerEl;
       riskDialogTitle.textContent = risk.title;
       riskDialogBody.textContent = risk.body;
-      riskDialogBackdrop.hidden = false;
-
-      appRoot.setAttribute('aria-hidden', 'true');
-      appRoot.inert = true;
-      previousBodyOverflow = document.body.style.overflow;
-      document.body.style.overflow = 'hidden';
+      riskDialog.hidden = false;
       setRiskTriggerExpandedState(triggerEl);
+      positionRiskDialog(triggerEl);
 
-      riskDialogClose.focus();
+      riskDialogHeading.focus();
       queueAnnouncement(`Risk details opened. ${risk.title}.`, 180);
     }
 
@@ -718,16 +715,27 @@
       const returnTarget = getRiskDialogReturnTarget();
       announceRiskDialogClosed();
 
-      appRoot.removeAttribute('aria-hidden');
-      appRoot.inert = false;
-      document.body.style.overflow = previousBodyOverflow;
       setRiskTriggerExpandedState(null);
+      riskDialog.hidden = true;
+      riskDialog.style.top = '';
+      riskDialog.style.left = '';
+      riskDialog.classList.remove('risk-dialog-above', 'risk-dialog-below');
 
       if (returnTarget) {
         returnTarget.focus();
       }
+    }
 
-      riskDialogBackdrop.hidden = true;
+    function onViewPortOrTranscriptScroll() {
+      if (riskDialog.hidden) {
+        return;
+      }
+      const returnTarget = getRiskDialogReturnTarget();
+      if (!returnTarget) {
+        closeRiskDialog();
+        return;
+      }
+      positionRiskDialog(returnTarget);
     }
 
     function focusFirstRiskHighlight() {
@@ -903,12 +911,22 @@
     riskDialogClose.addEventListener('click', closeRiskDialog);
 
     riskDialog.addEventListener('keydown', (event) => {
-      trapDialogFocus(event);
       if (event.key === 'Escape') {
         event.preventDefault();
         closeRiskDialog();
       }
     });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && !riskDialog.hidden) {
+        event.preventDefault();
+        closeRiskDialog();
+      }
+    });
+
+    messagesScroll.addEventListener('scroll', onViewPortOrTranscriptScroll, { passive: true });
+    window.addEventListener('scroll', onViewPortOrTranscriptScroll, { passive: true });
+    window.addEventListener('resize', onViewPortOrTranscriptScroll);
 
     messageInput.addEventListener('beforeinput', (event) => {
       if (event.inputType.startsWith('insert') || event.inputType.startsWith('delete')) {
