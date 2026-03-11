@@ -305,16 +305,16 @@
     }
 
     #riskDialog {
-      position: fixed;
+      position: absolute;
       display: flex;
       flex-direction: column;
       width: min(22rem, 90vw);
-      max-height: min(20rem, calc(100dvh - 1rem));
+      max-height: none;
       background: var(--card);
       border: 3px solid rgba(249, 115, 22, 0.75);
       border-radius: 1rem;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-      overflow: hidden;
+      overflow: visible;
       pointer-events: auto;
       z-index: 1200;
     }
@@ -355,10 +355,9 @@
     }
 
     .risk-dialog-body {
-      flex: 1 1 auto;
-      min-height: 0;
+      flex: 0 0 auto;
       padding: 0.9rem;
-      overflow-y: auto;
+      overflow: visible;
     }
     .risk-dialog-body h3 { font-size: 0.9375rem; font-weight: 600; margin-bottom: 0.5rem; }
     .risk-dialog-body p { font-size: 0.875rem; }
@@ -668,8 +667,8 @@
       top = Math.max(viewportPadding, Math.min(window.innerHeight - dialogHeight - viewportPadding, top));
       left = Math.max(viewportPadding, Math.min(window.innerWidth - dialogWidth - viewportPadding, left));
 
-      riskDialog.style.top = `${top}px`;
-      riskDialog.style.left = `${left}px`;
+      riskDialog.style.top = `${top + window.scrollY}px`;
+      riskDialog.style.left = `${left + window.scrollX}px`;
       riskDialog.classList.toggle('risk-dialog-below', placeBelow);
       riskDialog.classList.toggle('risk-dialog-above', !placeBelow);
     }
