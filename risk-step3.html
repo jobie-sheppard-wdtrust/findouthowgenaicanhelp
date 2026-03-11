@@ -400,7 +400,7 @@
 </head>
 <body>
   <main class="page" id="appRoot">
-    <section class="chat-window" aria-labelledby="page-title" aria-describedby="page-helper">
+    <section class="chat-window" aria-labelledby="page-title">
       <header class="window-titlebar">
         <h1 id="page-title">GenAI Chatbot</h1>
         <p id="page-helper">See the risks when GenAI helps with this task</p>
@@ -453,7 +453,7 @@
     </section>
   </div>
 
-  <div id="statusAnnouncer" class="sr-only-live" aria-live="polite" aria-atomic="true"></div>
+  <div id="statusAnnouncer" class="sr-only-live" role="alert" aria-live="assertive" aria-atomic="true"></div>
 
   <script>
     const presetText = `Can you help me draft a short clinic letter summarising a recent GP review?\nIt is for the patient record and onward sharing with community services, so it should be clear and neutral in tone. Here are my rough notes from the review:\nSamuel Dannam, 83\n– Elderly patient with CVD and CKD\n– Walked to surgery (5 mins)\n– BP normal today\n– Routine long-term condition review\n– No changes made\n– Follow-up planned`;
@@ -705,13 +705,21 @@
       document.body.style.overflow = '';
       setRiskTriggerExpandedState(null);
 
-      if (lastFocusedHighlight && lastFocusedHighlight.isConnected) {
-        lastFocusedHighlight.focus();
-      } else {
-        focusFirstRiskHighlight();
-      }
+      announcementQueue = [];
+      announcementActive = false;
+      statusAnnouncer.textContent = '';
 
-      queueAnnouncement('Risk details closed.', 140);
+      window.setTimeout(() => {
+        statusAnnouncer.textContent = 'Risk details closed';
+      }, 40);
+
+      window.setTimeout(() => {
+        if (lastFocusedHighlight && lastFocusedHighlight.isConnected) {
+          lastFocusedHighlight.focus();
+        } else {
+          focusFirstRiskHighlight();
+        }
+      }, reducedMotion ? 0 : 220);
     }
 
     function focusFirstRiskHighlight() {
