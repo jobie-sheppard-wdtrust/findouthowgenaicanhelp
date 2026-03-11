@@ -53,12 +53,52 @@
       background: rgba(255, 255, 255, 0.5);
       backdrop-filter: blur(8px);
       display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .title-wrap {
+      display: flex;
       flex-direction: column;
       gap: 0.125rem;
+      min-width: 0;
     }
 
     .window-titlebar h1 { font-size: 1.125rem; font-weight: 600; }
     .window-titlebar p { font-size: 0.875rem; color: var(--muted-foreground); }
+
+    .header-actions {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .header-btn {
+      border: 1px solid var(--primary);
+      background: var(--primary);
+      color: var(--primary-foreground);
+      border-radius: 0.75rem;
+      padding: 0.5rem 0.8rem;
+      font-size: 0.85rem;
+      white-space: nowrap;
+      cursor: pointer;
+      line-height: 1.2;
+    }
+
+    .header-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    #skipTypingButton:disabled {
+      background: hsl(220 10% 72%);
+      border-color: hsl(220 10% 72%);
+      color: hsl(220 20% 100%);
+      opacity: 1;
+    }
 
     .window-body {
       flex: 1;
@@ -423,8 +463,14 @@
   <main class="page" id="appRoot">
     <section class="chat-window" aria-labelledby="page-title">
       <header class="window-titlebar">
-        <h1 id="page-title">GenAI Chatbot</h1>
-        <p id="page-helper">See the risks when GenAI helps with this task</p>
+        <div class="title-wrap">
+          <h1 id="page-title">GenAI Chatbot</h1>
+          <p id="page-helper">See the risks when GenAI helps with this task</p>
+        </div>
+        <div class="header-actions">
+          <button class="header-btn" id="skipTypingButton" type="button" disabled aria-disabled="true">Skip typing</button>
+          <button class="header-btn" id="resetButton" type="button">↺ Reset</button>
+        </div>
       </header>
 
       <section class="window-body">
@@ -517,7 +563,9 @@
     const messageInput = document.getElementById('messageInput');
     const sendButton = document.getElementById('sendButton');
     const prompts = document.getElementById('prompts');
-    const presetPrompt = document.getElementById('presetPrompt');
+    let presetPrompt = document.getElementById('presetPrompt');
+    const skipTypingButton = document.getElementById('skipTypingButton');
+    const resetButton = document.getElementById('resetButton');
     const statusAnnouncer = document.getElementById('statusAnnouncer');
     const appRoot = document.getElementById('appRoot');
 
@@ -536,7 +584,13 @@
     let lastFocusedHighlight = null;
     let promptSentStatusAnnounced = false;
     let responseStartedStatusAnnounced = false;
-    let previousBodyOverflow = '';
+    let flowStage = 'idle';
+    let pendingTimers = new Set();
+    let typingIntervalId = null;
+    let typingState = null;
+    let skipRequested = false;
+    const initialMessagesMarkup = messagesList.innerHTML;
+    const initialPromptsMarkup = prompts.innerHTML;
 
     function queueAnnouncement(message, delay = 0) {
       announcementQueue.push({ message, delay });
@@ -561,6 +615,92 @@
         }, 40);
       }, effectiveDelay);
     }
+
+
+    function setSkipTypingButtonEnabled(enabled) {
+      skipTypingButton.disabled = !enabled;
+      skipTypingButton.setAttribute('aria-disabled', String(!enabled));
+    }
+
+    function scheduleTask(callback, delay) {
+      const timerId = window.setTimeout(() => {
+        pendingTimers.delete(timerId);
+        callback();
+      }, delay);
+      pendingTimers.add(timerId);
+      return timerId;
+    }
+
+    function clearPendingTasks() {
+      pendingTimers.forEach((timerId) => window.clearTimeout(timerId));
+      pendingTimers.clear();
+    }
+
+    function clearTypingInterval() {
+      if (typingIntervalId !== null) {
+        window.clearInterval(typingIntervalId);
+        typingIntervalId = null;
+      }
+    }
+
+    function markFlowComplete() {
+      flowStage = 'complete';
+      setSkipTypingButtonEnabled(false);
+      typingState = null;
+      clearTypingInterval();
+    }
+
+    function flushTypingNow() {
+      if (!typingState) {
+        return;
+      }
+
+      clearTypingInterval();
+      typingState.textNode.textContent = typingState.fullMessage;
+      if (!typingState.started && typeof typingState.onStart === 'function') {
+        typingState.onStart(typingState.bubble);
+      }
+      if (typeof typingState.onDone === 'function') {
+        typingState.onDone(typingState.bubble);
+      }
+      typingState = null;
+      markFlowComplete();
+    }
+
+    function skipPromptFlowAnimations() {
+      if (flowStage === 'idle' || flowStage === 'complete') {
+        return;
+      }
+
+      skipRequested = true;
+      clearPendingTasks();
+      messageInput.classList.remove('autofill-fade');
+      sendButton.classList.remove('bulge');
+
+      if (flowStage === 'prefill' || flowStage === 'wait-send') {
+        sendPresetMessage(0, true);
+        return;
+      }
+
+      if (flowStage === 'thinking') {
+        removeTypingIndicator();
+        flowStage = 'typing';
+        typeAssistantResponse(botResponse, () => {
+          if (!responseStartedStatusAnnounced) {
+            queueAnnouncement('Assistant response received with hidden risks highlighted', 0);
+            responseStartedStatusAnnounced = true;
+          }
+        }, (bubble) => {
+          runHighlightSequence(bubble);
+        }, true);
+        return;
+      }
+
+      if (flowStage === 'typing') {
+        flushTypingNow();
+      }
+    }
+
 
     function scrollTranscriptToBottom() {
       return;
@@ -832,14 +972,14 @@
       return Math.max(1, Math.round((words / 48) * 1000));
     }
 
-    function typeAssistantResponse(fullMessage, onStart, onDone) {
+    function typeAssistantResponse(fullMessage, onStart, onDone, instant = false) {
       const assistantMessage = appendMessage({ role: 'assistant', text: '' });
       const bubble = assistantMessage.bubble;
       const textNode = document.createTextNode('');
       bubble.textContent = '';
       bubble.appendChild(textNode);
 
-      if (reducedMotion) {
+      if (instant || reducedMotion || skipRequested) {
         textNode.textContent = fullMessage;
         if (typeof onStart === 'function') {
           onStart(bubble);
@@ -847,6 +987,7 @@
         if (typeof onDone === 'function') {
           onDone(bubble);
         }
+        markFlowComplete();
         return;
       }
 
@@ -855,32 +996,45 @@
       let index = 0;
       let started = false;
 
-      const typingTimer = window.setInterval(() => {
+      typingState = { bubble, textNode, fullMessage, onStart, onDone, started: false };
+
+      typingIntervalId = window.setInterval(() => {
         index += 1;
         textNode.textContent = fullMessage.slice(0, index);
 
         if (!started) {
           started = true;
+          typingState.started = true;
           if (typeof onStart === 'function') {
             onStart(bubble);
           }
         }
 
         if (index >= fullMessage.length) {
-          window.clearInterval(typingTimer);
+          clearTypingInterval();
+          typingState = null;
           if (typeof onDone === 'function') {
             onDone(bubble);
           }
+          markFlowComplete();
         }
       }, intervalMs);
     }
 
     function runPresetFlow() {
+      if (!presetPrompt || presetsLocked) {
+        return;
+      }
+
       presetPrompt.disabled = true;
       presetPrompt.setAttribute('aria-disabled', 'true');
       presetsLocked = true;
+      skipRequested = false;
+      setSkipTypingButtonEnabled(true);
+      flowStage = 'prefill';
 
       presetPrompt.remove();
+      presetPrompt = null;
 
       if (!promptSentStatusAnnounced) {
         queueAnnouncement('Prompt sent to GenAI', 0);
@@ -897,21 +1051,22 @@
       const bulgeMs = reducedMotion ? 0 : 300;
       const typingMs = reducedMotion ? 0 : 2000;
 
-      window.setTimeout(() => {
+      scheduleTask(() => {
         messageInput.classList.remove('autofill-fade');
       }, fadeMs);
 
-      window.setTimeout(() => {
+      flowStage = 'wait-send';
+      scheduleTask(() => {
         sendButton.classList.add('bulge');
       }, preBulgeMs);
 
-      window.setTimeout(() => {
+      scheduleTask(() => {
         sendButton.classList.remove('bulge');
-        sendPresetMessage(typingMs);
+        sendPresetMessage(typingMs, false);
       }, preBulgeMs + bulgeMs);
     }
 
-    function sendPresetMessage(typingMs) {
+    function sendPresetMessage(typingMs, instantTyping) {
       responseStartedStatusAnnounced = false;
       appendMessage({ role: 'user', text: presetText.trim() });
 
@@ -921,9 +1076,11 @@
       prompts.hidden = true;
 
       addTypingIndicator();
+      flowStage = 'thinking';
 
-      window.setTimeout(() => {
+      scheduleTask(() => {
         removeTypingIndicator();
+        flowStage = 'typing';
         typeAssistantResponse(botResponse, () => {
           if (!responseStartedStatusAnnounced) {
             queueAnnouncement('Assistant response received with hidden risks highlighted', 0);
@@ -931,8 +1088,56 @@
           }
         }, (bubble) => {
           runHighlightSequence(bubble);
-        });
+        }, instantTyping);
       }, typingMs);
+    }
+
+    function bindPresetPromptHandler() {
+      if (!presetPrompt) {
+        return;
+      }
+      presetPrompt.addEventListener('click', () => {
+        runPresetFlow();
+      });
+    }
+
+    function resetExperience() {
+      clearPendingTasks();
+      clearTypingInterval();
+      typingState = null;
+      skipRequested = false;
+      presetsLocked = false;
+      flowStage = 'idle';
+      promptSentStatusAnnounced = false;
+      responseStartedStatusAnnounced = false;
+      activeHighlightKeys = [];
+      lastFocusedHighlight = null;
+
+      announcementQueue = [];
+      announcementActive = false;
+      statusAnnouncer.textContent = '';
+
+      messagesList.innerHTML = initialMessagesMarkup;
+      prompts.innerHTML = initialPromptsMarkup;
+      prompts.hidden = false;
+      presetPrompt = document.getElementById('presetPrompt');
+      bindPresetPromptHandler();
+
+      messageInput.classList.remove('autofill-fade');
+      messageInput.value = '';
+      messageInput.style.height = 'auto';
+      sendButton.disabled = true;
+      sendButton.classList.remove('bulge');
+
+      riskDialogBackdrop.hidden = true;
+      appRoot.removeAttribute('aria-hidden');
+      appRoot.inert = false;
+      document.body.style.overflow = '';
+
+      setSkipTypingButtonEnabled(false);
+      if (presetPrompt) {
+        presetPrompt.focus();
+      }
     }
 
     function onRiskHighlightActivation(event) {
@@ -945,11 +1150,14 @@
       openRiskDialog(key, highlight);
     }
 
-    presetPrompt.addEventListener('click', () => {
-      if (presetsLocked) {
-        return;
-      }
-      runPresetFlow();
+    bindPresetPromptHandler();
+
+    skipTypingButton.addEventListener('click', () => {
+      skipPromptFlowAnimations();
+    });
+
+    resetButton.addEventListener('click', () => {
+      resetExperience();
     });
 
     messagesList.addEventListener('click', onRiskHighlightActivation);
