@@ -311,12 +311,15 @@
     #riskDialog {
       position: fixed;
       width: min(22rem, 90vw);
+      max-height: calc(100dvh - 2rem);
       background: var(--card);
       border: 3px solid rgba(249, 115, 22, 0.75);
       border-radius: 1rem;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-      overflow: hidden;
+      overflow-y: auto;
       pointer-events: auto;
+      display: flex;
+      flex-direction: column;
     }
 
     .risk-dialog-header {
@@ -342,7 +345,10 @@
       cursor: pointer;
     }
 
-    .risk-dialog-body { padding: 0.9rem; }
+    .risk-dialog-body {
+      padding: 0.9rem;
+      overflow-y: auto;
+    }
     .risk-dialog-body h3 { font-size: 0.9375rem; font-weight: 600; margin-bottom: 0.5rem; }
     .risk-dialog-body p { font-size: 0.875rem; }
 
