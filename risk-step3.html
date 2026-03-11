@@ -453,7 +453,7 @@
     </section>
   </div>
 
-  <div id="statusAnnouncer" class="sr-only-live" role="alert" aria-live="assertive" aria-atomic="true"></div>
+  <div id="statusAnnouncer" class="sr-only-live" aria-live="assertive" aria-atomic="true"></div>
 
   <script>
     const presetText = `Can you help me draft a short clinic letter summarising a recent GP review?\nIt is for the patient record and onward sharing with community services, so it should be clear and neutral in tone. Here are my rough notes from the review:\nSamuel Dannam, 83\n– Elderly patient with CVD and CKD\n– Walked to surgery (5 mins)\n– BP normal today\n– Routine long-term condition review\n– No changes made\n– Follow-up planned`;
@@ -698,28 +698,40 @@
       queueAnnouncement(`Risk details opened. ${risk.title}.`, 180);
     }
 
+    function getRiskDialogReturnTarget() {
+      if (lastFocusedHighlight && lastFocusedHighlight.isConnected) {
+        return lastFocusedHighlight;
+      }
+      return messagesList.querySelector('.risk-highlight');
+    }
+
+    function announceRiskDialogClosed() {
+      announcementQueue = [];
+      announcementActive = false;
+      statusAnnouncer.textContent = '';
+
+      window.requestAnimationFrame(() => {
+        statusAnnouncer.textContent = 'Risk details closed';
+        window.setTimeout(() => {
+          statusAnnouncer.textContent = '';
+        }, 900);
+      });
+    }
+
     function closeRiskDialog() {
-      riskDialogBackdrop.hidden = true;
+      const returnTarget = getRiskDialogReturnTarget();
+      announceRiskDialogClosed();
+
       appRoot.removeAttribute('aria-hidden');
       appRoot.inert = false;
       document.body.style.overflow = '';
       setRiskTriggerExpandedState(null);
 
-      announcementQueue = [];
-      announcementActive = false;
-      statusAnnouncer.textContent = '';
+      if (returnTarget) {
+        returnTarget.focus();
+      }
 
-      window.setTimeout(() => {
-        statusAnnouncer.textContent = 'Risk details closed';
-      }, 40);
-
-      window.setTimeout(() => {
-        if (lastFocusedHighlight && lastFocusedHighlight.isConnected) {
-          lastFocusedHighlight.focus();
-        } else {
-          focusFirstRiskHighlight();
-        }
-      }, reducedMotion ? 0 : 220);
+      riskDialogBackdrop.hidden = true;
     }
 
     function focusFirstRiskHighlight() {
