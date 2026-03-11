@@ -24,16 +24,13 @@ assertPattern(hbStep5Html, /document\.addEventListener\('focusin',[\s\S]*?keepFo
 assertPattern(hbStep5Html, /id="feedback-modal"[\s\S]*?role="dialog"[\s\S]*?aria-modal="true"[\s\S]*?aria-labelledby="feedback-modal-title"[\s\S]*?aria-describedby="feedback-modal-message feedback-modal-helper"/, 'Dialog semantics must remain intact.');
 assertPattern(hbStep5Html, /id="feedback-modal-continue"/, 'Regression case requires the last action button to exist for keyboard focus traversal.');
 
-assertPattern(riskStep3Html, /#riskDialog\s*\{[\s\S]*?position:\s*absolute;[\s\S]*?max-height:\s*none;[\s\S]*?overflow:\s*visible;/, 'Risk detail popup must be document-anchored and should not create a separate dialog scroll viewport.');
+assertPattern(riskStep3Html, /#riskDialog\s*\{[\s\S]*?position:\s*relative;[\s\S]*?width:\s*min\(22rem,\s*calc\(100%\s*-\s*3\.75rem\)\);[\s\S]*?max-height:\s*none;[\s\S]*?overflow:\s*visible;/, 'Risk detail popup must remain in transcript flow so it scrolls with page content and does not create a separate dialog viewport.');
 assertPattern(riskStep3Html, /\.risk-dialog-body\s*\{[\s\S]*?flex:\s*0\s+0\s+auto;[\s\S]*?overflow:\s*visible;/, 'Risk detail content must rely on page/transcript scrolling rather than an internal popup scrollbar.');
 assertPattern(riskStep3Html, /<section id="riskDialog" role="region" aria-labelledby="riskDialogHeading" aria-describedby="riskDialogBody" hidden>/, 'Risk details should now use an in-page region semantics model.');
 assertPattern(riskStep3Html, /function\s+positionRiskDialog\(triggerEl\)\s*\{[\s\S]*?const placeBelow = belowSpace >= dialogHeight \|\| belowSpace >= aboveSpace;[\s\S]*?riskDialog\.classList\.toggle\('risk-dialog-below', placeBelow\);[\s\S]*?riskDialog\.classList\.toggle\('risk-dialog-above', !placeBelow\);/, 'Popup placement should prefer below when possible and otherwise place above.');
-assertPattern(riskStep3Html, /riskDialog\.style\.top\s*=\s*`\$\{top \+ window\.scrollY\}px`;/, 'Popup vertical position should include page scroll offset so popup moves with viewport/document scrolling.');
-assertPattern(riskStep3Html, /riskDialog\.style\.left\s*=\s*`\$\{left \+ window\.scrollX\}px`;/, 'Popup horizontal position should include page scroll offset so placement stays visually anchored.');
+assertPattern(riskStep3Html, /anchorRow\.insertAdjacentElement\('afterend', riskDialog\);[\s\S]*?const placeBelow = belowSpace >= dialogHeight \|\| belowSpace >= aboveSpace;[\s\S]*?if \(placeBelow\) \{[\s\S]*?insertAdjacentElement\('afterend', riskDialog\);[\s\S]*?\} else \{[\s\S]*?insertAdjacentElement\('beforebegin', riskDialog\);/, 'Popup placement must insert the popup before or after the anchor row in normal document flow based on available room.');
 assertPattern(riskStep3Html, /function openRiskDialog\(key, triggerEl\)[\s\S]*?riskDialog\.hidden\s*=\s*false;[\s\S]*?positionRiskDialog\(triggerEl\);[\s\S]*?riskDialogHeading\.focus\(\);/, 'Opening risk details should show the popup, position it, and focus the heading.');
 assertPattern(riskStep3Html, /setRiskTriggerExpandedState\(activeTrigger = null\)/, 'Trigger expanded-state helper must remain present.');
-assertPattern(riskStep3Html, /messagesScroll\.addEventListener\('scroll', onViewPortOrTranscriptScroll, \{ passive: true \}\);/, 'Popup should reposition during transcript scrolling.');
-assertPattern(riskStep3Html, /window\.addEventListener\('resize', onViewPortOrTranscriptScroll\);/, 'Popup should reposition during viewport resizing.');
 assertPattern(riskStep3Html, /document\.addEventListener\('keydown', \(event\) => \{[\s\S]*?event\.key === 'Escape' && !riskDialog\.hidden[\s\S]*?closeRiskDialog\(\);/, 'Escape key should close risk details while open.');
 assertNoPattern(riskStep3Html, /aria-modal="true"/, 'Risk details must no longer expose modal semantics in Model B.');
 assertNoPattern(riskStep3Html, /document\.body\.style\.overflow\s*=\s*'hidden'/, 'Model B must not lock background scroll.');
@@ -42,5 +39,6 @@ assertNoPattern(riskStep3Html, /riskDialogBody\.focus\(\)/, 'Modal open logic mu
 assertNoPattern(riskStep3Html, /riskDialogScrollRegion/, 'Legacy risk dialog scroll-region element references must be removed.');
 assertNoPattern(riskStep3Html, /class="risk-dialog-body"[^>]*tabindex="0"/, 'Risk dialog scroll container must not be inserted into tab order with tabindex=0.');
 assertNoPattern(riskStep3Html, /event\.key\s*===\s*'(ArrowUp|ArrowDown|PageUp|PageDown|Home|End|\s)'/, 'Risk dialog keyboard handler must not remap browser-native scroll keys.');
+assertNoPattern(riskStep3Html, /riskDialog\.style\.top\s*=|riskDialog\.style\.left\s*=/, 'In-flow popup behavior should not depend on absolute top/left positioning styles.');
 
 console.log('Modal high-zoom regression checks passed.');

@@ -305,10 +305,10 @@
     }
 
     #riskDialog {
-      position: absolute;
+      position: relative;
       display: flex;
       flex-direction: column;
-      width: min(22rem, 90vw);
+      width: min(22rem, calc(100% - 3.75rem));
       max-height: none;
       background: var(--card);
       border: 3px solid rgba(249, 115, 22, 0.75);
@@ -316,7 +316,8 @@
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
       overflow: visible;
       pointer-events: auto;
-      z-index: 1200;
+      margin-left: 3.25rem;
+      margin-right: 0.5rem;
     }
 
     #riskDialog[hidden] {
@@ -324,10 +325,14 @@
     }
 
     #riskDialog.risk-dialog-below {
+      margin-top: -0.25rem;
+      margin-bottom: 0.75rem;
       transform-origin: top center;
     }
 
     #riskDialog.risk-dialog-above {
+      margin-top: 0;
+      margin-bottom: 0.5rem;
       transform-origin: bottom center;
     }
 
@@ -648,27 +653,29 @@
         return;
       }
 
+      const anchorRow = triggerEl.closest('.message-row');
+      if (!anchorRow || !anchorRow.parentNode) {
+        return;
+      }
+
+      anchorRow.insertAdjacentElement('afterend', riskDialog);
+
       const viewportPadding = 8;
       const offset = 10;
       const triggerRect = triggerEl.getBoundingClientRect();
       const dialogRect = riskDialog.getBoundingClientRect();
       const dialogHeight = dialogRect.height;
-      const dialogWidth = dialogRect.width;
 
       const belowSpace = window.innerHeight - triggerRect.bottom - offset - viewportPadding;
       const aboveSpace = triggerRect.top - offset - viewportPadding;
       const placeBelow = belowSpace >= dialogHeight || belowSpace >= aboveSpace;
 
-      let top = placeBelow
-        ? triggerRect.bottom + offset
-        : triggerRect.top - dialogHeight - offset;
-      let left = triggerRect.left + (triggerRect.width / 2) - (dialogWidth / 2);
+      if (placeBelow) {
+        anchorRow.insertAdjacentElement('afterend', riskDialog);
+      } else {
+        anchorRow.insertAdjacentElement('beforebegin', riskDialog);
+      }
 
-      top = Math.max(viewportPadding, Math.min(window.innerHeight - dialogHeight - viewportPadding, top));
-      left = Math.max(viewportPadding, Math.min(window.innerWidth - dialogWidth - viewportPadding, left));
-
-      riskDialog.style.top = `${top + window.scrollY}px`;
-      riskDialog.style.left = `${left + window.scrollX}px`;
       riskDialog.classList.toggle('risk-dialog-below', placeBelow);
       riskDialog.classList.toggle('risk-dialog-above', !placeBelow);
     }
@@ -716,25 +723,11 @@
 
       setRiskTriggerExpandedState(null);
       riskDialog.hidden = true;
-      riskDialog.style.top = '';
-      riskDialog.style.left = '';
       riskDialog.classList.remove('risk-dialog-above', 'risk-dialog-below');
 
       if (returnTarget) {
         returnTarget.focus();
       }
-    }
-
-    function onViewPortOrTranscriptScroll() {
-      if (riskDialog.hidden) {
-        return;
-      }
-      const returnTarget = getRiskDialogReturnTarget();
-      if (!returnTarget) {
-        closeRiskDialog();
-        return;
-      }
-      positionRiskDialog(returnTarget);
     }
 
     function focusFirstRiskHighlight() {
@@ -922,10 +915,6 @@
         closeRiskDialog();
       }
     });
-
-    messagesScroll.addEventListener('scroll', onViewPortOrTranscriptScroll, { passive: true });
-    window.addEventListener('scroll', onViewPortOrTranscriptScroll, { passive: true });
-    window.addEventListener('resize', onViewPortOrTranscriptScroll);
 
     messageInput.addEventListener('beforeinput', (event) => {
       if (event.inputType.startsWith('insert') || event.inputType.startsWith('delete')) {
