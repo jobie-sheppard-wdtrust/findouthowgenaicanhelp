@@ -332,7 +332,6 @@
           <button type="button" class="prompt-btn" data-index="2">What are arguments for and against my colleague's discharge plan?</button>
         </div>
 
-        <button id="jump-latest-btn" type="button" class="prompt-btn" hidden aria-controls="chat-main">Jump to latest assistant response</button>
 
         <div class="input-wrapper">
           <label for="message-input" class="visually-hidden">Message</label>
@@ -547,7 +546,8 @@
 
     function setRespondingState(nextState) {
       isResponding = nextState;
-      messageInput.disabled = nextState;
+      messageInput.readOnly = nextState;
+      messageInput.setAttribute('aria-disabled', String(nextState));
       if (nextState) {
         prompts.hidden = true;
       } else {
@@ -579,15 +579,12 @@
           hideTypingIndicator();
           const awayFromBottom = getDistanceFromBottom() >= 10;
           const responseText = findPresetResponse(outgoing);
-          const assistantMessageId = `assistant-message-${latestMessageNumber}`;
-          latestMessageNumber += 1;
-          createMessage('bot', responseText, { id: assistantMessageId });
-          setLatestAssistantMessage(assistantMessageId);
+          createMessage('bot', responseText);
 
           if (awayFromBottom) {
-            queueAnnouncement('Assistant response added. Use Jump to latest assistant response button or browse to the conversation transcript landmark.', 120);
+            queueAnnouncement('Assistant response added. Browse to the conversation transcript landmark to review it.', 120);
           } else {
-            queueAnnouncement('Assistant response added. Use Jump to latest assistant response button to review.', 120);
+            queueAnnouncement('Assistant response added.', 120);
           }
 
           setRespondingState(false);
@@ -628,7 +625,6 @@
       sendMessage(messageInput.value, { statusPrefix: getStatusPrefixFromText(messageInput.value) });
     });
 
-    jumpLatestButton.addEventListener('click', jumpToLatestAssistantMessage);
 
     prompts.addEventListener('click', (event) => {
       const promptButton = event.target.closest('.prompt-btn');
