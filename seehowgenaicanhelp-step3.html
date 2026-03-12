@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GenAI Chatbot</title>
+  <style>
+    * { box-sizing: border-box; }
+
+    :root {
+      --background: hsl(220 20% 97%);
+      --foreground: hsl(220 20% 10%);
+      --card: hsl(0 0% 100%);
+      --border: hsl(220 15% 90%);
+      --primary: hsl(221 83% 53%);
+      --primary-foreground: hsl(0 0% 100%);
+      --muted-foreground: hsl(220 10% 42%);
+      --chat-bot: hsl(220 15% 95%);
+      --chat-bot-foreground: hsl(220 20% 15%);
+      --focus-ring: hsl(221 83% 45%);
+    }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      line-height: 1.5;
+      color: var(--foreground);
+      background: var(--background);
+    }
+
+    .app {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      flex-shrink: 0;
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      background: rgb(255 255 255 / 0.55);
+      backdrop-filter: blur(8px);
+    }
+
+    .inner {
+      max-width: 48rem;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 1.125rem;
+      font-weight: 700;
+    }
+
+    .subtitle {
+      margin: 0.2rem 0 0;
+      font-size: 0.875rem;
+      color: var(--muted-foreground);
+    }
+
+    main {
+      flex: 1;
+      overflow: auto;
+      scroll-behavior: smooth;
+      padding: 1.5rem 1rem;
+    }
+
+    .transcript {
+      max-width: 48rem;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+      border-radius: 0.5rem;
+    }
+
+    .message {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+    }
+
+    .message.user {
+      justify-content: flex-end;
+    }
+
+    .message.user .bubble {
+      background: var(--primary);
+      color: var(--primary-foreground);
+      border-top-left-radius: 1rem;
+      border-top-right-radius: 0.375rem;
+    }
+
+    .typing-bubble {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 1rem;
+      background: var(--chat-bot);
+      border-radius: 1rem;
+      border-top-left-radius: 0.375rem;
+      color: var(--muted-foreground);
+    }
+
+    .thinking-dots {
+      display: inline-flex;
+      gap: 0.3rem;
+      align-items: center;
+    }
+
+    .thinking-dots span {
+      width: 0.45rem;
+      height: 0.45rem;
+      border-radius: 50%;
+      background: currentColor;
+      opacity: 0.45;
+      animation: thinkingPulse 1s ease-in-out infinite;
+    }
+
+    .thinking-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .thinking-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+    .avatar {
+      width: 2.25rem;
+      height: 2.25rem;
+      border-radius: 9999px;
+      background: #90278e;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .avatar svg {
+      width: 1.25rem;
+      height: 1.25rem;
+      stroke: white;
+      stroke-width: 2;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .bubble {
+      max-width: 32rem;
+      background: var(--chat-bot);
+      color: var(--chat-bot-foreground);
+      border-radius: 1rem;
+      border-top-left-radius: 0.375rem;
+      box-shadow: 0 2px 8px rgb(0 0 0 / 0.08);
+      padding: 0.75rem 1rem;
+      font-size: 0.9375rem;
+      overflow-wrap: anywhere;
+      white-space: pre-line;
+    }
+
+
+
+    .chat-footer {
+      flex-shrink: 0;
+      padding: 0.5rem 1rem 1.5rem;
+      background: linear-gradient(to top, var(--background), var(--background), transparent);
+    }
+
+    .message-item {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+
+    .footer-inner {
+      max-width: 48rem;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .prompts {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      justify-content: center;
+    }
+
+    .prompt-btn {
+      padding: 0.5rem 1rem;
+      border: 1px solid var(--border);
+      border-radius: 9999px;
+      font-size: 0.875rem;
+      color: var(--foreground);
+      background: var(--card);
+      cursor: pointer;
+      min-height: 2rem;
+    }
+
+    .prompt-btn[hidden] {
+      display: none;
+    }
+
+    .prompt-btn:hover {
+      background: var(--primary);
+      color: var(--primary-foreground);
+      border-color: var(--primary);
+    }
+
+    .instruction {
+      margin: 0;
+      font-size: 0.875rem;
+      color: var(--foreground);
+    }
+
+    .input-wrapper {
+      position: relative;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      box-shadow: 0 4px 12px rgb(0 0 0 / 0.08);
+      overflow: hidden;
+    }
+
+    .attachment-preview {
+      display: none;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 0.75rem;
+      border-bottom: 1px solid rgba(59, 130, 246, 0.25);
+      background: rgba(59, 130, 246, 0.08);
+      font-size: 0.8125rem;
+      color: var(--foreground);
+      font-weight: 600;
+      overflow-wrap: anywhere;
+    }
+
+    .attachment-preview.visible {
+      display: flex;
+    }
+
+    .attachment-preview svg,
+    .message-attachment svg {
+      width: 1rem;
+      height: 1rem;
+      stroke: currentColor;
+      stroke-width: 1.8;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      flex-shrink: 0;
+    }
+
+    .bubble-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      align-items: flex-start;
+    }
+
+    .message.user .bubble-group {
+      align-items: flex-end;
+    }
+
+    .message-attachment {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.4rem 0.75rem;
+      border-radius: 0.75rem;
+      border: 1px solid rgba(59, 130, 246, 0.4);
+      background: rgba(59, 130, 246, 0.12);
+      color: var(--foreground);
+      font-size: 0.8125rem;
+      font-weight: 600;
+      box-shadow: 0 6px 16px rgba(37, 99, 235, 0.16);
+      overflow-wrap: anywhere;
+    }
+
+    .text-fade-in {
+      animation: textFadeIn 0.4s ease-out;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 3.5rem;
+      max-height: 12rem;
+      resize: vertical;
+      padding: 1rem 3.5rem 1rem 1.25rem;
+      border: none;
+      background: transparent;
+      color: var(--foreground);
+      font: inherit;
+      font-size: 0.9375rem;
+    }
+
+    textarea::placeholder { color: var(--muted-foreground); }
+    textarea:focus { outline: none; }
+
+    .send-btn {
+      position: absolute;
+      right: 0.75rem;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 2.5rem;
+      height: 2.5rem;
+      border-radius: 0.75rem;
+      border: none;
+      background: var(--primary);
+      color: var(--primary-foreground);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .send-btn.bulge {
+      animation: bulge 0.3s ease-out;
+    }
+
+    .send-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .send-btn svg {
+      width: 1.25rem;
+      height: 1.25rem;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    :focus-visible {
+      outline: 3px solid var(--focus-ring);
+      outline-offset: 2px;
+    }
+
+    .visually-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    @keyframes thinkingPulse {
+      0%, 80%, 100% { transform: scale(0.85); opacity: 0.35; }
+      40% { transform: scale(1); opacity: 0.95; }
+    }
+
+    @keyframes textFadeIn {
+      0% { opacity: 0.2; }
+      100% { opacity: 1; }
+    }
+
+    @keyframes bulge {
+      0% { transform: translateY(-50%) scale(1); }
+      50% { transform: translateY(-50%) scale(1.12); }
+      100% { transform: translateY(-50%) scale(1); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation: none !important;
+        transition-duration: 0ms !important;
+      }
+
+      main {
+        scroll-behavior: auto;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="inner">
+        <h1>GenAI Chatbot</h1>
+        <p id="message-instruction" class="subtitle">Click one of the prompts to see examples of how GenAI can help</p>
+      </div>
+    </header>
+
+    <main id="chat-main" aria-labelledby="transcript-heading">
+      <h2 id="transcript-heading" class="visually-hidden">Conversation transcript</h2>
+      <ul id="transcript" class="transcript">
+        <li class="message-item"><article class="message">
+          <div class="avatar" aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+              <path d="M12 8V4H8"></path>
+              <rect width="16" height="12" x="4" y="8" rx="2"></rect>
+              <path d="M2 14h2"></path>
+              <path d="M20 14h2"></path>
+              <path d="M15 13v2"></path>
+              <path d="M9 13v2"></path>
+            </svg>
+          </div>
+          <div class="bubble"><span class="visually-hidden">Bot: </span><span>How can I help?</span></div>
+        </article></li>
+      </ul>
+    </main>
+
+    <div class="chat-footer">
+      <div class="footer-inner">
+        <div id="prompts" class="prompts" role="group" aria-label="Preset prompts">
+          <button type="button" class="prompt-btn" data-index="0">Research NICE Sepsis recommendations</button>
+          <button type="button" class="prompt-btn" data-index="1">Draft a response to a patient complaint</button>
+          <button type="button" class="prompt-btn" data-index="2">What are arguments for and against my colleague's discharge plan?</button>
+        </div>
+
+        <div class="input-wrapper">
+          <div id="attachment-preview" class="attachment-preview" aria-label="Attachment preview"></div>
+          <label for="message-input" class="visually-hidden">Message</label>
+          <textarea id="message-input" name="message" rows="1" placeholder="Click or activate one of the preset prompts..." aria-describedby="message-instruction"></textarea>
+          <button id="send-btn" class="send-btn" type="button" aria-label="Send" disabled>
+            <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+              <line x1="22" y1="2" x2="11" y2="13"></line>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="status-announcer" class="visually-hidden" role="status" aria-live="polite" aria-atomic="true" aria-relevant="additions text"></div>
+
+  <script>
+    const PRESET_PROMPTS = [
+      {
+        prompt: 'Research the current NICE recommendations for initial management of Sepsis in adults',
+        response: 'Sure thing! I found several NICE recommendations based on this webpage (https://www.example-source.com).\n\nSummary — NICE initial management of suspected sepsis (adults)\n\nRapid recognition, prompt assessment, and early escalation are emphasized to reduce time-to-treatment and deterioration.'
+      },
+      {
+        prompt: "Help me respond to this patient complaint. She had an outpatient appointment cancelled at short notice, and wasn't given a clear reason. The response should acknowledge mistakes, and apologise genuinely",
+        response: "Of course — I will draft an accountable response to the complaint you've attached. It will acknowledge the communication issues without being defensive.",
+        attachmentName: 'Patel email complaint.pdf'
+      },
+      {
+        prompt: "I'm reviewing follow-up arrangements for a stable long-term condition patient. We're considering switching routine follow-ups from face-to-face to phone or video. Can you outline some practical arguments for and against this? Keep your answer concise.",
+        response: "Sure — here are some points to consider. I've kept the focus practical."
+      }
+    ];
+
+    const NON_MATCH_RESPONSE = "Note — preset prompts only. Because I am just a realistic simulation of a GenAI, I can only answer the preset prompts you see on screen. If you were speaking to a full GenAI chatbot, it would answer your specific question here.";
+
+    const transcript = document.getElementById('transcript');
+    const chatMain = document.getElementById('chat-main');
+    const messageInput = document.getElementById('message-input');
+    const sendButton = document.getElementById('send-btn');
+    const prompts = document.getElementById('prompts');
+    const statusAnnouncer = document.getElementById('status-announcer');
+    const attachmentPreview = document.getElementById('attachment-preview');
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const fileIconSVG = '<svg viewBox="0 0 24 24" focusable="false" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>';
+    const promptButtons = Array.from(prompts.querySelectorAll('.prompt-btn'));
+
+    let isResponding = false;
+    let promptsLocked = false;
+    let autoScrollEnabled = true;
+    let announcementQueue = [];
+    let announcementActive = false;
+    let queuedAttachmentName = null;
+    let pendingAutoSend = null;
+
+    function queueAnnouncement(message, delay = 0, onAnnounced = null) {
+      announcementQueue.push({ message, delay, onAnnounced });
+      processAnnouncementQueue();
+    }
+
+    function processAnnouncementQueue() {
+      if (announcementActive || announcementQueue.length === 0) {
+        return;
+      }
+
+      announcementActive = true;
+      const next = announcementQueue.shift();
+      window.setTimeout(() => {
+        statusAnnouncer.textContent = '';
+        window.setTimeout(() => {
+          const announcement = document.createElement('span');
+          announcement.textContent = next.message;
+          statusAnnouncer.replaceChildren(announcement);
+
+          if (typeof next.onAnnounced === 'function') {
+            window.setTimeout(() => {
+              next.onAnnounced();
+            }, 120);
+          }
+
+          announcementActive = false;
+          processAnnouncementQueue();
+        }, 140);
+      }, next.delay);
+    }
+
+    function shouldReduceMotion() {
+      return prefersReducedMotion.matches;
+    }
+
+    function getDistanceFromBottom() {
+      return chatMain.scrollHeight - chatMain.scrollTop - chatMain.clientHeight;
+    }
+
+    function updateAutoScrollState() {
+      autoScrollEnabled = getDistanceFromBottom() < 120;
+    }
+
+    function scrollToBottom(force = false) {
+      if (!force && !autoScrollEnabled) {
+        return;
+      }
+
+      chatMain.scrollTo({
+        top: chatMain.scrollHeight,
+        behavior: shouldReduceMotion() ? 'auto' : 'smooth'
+      });
+    }
+
+    function createMessage(role, text, options = {}) {
+      const { id, attachmentName } = options;
+      const listItem = document.createElement('li');
+      listItem.className = 'message-item';
+      const article = document.createElement('article');
+      article.className = `message ${role}`.trim();
+      article.tabIndex = -1;
+      if (id) {
+        article.id = id;
+      }
+      const bubbleGroup = document.createElement('div');
+      bubbleGroup.className = 'bubble-group';
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+
+      const authorPrefix = document.createElement('span');
+      authorPrefix.className = 'visually-hidden';
+      authorPrefix.textContent = role === 'bot' ? 'Bot: ' : 'You: ';
+      const messageText = document.createElement('span');
+      messageText.textContent = text;
+      bubble.appendChild(authorPrefix);
+      bubble.appendChild(messageText);
+
+      if (attachmentName) {
+        const attachment = document.createElement('div');
+        attachment.className = 'message-attachment';
+        attachment.innerHTML = `${fileIconSVG}<span>Attachment: ${attachmentName}</span>`;
+        bubbleGroup.appendChild(attachment);
+      }
+
+      if (role === 'bot') {
+        const avatar = document.createElement('div');
+        avatar.className = 'avatar';
+        avatar.setAttribute('aria-hidden', 'true');
+        avatar.innerHTML = '<svg viewBox="0 0 24 24" focusable="false" aria-hidden="true"><path d="M12 8V4H8"></path><rect width="16" height="12" x="4" y="8" rx="2"></rect><path d="M2 14h2"></path><path d="M20 14h2"></path><path d="M15 13v2"></path><path d="M9 13v2"></path></svg>';
+        article.appendChild(avatar);
+      }
+
+      bubbleGroup.appendChild(bubble);
+      article.appendChild(bubbleGroup);
+      listItem.appendChild(article);
+      transcript.appendChild(listItem);
+      scrollToBottom();
+      return { article, messageText, listItem };
+    }
+
+    function showTypingIndicator() {
+      const listItem = document.createElement('li');
+      listItem.className = 'message-item';
+      listItem.id = 'typing-indicator';
+      const article = document.createElement('article');
+      article.className = 'message';
+      listItem.setAttribute('aria-label', 'Assistant is typing');
+
+      const avatar = document.createElement('div');
+      avatar.className = 'avatar';
+      avatar.setAttribute('aria-hidden', 'true');
+      avatar.innerHTML = '<svg viewBox="0 0 24 24" focusable="false" aria-hidden="true"><path d="M12 8V4H8"></path><rect width="16" height="12" x="4" y="8" rx="2"></rect><path d="M2 14h2"></path><path d="M20 14h2"></path><path d="M15 13v2"></path><path d="M9 13v2"></path></svg>';
+
+      const bubble = document.createElement('div');
+      bubble.className = 'typing-bubble';
+      bubble.setAttribute('aria-hidden', 'true');
+      bubble.innerHTML = '<span class="thinking-dots" aria-hidden="true"><span></span><span></span><span></span></span>';
+
+      article.appendChild(avatar);
+      article.appendChild(bubble);
+      listItem.appendChild(article);
+      transcript.appendChild(listItem);
+      scrollToBottom();
+    }
+
+    function hideTypingIndicator() {
+      const indicator = document.getElementById('typing-indicator');
+      if (indicator) {
+        indicator.remove();
+      }
+    }
+
+    function typeIntoBubble(bubbleEl, text, speed, onDone) {
+      if (shouldReduceMotion()) {
+        bubbleEl.textContent = text;
+        onDone();
+        return;
+      }
+
+      let idx = 0;
+      bubbleEl.textContent = '';
+      const timer = window.setInterval(() => {
+        idx += 1;
+        bubbleEl.textContent = text.slice(0, idx);
+        if (idx >= text.length) {
+          window.clearInterval(timer);
+          onDone();
+        }
+      }, speed);
+    }
+
+    function findPresetResponse(text) {
+      const normalized = text.trim().toLowerCase();
+      const match = PRESET_PROMPTS.find((preset) => preset.prompt.toLowerCase() === normalized);
+      return match ? match.response : NON_MATCH_RESPONSE;
+    }
+
+    function setRespondingState(nextState) {
+      isResponding = nextState;
+      messageInput.readOnly = nextState;
+      updatePromptVisibility();
+      updateSendState();
+    }
+
+    function updatePromptVisibility() {
+      const hasVisiblePrompts = promptButtons.some((button) => !button.hidden);
+      prompts.hidden = isResponding || promptsLocked || !hasVisiblePrompts;
+    }
+
+    function setAttachmentPreview(nextAttachmentName) {
+      const previous = queuedAttachmentName;
+      queuedAttachmentName = nextAttachmentName;
+
+      if (queuedAttachmentName) {
+        attachmentPreview.classList.add('visible');
+        attachmentPreview.innerHTML = `${fileIconSVG}<span>Attachment: ${queuedAttachmentName}</span>`;
+        if (queuedAttachmentName !== previous) {
+          queueAnnouncement(`Attachment added: ${queuedAttachmentName}.`, 120);
+        }
+        return;
+      }
+
+      attachmentPreview.innerHTML = '';
+      attachmentPreview.classList.remove('visible');
+      if (previous) {
+        queueAnnouncement('Attachment removed.', 120);
+      }
+    }
+
+    function clearPendingAutoSend() {
+      if (!pendingAutoSend) {
+        return;
+      }
+
+      window.clearTimeout(pendingAutoSend.bulgeTimer);
+      window.clearTimeout(pendingAutoSend.sendTimer);
+      pendingAutoSend = null;
+      messageInput.classList.remove('text-fade-in');
+      sendButton.classList.remove('bulge');
+    }
+
+    function cancelPendingAutoSend() {
+      if (!pendingAutoSend) {
+        return;
+      }
+
+      clearPendingAutoSend();
+    }
+
+    function sendMessage(triggerText, options = {}) {
+      const { statusPrefix = 'Message', instantUserMessage = false, attachmentName = null } = options;
+      const outgoing = triggerText.trim();
+      if (!outgoing || isResponding) {
+        return;
+      }
+
+      clearPendingAutoSend();
+
+      promptsLocked = true;
+      setRespondingState(true);
+      queueAnnouncement('Input disabled while the assistant responds.', 0);
+      queueAnnouncement(`${statusPrefix} sent.`, 0);
+      queueAnnouncement('GenAI is typing.', 120);
+
+      const userMessage = createMessage('user', '', { attachmentName });
+      messageInput.value = '';
+      messageInput.style.height = 'auto';
+      setAttachmentPreview(null);
+      updateSendState();
+
+      const revealUserMessage = instantUserMessage
+        ? (onDone) => {
+          userMessage.messageText.textContent = outgoing;
+          onDone();
+        }
+        : (onDone) => {
+          typeIntoBubble(userMessage.messageText, outgoing, 10, onDone);
+        };
+
+      revealUserMessage(() => {
+        showTypingIndicator();
+        const typingDelay = shouldReduceMotion() ? 0 : (instantUserMessage ? 1000 : 1500);
+        window.setTimeout(() => {
+          hideTypingIndicator();
+          const responseText = findPresetResponse(outgoing);
+          const botMessage = createMessage('bot', responseText);
+
+          queueAnnouncement('Assistant response added.', 120, () => {
+            botMessage.article.focus();
+          });
+
+          promptsLocked = false;
+          setRespondingState(false);
+          queueAnnouncement('Input enabled.', 120);
+        }, typingDelay);
+      });
+    }
+
+
+    function getStatusPrefixFromText(text) {
+      const normalized = text.trim().toLowerCase();
+      const isPromptText = PRESET_PROMPTS.some((preset) => preset.prompt.toLowerCase() === normalized);
+      return isPromptText ? 'Prompt' : 'Message';
+    }
+
+    function updateTextareaHeight() {
+      messageInput.style.height = 'auto';
+      messageInput.style.height = `${Math.min(messageInput.scrollHeight, 200)}px`;
+    }
+
+    function updateSendState() {
+      sendButton.disabled = messageInput.value.trim().length === 0 || isResponding;
+    }
+
+    messageInput.addEventListener('input', () => {
+      if (pendingAutoSend && messageInput.value.trim() !== pendingAutoSend.promptText.trim()) {
+        cancelPendingAutoSend();
+      }
+      updateTextareaHeight();
+      updateSendState();
+    });
+
+    messageInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && pendingAutoSend) {
+        cancelPendingAutoSend();
+        return;
+      }
+
+      if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        sendMessage(messageInput.value, { statusPrefix: getStatusPrefixFromText(messageInput.value) });
+      }
+    });
+
+    sendButton.addEventListener('click', () => {
+      sendMessage(messageInput.value, { statusPrefix: getStatusPrefixFromText(messageInput.value) });
+    });
+
+
+    prompts.addEventListener('click', (event) => {
+      const promptButton = event.target.closest('.prompt-btn');
+      if (!promptButton || isResponding) {
+        return;
+      }
+
+      const index = Number(promptButton.dataset.index);
+      const selectedPrompt = PRESET_PROMPTS[index];
+      if (!selectedPrompt) {
+        return;
+      }
+
+      promptButton.hidden = true;
+      updatePromptVisibility();
+
+      messageInput.value = selectedPrompt.prompt;
+      messageInput.classList.add('text-fade-in');
+      updateTextareaHeight();
+      updateSendState();
+
+      if (document.activeElement === promptButton) {
+        messageInput.focus();
+      }
+
+      setAttachmentPreview(selectedPrompt.attachmentName || null);
+
+      const promptText = selectedPrompt.prompt;
+      pendingAutoSend = {
+        promptText,
+        bulgeTimer: window.setTimeout(() => {
+          messageInput.classList.remove('text-fade-in');
+          sendButton.classList.add('bulge');
+          pendingAutoSend.sendTimer = window.setTimeout(() => {
+            sendButton.classList.remove('bulge');
+            sendMessage(promptText, {
+              statusPrefix: 'Prompt',
+              instantUserMessage: true,
+              attachmentName: selectedPrompt.attachmentName || null
+            });
+          }, shouldReduceMotion() ? 0 : 300);
+        }, shouldReduceMotion() ? 0 : 1400),
+        sendTimer: null
+      };
+    });
+
+    chatMain.addEventListener('scroll', updateAutoScrollState);
+    prefersReducedMotion.addEventListener('change', () => {
+      updateAutoScrollState();
+    });
+
+    updateAutoScrollState();
+    updateTextareaHeight();
+    updateSendState();
+  </script>
+</body>
+</html>
