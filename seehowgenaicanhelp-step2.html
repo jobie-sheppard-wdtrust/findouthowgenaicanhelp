@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GenAI Chatbot</title>
+  <style>
+    * { box-sizing: border-box; }
+
+    :root {
+      --background: hsl(220 20% 97%);
+      --foreground: hsl(220 20% 10%);
+      --card: hsl(0 0% 100%);
+      --border: hsl(220 15% 90%);
+      --primary: hsl(221 83% 53%);
+      --primary-foreground: hsl(0 0% 100%);
+      --muted-foreground: hsl(220 10% 42%);
+      --chat-bot: hsl(220 15% 95%);
+      --chat-bot-foreground: hsl(220 20% 15%);
+      --focus-ring: hsl(221 83% 45%);
+    }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      line-height: 1.5;
+      color: var(--foreground);
+      background: var(--background);
+    }
+
+    .app {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      flex-shrink: 0;
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      background: rgb(255 255 255 / 0.55);
+      backdrop-filter: blur(8px);
+    }
+
+    .inner {
+      max-width: 48rem;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 1.125rem;
+      font-weight: 700;
+    }
+
+    .subtitle {
+      margin: 0.2rem 0 0;
+      font-size: 0.875rem;
+      color: var(--muted-foreground);
+    }
+
+    main {
+      flex: 1;
+      overflow: auto;
+      scroll-behavior: smooth;
+      padding: 1.5rem 1rem;
+    }
+
+    .transcript {
+      max-width: 48rem;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+      border-radius: 0.5rem;
+    }
+
+    .message {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+    }
+
+    .message.user {
+      justify-content: flex-end;
+    }
+
+    .message.user .bubble {
+      background: var(--primary);
+      color: var(--primary-foreground);
+      border-top-left-radius: 1rem;
+      border-top-right-radius: 0.375rem;
+    }
+
+    .typing-bubble {
+      display: inline-flex;
+      gap: 0.25rem;
+      padding: 1rem;
+      background: var(--chat-bot);
+      border-radius: 1rem;
+      border-top-left-radius: 0.375rem;
+    }
+
+    .typing-bubble span {
+      width: 0.5rem;
+      height: 0.5rem;
+      border-radius: 9999px;
+      background: var(--muted-foreground);
+      animation: bounce 2s infinite ease-in-out;
+    }
+
+    .typing-bubble span:nth-child(1) { animation-delay: -0.32s; }
+    .typing-bubble span:nth-child(2) { animation-delay: -0.16s; }
+    .typing-bubble span:nth-child(3) { animation-delay: 0s; }
+
+    .avatar {
+      width: 2.25rem;
+      height: 2.25rem;
+      border-radius: 9999px;
+      background: #90278e;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .avatar svg {
+      width: 1.25rem;
+      height: 1.25rem;
+      stroke: white;
+      stroke-width: 2;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .bubble {
+      max-width: 32rem;
+      background: var(--chat-bot);
+      color: var(--chat-bot-foreground);
+      border-radius: 1rem;
+      border-top-left-radius: 0.375rem;
+      box-shadow: 0 2px 8px rgb(0 0 0 / 0.08);
+      padding: 0.75rem 1rem;
+      font-size: 0.9375rem;
+      overflow-wrap: anywhere;
+    }
+
+    footer {
+      flex-shrink: 0;
+      padding: 0.5rem 1rem 1.5rem;
+      background: linear-gradient(to top, var(--background), var(--background), transparent);
+    }
+
+    .footer-inner {
+      max-width: 48rem;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .prompts {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      justify-content: center;
+    }
+
+    .prompt-btn {
+      padding: 0.5rem 1rem;
+      border: 1px solid var(--border);
+      border-radius: 9999px;
+      font-size: 0.875rem;
+      color: var(--foreground);
+      background: var(--card);
+      cursor: pointer;
+      min-height: 2rem;
+    }
+
+    .prompt-btn:hover {
+      background: var(--primary);
+      color: var(--primary-foreground);
+      border-color: var(--primary);
+    }
+
+    .instruction {
+      margin: 0;
+      font-size: 0.875rem;
+      color: var(--foreground);
+    }
+
+    .input-wrapper {
+      position: relative;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      box-shadow: 0 4px 12px rgb(0 0 0 / 0.08);
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 3.5rem;
+      max-height: 12rem;
+      resize: vertical;
+      padding: 1rem 3.5rem 1rem 1.25rem;
+      border: none;
+      background: transparent;
+      color: var(--foreground);
+      font: inherit;
+      font-size: 0.9375rem;
+    }
+
+    textarea::placeholder { color: var(--muted-foreground); }
+    textarea:focus { outline: none; }
+
+    .send-btn {
+      position: absolute;
+      right: 0.75rem;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 2.5rem;
+      height: 2.5rem;
+      border-radius: 0.75rem;
+      border: none;
+      background: var(--primary);
+      color: var(--primary-foreground);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .send-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .send-btn svg {
+      width: 1.25rem;
+      height: 1.25rem;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    :focus-visible {
+      outline: 3px solid var(--focus-ring);
+      outline-offset: 2px;
+    }
+
+    .visually-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    @keyframes bounce {
+      0%, 80%, 100% { transform: scale(0); }
+      40% { transform: scale(1); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation: none !important;
+        transition-duration: 0ms !important;
+      }
+
+      main {
+        scroll-behavior: auto;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="inner">
+        <h1>GenAI Chatbot</h1>
+        <p id="message-instruction" class="subtitle">Click one of the prompts to see examples of how GenAI can help</p>
+      </div>
+    </header>
+
+    <main id="chat-main" tabindex="0" aria-label="Conversation transcript">
+      <div id="transcript" class="transcript" role="log" aria-live="polite" aria-relevant="additions text" aria-atomic="false">
+        <article class="message">
+          <div class="avatar" aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+              <path d="M12 8V4H8"></path>
+              <rect width="16" height="12" x="4" y="8" rx="2"></rect>
+              <path d="M2 14h2"></path>
+              <path d="M20 14h2"></path>
+              <path d="M15 13v2"></path>
+              <path d="M9 13v2"></path>
+            </svg>
+          </div>
+          <div class="bubble">
+            <span class="visually-hidden">Bot: </span>
+            <span>How can I help?</span>
+          </div>
+        </article>
+      </div>
+    </main>
+
+    <footer>
+      <div class="footer-inner">
+        <div id="prompts" class="prompts" role="group" aria-label="Preset prompts">
+          <button type="button" class="prompt-btn" data-index="0">Research NICE Sepsis recommendations</button>
+          <button type="button" class="prompt-btn" data-index="1">Draft a response to a patient complaint</button>
+          <button type="button" class="prompt-btn" data-index="2">What are arguments for and against my colleague's discharge plan?</button>
+        </div>
+
+        <div class="input-wrapper">
+          <label for="message-input" class="visually-hidden">Message</label>
+          <textarea id="message-input" name="message" rows="1" placeholder="Click or activate one of the preset prompts..." aria-describedby="message-instruction"></textarea>
+          <button id="send-btn" class="send-btn" type="button" aria-label="Send" disabled>
+            <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+              <line x1="22" y1="2" x2="11" y2="13"></line>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </footer>
+  </div>
+  <div id="status-announcer" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
+
+  <script>
+    const PRESET_PROMPTS = [
+      {
+        prompt: 'Research the current NICE recommendations for initial management of Sepsis in adults',
+        response: 'Sure thing! I found several NICE recommendations based on this webpage (https://www.example-source.com).\n\nSummary — NICE initial management of suspected sepsis (adults)\n\nRapid recognition, prompt assessment, and early escalation are emphasized to reduce time-to-treatment and deterioration.'
+      },
+      {
+        prompt: "Help me respond to this patient complaint. She had an outpatient appointment cancelled at short notice, and wasn't given a clear reason. The response should acknowledge mistakes, and apologise genuinely",
+        response: "Of course — I will draft an accountable response to the complaint you've attached. It will acknowledge the communication issues without being defensive."
+      },
+      {
+        prompt: "I'm reviewing follow-up arrangements for a stable long-term condition patient. We're considering switching routine follow-ups from face-to-face to phone or video. Can you outline some practical arguments for and against this? Keep your answer concise.",
+        response: "Sure — here are some points to consider. I've kept the focus practical."
+      }
+    ];
+
+    const NON_MATCH_RESPONSE = "Note — preset prompts only. Because I am just a realistic simulation of a GenAI, I can only answer the preset prompts you see on screen. If you were speaking to a full GenAI chatbot, it would answer your specific question here.";
+
+    const transcript = document.getElementById('transcript');
+    const chatMain = document.getElementById('chat-main');
+    const messageInput = document.getElementById('message-input');
+    const sendButton = document.getElementById('send-btn');
+    const prompts = document.getElementById('prompts');
+    const statusAnnouncer = document.getElementById('status-announcer');
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+    let isResponding = false;
+    let autoScrollEnabled = true;
+    let announcementQueue = [];
+    let announcementActive = false;
+
+    function queueAnnouncement(message, delay = 0) {
+      announcementQueue.push({ message, delay });
+      processAnnouncementQueue();
+    }
+
+    function processAnnouncementQueue() {
+      if (announcementActive || announcementQueue.length === 0) {
+        return;
+      }
+
+      announcementActive = true;
+      const next = announcementQueue.shift();
+      window.setTimeout(() => {
+        statusAnnouncer.textContent = '';
+        window.setTimeout(() => {
+          statusAnnouncer.textContent = next.message;
+          announcementActive = false;
+          processAnnouncementQueue();
+        }, 80);
+      }, next.delay);
+    }
+
+    function shouldReduceMotion() {
+      return prefersReducedMotion.matches;
+    }
+
+    function getDistanceFromBottom() {
+      return chatMain.scrollHeight - chatMain.scrollTop - chatMain.clientHeight;
+    }
+
+    function updateAutoScrollState() {
+      autoScrollEnabled = getDistanceFromBottom() < 120;
+    }
+
+    function scrollToBottom(force = false) {
+      if (!force && !autoScrollEnabled) {
+        return;
+      }
+
+      chatMain.scrollTo({
+        top: chatMain.scrollHeight,
+        behavior: shouldReduceMotion() ? 'auto' : 'smooth'
+      });
+    }
+
+    function createMessage(role, text) {
+      const article = document.createElement('article');
+      article.className = `message ${role}`.trim();
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+
+      const authorPrefix = document.createElement('span');
+      authorPrefix.className = 'visually-hidden';
+      authorPrefix.textContent = role === 'bot' ? 'Bot: ' : 'You: ';
+      const messageText = document.createElement('span');
+      messageText.textContent = text;
+      bubble.appendChild(authorPrefix);
+      bubble.appendChild(messageText);
+
+      if (role === 'bot') {
+        const avatar = document.createElement('div');
+        avatar.className = 'avatar';
+        avatar.setAttribute('aria-hidden', 'true');
+        avatar.innerHTML = '<svg viewBox="0 0 24 24" focusable="false" aria-hidden="true"><path d="M12 8V4H8"></path><rect width="16" height="12" x="4" y="8" rx="2"></rect><path d="M2 14h2"></path><path d="M20 14h2"></path><path d="M15 13v2"></path><path d="M9 13v2"></path></svg>';
+        article.appendChild(avatar);
+      }
+
+      article.appendChild(bubble);
+      transcript.appendChild(article);
+      scrollToBottom();
+      return messageText;
+    }
+
+    function showTypingIndicator() {
+      const article = document.createElement('article');
+      article.className = 'message';
+      article.id = 'typing-indicator';
+      article.setAttribute('aria-label', 'Assistant is typing');
+
+      const avatar = document.createElement('div');
+      avatar.className = 'avatar';
+      avatar.setAttribute('aria-hidden', 'true');
+      avatar.innerHTML = '<svg viewBox="0 0 24 24" focusable="false" aria-hidden="true"><path d="M12 8V4H8"></path><rect width="16" height="12" x="4" y="8" rx="2"></rect><path d="M2 14h2"></path><path d="M20 14h2"></path><path d="M15 13v2"></path><path d="M9 13v2"></path></svg>';
+
+      const bubble = document.createElement('div');
+      bubble.className = 'typing-bubble';
+      bubble.setAttribute('aria-hidden', 'true');
+      bubble.innerHTML = '<span></span><span></span><span></span>';
+
+      article.appendChild(avatar);
+      article.appendChild(bubble);
+      transcript.appendChild(article);
+      scrollToBottom();
+    }
+
+    function hideTypingIndicator() {
+      const indicator = document.getElementById('typing-indicator');
+      if (indicator) {
+        indicator.remove();
+      }
+    }
+
+    function typeIntoBubble(bubbleEl, text, speed, onDone) {
+      if (shouldReduceMotion()) {
+        bubbleEl.textContent = text;
+        onDone();
+        return;
+      }
+
+      let idx = 0;
+      bubbleEl.textContent = '';
+      const timer = window.setInterval(() => {
+        idx += 1;
+        bubbleEl.textContent = text.slice(0, idx);
+        if (idx >= text.length) {
+          window.clearInterval(timer);
+          onDone();
+        }
+      }, speed);
+    }
+
+    function findPresetResponse(text) {
+      const normalized = text.trim().toLowerCase();
+      const match = PRESET_PROMPTS.find((preset) => preset.prompt.toLowerCase() === normalized);
+      return match ? match.response : NON_MATCH_RESPONSE;
+    }
+
+    function setRespondingState(nextState) {
+      isResponding = nextState;
+      messageInput.disabled = nextState;
+      if (nextState) {
+        prompts.hidden = true;
+        queueAnnouncement('Input disabled while the assistant responds.', 120);
+      } else {
+        prompts.hidden = false;
+        queueAnnouncement('Input enabled.', 120);
+      }
+      updateSendState();
+    }
+
+    function sendMessage(triggerText) {
+      const outgoing = triggerText.trim();
+      if (!outgoing || isResponding) {
+        return;
+      }
+
+      setRespondingState(true);
+      const userBubble = createMessage('user', '');
+      messageInput.value = '';
+      messageInput.style.height = 'auto';
+      updateSendState();
+
+      typeIntoBubble(userBubble, outgoing, 10, () => {
+        showTypingIndicator();
+        queueAnnouncement('Assistant is typing.', 160);
+        const typingDelay = shouldReduceMotion() ? 0 : 1500;
+        window.setTimeout(() => {
+          hideTypingIndicator();
+          const awayFromBottom = getDistanceFromBottom() >= 10;
+          const botBubble = createMessage('bot', '');
+          const responseText = findPresetResponse(outgoing);
+          typeIntoBubble(botBubble, responseText, 5, () => {
+            if (awayFromBottom) {
+              queueAnnouncement('New message received. Scroll down to view.', 160);
+            }
+            queueAnnouncement('Assistant response received.', 260);
+            setRespondingState(false);
+            messageInput.focus();
+          });
+        }, typingDelay);
+      });
+    }
+
+    function updateTextareaHeight() {
+      messageInput.style.height = 'auto';
+      messageInput.style.height = `${Math.min(messageInput.scrollHeight, 200)}px`;
+    }
+
+    function updateSendState() {
+      sendButton.disabled = messageInput.value.trim().length === 0 || isResponding;
+    }
+
+    messageInput.addEventListener('input', () => {
+      updateTextareaHeight();
+      updateSendState();
+    });
+
+    messageInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        sendMessage(messageInput.value);
+      }
+    });
+
+    sendButton.addEventListener('click', () => {
+      sendMessage(messageInput.value);
+    });
+
+    prompts.addEventListener('click', (event) => {
+      const promptButton = event.target.closest('.prompt-btn');
+      if (!promptButton || isResponding) {
+        return;
+      }
+
+      const index = Number(promptButton.dataset.index);
+      const selectedPrompt = PRESET_PROMPTS[index];
+      if (!selectedPrompt) {
+        return;
+      }
+
+      messageInput.value = selectedPrompt.prompt;
+      updateTextareaHeight();
+      updateSendState();
+      queueAnnouncement('Prompt added.', 120);
+      messageInput.focus();
+    });
+
+    chatMain.addEventListener('scroll', updateAutoScrollState);
+    prefersReducedMotion.addEventListener('change', () => {
+      updateAutoScrollState();
+    });
+
+    updateAutoScrollState();
+    updateTextareaHeight();
+    updateSendState();
+  </script>
+</body>
+</html>
