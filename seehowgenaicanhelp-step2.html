@@ -371,7 +371,6 @@
     const messageInput = document.getElementById('message-input');
     const sendButton = document.getElementById('send-btn');
     const prompts = document.getElementById('prompts');
-    const jumpLatestButton = document.getElementById('jump-latest-btn');
     const statusAnnouncer = document.getElementById('status-announcer');
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
@@ -379,8 +378,6 @@
     let autoScrollEnabled = true;
     let announcementQueue = [];
     let announcementActive = false;
-    let latestAssistantMessageId = null;
-    let latestMessageNumber = 1;
 
     function queueAnnouncement(message, delay = 0) {
       announcementQueue.push({ message, delay });
@@ -463,28 +460,6 @@
       transcript.appendChild(listItem);
       scrollToBottom();
       return { messageText, listItem };
-    }
-
-    function setLatestAssistantMessage(id) {
-      latestAssistantMessageId = id;
-      jumpLatestButton.hidden = false;
-    }
-
-    function jumpToLatestAssistantMessage() {
-      if (!latestAssistantMessageId) {
-        return;
-      }
-
-      const latestMessage = document.getElementById(latestAssistantMessageId);
-      if (!latestMessage) {
-        return;
-      }
-
-      latestMessage.scrollIntoView({
-        block: 'nearest',
-        behavior: shouldReduceMotion() ? 'auto' : 'smooth'
-      });
-      latestMessage.focus();
     }
 
     function showTypingIndicator() {
