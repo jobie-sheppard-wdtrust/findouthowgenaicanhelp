@@ -424,14 +424,9 @@
       });
     }
 
-    function createMessage(role, text, options = {}) {
-      const { hideFromAssistiveTech = false } = options;
+    function createMessage(role, text) {
       const listItem = document.createElement('li');
       listItem.className = 'message-item';
-      if (hideFromAssistiveTech) {
-        listItem.setAttribute('aria-hidden', 'true');
-      }
-
       const article = document.createElement('article');
       article.className = `message ${role}`.trim();
       const bubble = document.createElement('div');
@@ -538,7 +533,7 @@
       setRespondingState(true);
       queueAnnouncement(`${statusPrefix} sent. GenAI is typing.`, 0);
 
-      const userMessage = createMessage('user', '', { hideFromAssistiveTech: true });
+      const userMessage = createMessage('user', '');
       messageInput.value = '';
       messageInput.style.height = 'auto';
       updateSendState();
@@ -549,11 +544,9 @@
         window.setTimeout(() => {
           hideTypingIndicator();
           const awayFromBottom = getDistanceFromBottom() >= 10;
-          const botMessage = createMessage('bot', '', { hideFromAssistiveTech: true });
+          const botMessage = createMessage('bot', '');
           const responseText = findPresetResponse(outgoing);
           typeIntoBubble(botMessage.messageText, responseText, 5, () => {
-            userMessage.listItem.removeAttribute('aria-hidden');
-            botMessage.listItem.removeAttribute('aria-hidden');
             if (awayFromBottom) {
               queueAnnouncement('New message received. Scroll down to view.', 120);
             }
