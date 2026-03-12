@@ -593,6 +593,14 @@
 
 
     @media (max-width: 800px) {
+      .modal-overlay {
+        align-items: center;
+      }
+
+      .modal-card {
+        margin-block: 0;
+      }
+
       /* normal desktop/mobile */
       .layout {
         grid-template-columns: 1fr;
@@ -1863,9 +1871,6 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
 
     document.addEventListener('pointerdown', (event) => {
       if (isModalOpen) {
-        if (event.target === modalOverlay) {
-          closeFeedbackModal({ processCheckAction: false });
-        }
         return;
       }
       if (menu.hidden || isMenuBusy) return;
