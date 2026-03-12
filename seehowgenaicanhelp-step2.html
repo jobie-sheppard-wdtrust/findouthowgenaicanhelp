@@ -151,11 +151,20 @@
       overflow-wrap: anywhere;
     }
 
-    footer {
+
+
+    .chat-footer {
       flex-shrink: 0;
       padding: 0.5rem 1rem 1.5rem;
       background: linear-gradient(to top, var(--background), var(--background), transparent);
     }
+
+    .message-item {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
 
     .footer-inner {
       max-width: 48rem;
@@ -293,9 +302,9 @@
       </div>
     </header>
 
-    <main id="chat-main" tabindex="0" aria-label="Conversation transcript">
-      <div id="transcript" class="transcript" role="log" aria-live="polite" aria-relevant="additions text" aria-atomic="false">
-        <article class="message">
+    <main id="chat-main" aria-label="Conversation transcript">
+      <ul id="transcript" class="transcript" role="log" aria-live="polite" aria-relevant="additions text" aria-atomic="false">
+        <li class="message-item"><article class="message">
           <div class="avatar" aria-hidden="true">
             <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
               <path d="M12 8V4H8"></path>
@@ -310,11 +319,11 @@
             <span class="visually-hidden">Bot: </span>
             <span>How can I help?</span>
           </div>
-        </article>
-      </div>
+        </article></li>
+      </ul>
     </main>
 
-    <footer>
+    <div class="chat-footer">
       <div class="footer-inner">
         <div id="prompts" class="prompts" role="group" aria-label="Preset prompts">
           <button type="button" class="prompt-btn" data-index="0">Research NICE Sepsis recommendations</button>
@@ -333,9 +342,9 @@
           </button>
         </div>
       </div>
-    </footer>
+    </div>
   </div>
-  <div id="status-announcer" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
+  <div id="status-announcer" class="visually-hidden" role="status" aria-live="polite" aria-atomic="true" aria-relevant="additions text"></div>
 
   <script>
     const PRESET_PROMPTS = [
@@ -383,10 +392,12 @@
       window.setTimeout(() => {
         statusAnnouncer.textContent = '';
         window.setTimeout(() => {
-          statusAnnouncer.textContent = next.message;
+          const announcement = document.createElement('span');
+          announcement.textContent = next.message;
+          statusAnnouncer.replaceChildren(announcement);
           announcementActive = false;
           processAnnouncementQueue();
-        }, 80);
+        }, 140);
       }, next.delay);
     }
 
@@ -414,6 +425,8 @@
     }
 
     function createMessage(role, text) {
+      const listItem = document.createElement('li');
+      listItem.className = 'message-item';
       const article = document.createElement('article');
       article.className = `message ${role}`.trim();
       const bubble = document.createElement('div');
@@ -436,16 +449,19 @@
       }
 
       article.appendChild(bubble);
-      transcript.appendChild(article);
+      listItem.appendChild(article);
+      transcript.appendChild(listItem);
       scrollToBottom();
       return messageText;
     }
 
     function showTypingIndicator() {
+      const listItem = document.createElement('li');
+      listItem.className = 'message-item';
+      listItem.id = 'typing-indicator';
       const article = document.createElement('article');
       article.className = 'message';
-      article.id = 'typing-indicator';
-      article.setAttribute('aria-label', 'Assistant is typing');
+      listItem.setAttribute('aria-label', 'Assistant is typing');
 
       const avatar = document.createElement('div');
       avatar.className = 'avatar';
@@ -459,7 +475,8 @@
 
       article.appendChild(avatar);
       article.appendChild(bubble);
-      transcript.appendChild(article);
+      listItem.appendChild(article);
+      transcript.appendChild(listItem);
       scrollToBottom();
     }
 
