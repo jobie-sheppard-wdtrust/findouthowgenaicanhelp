@@ -302,8 +302,9 @@
       </div>
     </header>
 
-    <main id="chat-main" aria-label="Conversation transcript">
-      <ul id="transcript" class="transcript" role="log" aria-live="polite" aria-relevant="additions" aria-atomic="false">
+    <main id="chat-main" aria-labelledby="transcript-heading">
+      <h2 id="transcript-heading" class="visually-hidden">Conversation transcript</h2>
+      <ul id="transcript" class="transcript" role="log" aria-live="off" aria-relevant="additions" aria-atomic="false">
         <li class="message-item"><article class="message">
           <div class="avatar" aria-hidden="true">
             <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
@@ -330,6 +331,7 @@
           <button type="button" class="prompt-btn" data-index="1">Draft a response to a patient complaint</button>
           <button type="button" class="prompt-btn" data-index="2">What are arguments for and against my colleague's discharge plan?</button>
         </div>
+
 
         <div class="input-wrapper">
           <label for="message-input" class="visually-hidden">Message</label>
@@ -514,7 +516,8 @@
 
     function setRespondingState(nextState) {
       isResponding = nextState;
-      messageInput.disabled = nextState;
+      messageInput.readOnly = nextState;
+      messageInput.setAttribute('aria-disabled', String(nextState));
       if (nextState) {
         prompts.hidden = true;
       } else {
@@ -531,7 +534,8 @@
       }
 
       setRespondingState(true);
-      queueAnnouncement(`${statusPrefix} sent. GenAI is typing.`, 0);
+      queueAnnouncement(`${statusPrefix} sent.`, 0);
+      queueAnnouncement('GenAI is typing.', 120);
 
       const userMessage = createMessage('user', '');
       messageInput.value = '';
@@ -544,16 +548,17 @@
         window.setTimeout(() => {
           hideTypingIndicator();
           const awayFromBottom = getDistanceFromBottom() >= 10;
-          const botMessage = createMessage('bot', '');
           const responseText = findPresetResponse(outgoing);
-          typeIntoBubble(botMessage.messageText, responseText, 5, () => {
-            if (awayFromBottom) {
-              queueAnnouncement('New message received. Scroll down to view.', 120);
-            }
-            queueAnnouncement('Response finished.', 160);
-            setRespondingState(false);
-            messageInput.focus();
-          });
+          createMessage('bot', responseText);
+
+          if (awayFromBottom) {
+            queueAnnouncement('Assistant response added. Browse to the conversation transcript landmark to review it.', 120);
+          } else {
+            queueAnnouncement('Assistant response added.', 120);
+          }
+
+          setRespondingState(false);
+          messageInput.focus();
         }, typingDelay);
       });
     }
@@ -590,6 +595,7 @@
       sendMessage(messageInput.value, { statusPrefix: getStatusPrefixFromText(messageInput.value) });
     });
 
+
     prompts.addEventListener('click', (event) => {
       const promptButton = event.target.closest('.prompt-btn');
       if (!promptButton || isResponding) {
@@ -602,7 +608,6 @@
         return;
       }
 
-      queueAnnouncement('Prompt added.', 0);
       messageInput.value = selectedPrompt.prompt;
       updateTextareaHeight();
       updateSendState();
