@@ -149,6 +149,7 @@
       padding: 0.75rem 1rem;
       font-size: 0.9375rem;
       overflow-wrap: anywhere;
+      white-space: pre-line;
     }
 
 
@@ -379,8 +380,8 @@
     let announcementQueue = [];
     let announcementActive = false;
 
-    function queueAnnouncement(message, delay = 0) {
-      announcementQueue.push({ message, delay });
+    function queueAnnouncement(message, delay = 0, onAnnounced = null) {
+      announcementQueue.push({ message, delay, onAnnounced });
       processAnnouncementQueue();
     }
 
@@ -397,6 +398,13 @@
           const announcement = document.createElement('span');
           announcement.textContent = next.message;
           statusAnnouncer.replaceChildren(announcement);
+
+          if (typeof next.onAnnounced === 'function') {
+            window.setTimeout(() => {
+              next.onAnnounced();
+            }, 120);
+          }
+
           announcementActive = false;
           processAnnouncementQueue();
         }, 140);
@@ -459,7 +467,7 @@
       listItem.appendChild(article);
       transcript.appendChild(listItem);
       scrollToBottom();
-      return { messageText, listItem };
+      return { article, messageText, listItem };
     }
 
     function showTypingIndicator() {
@@ -522,7 +530,6 @@
     function setRespondingState(nextState) {
       isResponding = nextState;
       messageInput.readOnly = nextState;
-      messageInput.setAttribute('aria-disabled', String(nextState));
       if (nextState) {
         prompts.hidden = true;
       } else {
@@ -552,18 +559,14 @@
         const typingDelay = shouldReduceMotion() ? 0 : 1500;
         window.setTimeout(() => {
           hideTypingIndicator();
-          const awayFromBottom = getDistanceFromBottom() >= 10;
           const responseText = findPresetResponse(outgoing);
-          createMessage('bot', responseText);
+          const botMessage = createMessage('bot', responseText);
 
-          if (awayFromBottom) {
-            queueAnnouncement('Assistant response added. Browse to the conversation transcript landmark to review it.', 120);
-          } else {
-            queueAnnouncement('Assistant response added.', 120);
-          }
+          queueAnnouncement('Assistant response added.', 120, () => {
+            botMessage.article.focus();
+          });
 
           setRespondingState(false);
-          messageInput.focus();
         }, typingDelay);
       });
     }
