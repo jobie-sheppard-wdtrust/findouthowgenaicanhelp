@@ -468,7 +468,6 @@
     let autoScrollEnabled = true;
     let announcementQueue = [];
     let announcementActive = false;
-    let queuedAttachmentName = null;
     let pendingAutoSend = null;
 
     function queueAnnouncement(message, delay = 0, onAnnounced = null) {
@@ -641,23 +640,14 @@
     }
 
     function setAttachmentPreview(nextAttachmentName) {
-      const previous = queuedAttachmentName;
-      queuedAttachmentName = nextAttachmentName;
-
-      if (queuedAttachmentName) {
+      if (nextAttachmentName) {
         attachmentPreview.classList.add('visible');
-        attachmentPreview.innerHTML = `${fileIconSVG}<span>Attachment: ${queuedAttachmentName}</span>`;
-        if (queuedAttachmentName !== previous) {
-          queueAnnouncement(`Attachment added: ${queuedAttachmentName}.`, 120);
-        }
+        attachmentPreview.innerHTML = `${fileIconSVG}<span>Attachment: ${nextAttachmentName}</span>`;
         return;
       }
 
       attachmentPreview.innerHTML = '';
       attachmentPreview.classList.remove('visible');
-      if (previous) {
-        queueAnnouncement('Attachment removed.', 120);
-      }
     }
 
     function clearPendingAutoSend() {
@@ -681,7 +671,7 @@
     }
 
     function sendMessage(triggerText, options = {}) {
-      const { statusPrefix = 'Message', instantUserMessage = false, attachmentName = null } = options;
+      const { statusPrefix = 'Message', instantUserMessage = false, attachmentName = null, suppressSentAnnouncement = false } = options;
       const outgoing = triggerText.trim();
       if (!outgoing || isResponding) {
         return;
@@ -692,7 +682,9 @@
       promptsLocked = true;
       setRespondingState(true);
       queueAnnouncement('Input disabled while the assistant responds.', 0);
-      queueAnnouncement(`${statusPrefix} sent.`, 0);
+      if (!suppressSentAnnouncement) {
+        queueAnnouncement(`${statusPrefix} sent.`, 0);
+      }
       queueAnnouncement('GenAI is typing.', 120);
 
       const userMessage = createMessage('user', '', { attachmentName });
@@ -716,11 +708,10 @@
         window.setTimeout(() => {
           hideTypingIndicator();
           const responseText = findPresetResponse(outgoing);
-          const botMessage = createMessage('bot', responseText);
+          createMessage('bot', responseText);
 
-          queueAnnouncement('Assistant response added.', 120, () => {
-            botMessage.article.focus();
-          });
+          queueAnnouncement('GenAI response complete.', 120);
+          queueAnnouncement('Conversation transcript main landmark list with latest messages.', 120);
 
           promptsLocked = false;
           setRespondingState(false);
@@ -795,6 +786,7 @@
       }
 
       setAttachmentPreview(selectedPrompt.attachmentName || null);
+      queueAnnouncement('Prompt sent.', 0);
 
       const promptText = selectedPrompt.prompt;
       pendingAutoSend = {
@@ -807,7 +799,8 @@
             sendMessage(promptText, {
               statusPrefix: 'Prompt',
               instantUserMessage: true,
-              attachmentName: selectedPrompt.attachmentName || null
+              attachmentName: selectedPrompt.attachmentName || null,
+              suppressSentAnnouncement: true
             });
           }, shouldReduceMotion() ? 0 : 300);
         }, shouldReduceMotion() ? 0 : 1400),
