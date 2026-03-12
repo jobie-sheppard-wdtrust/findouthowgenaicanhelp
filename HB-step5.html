@@ -48,6 +48,16 @@
       overflow: hidden;
     }
 
+    body.is-embedded .top-header {
+      position: static;
+      inset: auto;
+    }
+
+    html.is-embedded .layout,
+    body.is-embedded .layout {
+      margin-top: 0;
+    }
+
     :focus-visible {
       outline: 3px solid var(--focus-ring);
       outline-offset: 2px;
@@ -84,6 +94,7 @@
     body.is-embedded .layout {
       height: auto;
       min-height: 0;
+      overflow: visible;
     }
 
     .panel {
@@ -944,13 +955,17 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
     function getDocumentHeight() {
       const root = document.documentElement;
       const body = document.body;
-      return Math.ceil(Math.max(
+      const bodyRect = body.getBoundingClientRect();
+      const maxHeight = Math.max(
         root.scrollHeight,
         root.offsetHeight,
         body.scrollHeight,
         body.offsetHeight,
-        root.clientHeight
-      ));
+        Math.ceil(bodyRect.height)
+      );
+
+      // Add a tiny buffer to avoid fractional-pixel clipping that can leave a thin scrollbar.
+      return Math.ceil(maxHeight + 2);
     }
 
     function publishEmbedHeight({ force = false } = {}) {
