@@ -390,7 +390,7 @@
       </div>
     </header>
 
-    <main id="chat-main" aria-labelledby="transcript-heading" tabindex="-1">
+    <main id="chat-main" aria-labelledby="transcript-heading">
       <h2 id="transcript-heading" class="visually-hidden">Conversation transcript</h2>
       <ul id="transcript" class="transcript">
         <li class="message-item"><article class="message">
@@ -711,9 +711,7 @@
           createMessage('bot', responseText);
 
           queueAnnouncement('GenAI response complete.', 120);
-          queueAnnouncement('Conversation transcript main landmark list with latest messages.', 120, () => {
-            chatMain.focus();
-          });
+          queueAnnouncement('Conversation transcript main landmark list with latest messages.', 120);
 
           promptsLocked = false;
           setRespondingState(false);
