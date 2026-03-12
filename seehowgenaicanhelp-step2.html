@@ -303,7 +303,7 @@
     </header>
 
     <main id="chat-main" aria-label="Conversation transcript">
-      <ul id="transcript" class="transcript" role="log" aria-live="polite" aria-relevant="additions text" aria-atomic="false">
+      <ul id="transcript" class="transcript" role="log" aria-live="polite" aria-relevant="additions" aria-atomic="false">
         <li class="message-item"><article class="message">
           <div class="avatar" aria-hidden="true">
             <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
@@ -452,7 +452,7 @@
       listItem.appendChild(article);
       transcript.appendChild(listItem);
       scrollToBottom();
-      return messageText;
+      return { messageText, listItem };
     }
 
     function showTypingIndicator() {
@@ -517,45 +517,52 @@
       messageInput.disabled = nextState;
       if (nextState) {
         prompts.hidden = true;
-        queueAnnouncement('Input disabled while the assistant responds.', 120);
       } else {
         prompts.hidden = false;
-        queueAnnouncement('Input enabled.', 120);
       }
       updateSendState();
     }
 
-    function sendMessage(triggerText) {
+    function sendMessage(triggerText, options = {}) {
+      const { statusPrefix = 'Message' } = options;
       const outgoing = triggerText.trim();
       if (!outgoing || isResponding) {
         return;
       }
 
       setRespondingState(true);
-      const userBubble = createMessage('user', '');
+      queueAnnouncement(`${statusPrefix} sent. GenAI is typing.`, 0);
+
+      const userMessage = createMessage('user', '');
       messageInput.value = '';
       messageInput.style.height = 'auto';
       updateSendState();
 
-      typeIntoBubble(userBubble, outgoing, 10, () => {
+      typeIntoBubble(userMessage.messageText, outgoing, 10, () => {
         showTypingIndicator();
-        queueAnnouncement('Assistant is typing.', 160);
         const typingDelay = shouldReduceMotion() ? 0 : 1500;
         window.setTimeout(() => {
           hideTypingIndicator();
           const awayFromBottom = getDistanceFromBottom() >= 10;
-          const botBubble = createMessage('bot', '');
+          const botMessage = createMessage('bot', '');
           const responseText = findPresetResponse(outgoing);
-          typeIntoBubble(botBubble, responseText, 5, () => {
+          typeIntoBubble(botMessage.messageText, responseText, 5, () => {
             if (awayFromBottom) {
-              queueAnnouncement('New message received. Scroll down to view.', 160);
+              queueAnnouncement('New message received. Scroll down to view.', 120);
             }
-            queueAnnouncement('Assistant response received.', 260);
+            queueAnnouncement('Response finished.', 160);
             setRespondingState(false);
             messageInput.focus();
           });
         }, typingDelay);
       });
+    }
+
+
+    function getStatusPrefixFromText(text) {
+      const normalized = text.trim().toLowerCase();
+      const isPromptText = PRESET_PROMPTS.some((preset) => preset.prompt.toLowerCase() === normalized);
+      return isPromptText ? 'Prompt' : 'Message';
     }
 
     function updateTextareaHeight() {
@@ -575,12 +582,12 @@
     messageInput.addEventListener('keydown', (event) => {
       if (event.key === 'Enter' && !event.shiftKey) {
         event.preventDefault();
-        sendMessage(messageInput.value);
+        sendMessage(messageInput.value, { statusPrefix: getStatusPrefixFromText(messageInput.value) });
       }
     });
 
     sendButton.addEventListener('click', () => {
-      sendMessage(messageInput.value);
+      sendMessage(messageInput.value, { statusPrefix: getStatusPrefixFromText(messageInput.value) });
     });
 
     prompts.addEventListener('click', (event) => {
@@ -595,11 +602,10 @@
         return;
       }
 
+      queueAnnouncement('Prompt added.', 0);
       messageInput.value = selectedPrompt.prompt;
       updateTextareaHeight();
       updateSendState();
-      queueAnnouncement('Prompt added.', 120);
-      messageInput.focus();
     });
 
     chatMain.addEventListener('scroll', updateAutoScrollState);
