@@ -440,16 +440,65 @@
     const PRESET_PROMPTS = [
       {
         prompt: 'Research the current NICE recommendations for initial management of Sepsis in adults',
-        response: 'Sure thing! I found several NICE recommendations based on this webpage (https://www.example-source.com).\n\nSummary — NICE initial management of suspected sepsis (adults)\n\nRapid recognition, prompt assessment, and early escalation are emphasized to reduce time-to-treatment and deterioration.'
+        response: `Sure thing! I found several NICE recommendations based on this webpage (https://www.example-source.com).
+        
+**Summary — NICE initial management of suspected sepsis (adults)** 
+
+Rapid recognition, prompt assessment, and early escalation are emphasized to reduce time-to-treatment and deterioration.
+
+**Key steps**  
+• Structured risk assessment to identify high-risk patients  
+• Urgent clinical review and early vital signs  
+• Blood tests, including lactate when indicated  
+• Prompt antibiotics and IV fluids where sepsis is suspected  
+• Ongoing monitoring and timely escalation to senior/critical care
+
+**Next step**  
+Would you like me to suggest how this guidance applies to a specific patient or outline the most appropriate next clinical step for them?`
       },
       {
         prompt: "Help me respond to this patient complaint. She had an outpatient appointment cancelled at short notice, and wasn't given a clear reason. The response should acknowledge mistakes, and apologise genuinely",
-        response: "Of course — I will draft an accountable response to the complaint you've attached. It will acknowledge the communication issues without being defensive.",
+        response: `Of course — I will draft an accountable response to the complaint you've attached. It will acknowledge the communication issues without being defensive.
+        
+        **Draft response — genuine and accountable**
+
+Dear Ms Patel,
+
+Thank you for contacting us. I’m very sorry for the short-notice cancellation of your appointment and for the frustration this caused.
+
+We recognise that cancelling appointments without a clear explanation has a real impact on patients’ time and confidence in the service. While some cancellations are unavoidable given the current pressures on our outpatient services, we recognise that a lack of communication is not acceptable, whatever the reason.
+
+We have raised this with the team involved to ensure it does not happen again. Thank you for taking the time to raise this with us. 
+
+Kind regards,
+[Name]
+Patient Advice and Liaison Service
+[NHS Trust name]
+
+**Refinements**  
+If you like, I can make this more formal or more conversational, or I could add a short "what we're changing" section to demonstrate improvement?`
         attachmentName: 'Patel email complaint.pdf'
       },
       {
         prompt: "I'm reviewing follow-up arrangements for a stable long-term condition patient. We're considering switching routine follow-ups from face-to-face to phone or video. Can you outline some practical arguments for and against this? Keep your answer concise.",
-        response: "Sure — here are some points to consider. I've kept the focus practical."
+        response:`Sure — here are some points to consider. I've kept the focus practical:
+
+**Pros vs. cons — remote follow-ups**
+
+**Possible advantages**  
+• Easier access for patients who work, travel, or have mobility issues  
+• Fewer missed appointments  
+• Saves clinic space and time  
+• Can feel more convenient and less stressful
+
+**Possible downsides**  
+• You lose non-verbal cues and in-room context  
+• Some patients may struggle with technology or privacy  
+• Harder to pick up subtle deterioration or safeguarding concerns  
+• Continuity can suffer if different clinicians handle calls
+
+**Adjustments**  
+If you like, I could turn this into a suitability checklist or adapt it to a specific condition?`
       }
     ];
 
