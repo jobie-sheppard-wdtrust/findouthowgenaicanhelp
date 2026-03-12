@@ -49,6 +49,49 @@
       backdrop-filter: blur(8px);
     }
 
+    .header-inner {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .title-wrap {
+      min-width: 0;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .header-btn {
+      border: 1px solid var(--primary);
+      background: var(--primary);
+      color: var(--primary-foreground);
+      border-radius: 0.75rem;
+      padding: 0.5rem 0.8rem;
+      font-size: 0.85rem;
+      white-space: nowrap;
+      cursor: pointer;
+      line-height: 1.2;
+    }
+
+    .header-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    #skipTypingButton:disabled {
+      background: hsl(220 10% 72%);
+      border-color: hsl(220 10% 72%);
+      color: hsl(220 20% 100%);
+      opacity: 1;
+    }
+
     .inner {
       max-width: 48rem;
       margin: 0 auto;
@@ -387,9 +430,15 @@
 <body>
   <div class="app">
     <header>
-      <div class="inner">
-        <h1>GenAI Chatbot</h1>
-        <p id="message-instruction" class="subtitle">Click one of the prompts to see examples of how GenAI can help</p>
+      <div class="inner header-inner">
+        <div class="title-wrap">
+          <h1>GenAI Chatbot</h1>
+          <p id="message-instruction" class="subtitle">Click one of the prompts to see examples of how GenAI can help</p>
+        </div>
+        <div class="header-actions">
+          <button class="header-btn" id="skipTypingButton" type="button" disabled aria-disabled="true">Skip typing</button>
+          <button class="header-btn" id="resetButton" type="button">↺ Reset</button>
+        </div>
       </div>
     </header>
 
@@ -460,11 +509,13 @@
     const messageInput = document.getElementById('message-input');
     const sendButton = document.getElementById('send-btn');
     const prompts = document.getElementById('prompts');
+    const skipTypingButton = document.getElementById('skipTypingButton');
+    const resetButton = document.getElementById('resetButton');
     const statusAnnouncer = document.getElementById('status-announcer');
     const attachmentPreview = document.getElementById('attachment-preview');
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
     const fileIconSVG = '<svg viewBox="0 0 24 24" focusable="false" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>';
-    const promptButtons = Array.from(prompts.querySelectorAll('.prompt-btn'));
+    let promptButtons = Array.from(prompts.querySelectorAll('.prompt-btn'));
 
     let isResponding = false;
     let promptsLocked = false;
@@ -472,6 +523,11 @@
     let announcementQueue = [];
     let announcementActive = false;
     let pendingAutoSend = null;
+    let pendingResponseTimer = null;
+    let pendingResponseOutgoing = null;
+    let activeTypingTask = null;
+    const initialTranscriptMarkup = transcript.innerHTML;
+    const initialPromptsMarkup = prompts.innerHTML;
 
     function queueAnnouncement(message, delay = 0, onAnnounced = null) {
       announcementQueue.push({ message, delay, onAnnounced });
@@ -506,6 +562,31 @@
 
     function shouldReduceMotion() {
       return prefersReducedMotion.matches;
+    }
+
+    
+    function setSkipTypingButtonEnabled(enabled) {
+      skipTypingButton.disabled = !enabled;
+      skipTypingButton.setAttribute('aria-disabled', String(!enabled));
+    }
+
+    function clearPendingResponseTimer() {
+      if (pendingResponseTimer === null) {
+        return;
+      }
+
+      window.clearTimeout(pendingResponseTimer);
+      pendingResponseTimer = null;
+      pendingResponseOutgoing = null;
+    }
+
+    function clearActiveTypingTask() {
+      if (!activeTypingTask) {
+        return;
+      }
+
+      window.clearInterval(activeTypingTask.timer);
+      activeTypingTask = null;
     }
 
     function getDistanceFromBottom() {
@@ -605,7 +686,7 @@
       }
     }
 
-    function typeIntoBubble(bubbleEl, text, speed, onDone) {
+    function typeIntoBubble(bubbleEl, text, speed, onDone, role = 'user') {
       if (shouldReduceMotion()) {
         bubbleEl.textContent = text;
         onDone();
@@ -619,9 +700,63 @@
         bubbleEl.textContent = text.slice(0, idx);
         if (idx >= text.length) {
           window.clearInterval(timer);
+          activeTypingTask = null;
           onDone();
         }
       }, speed);
+
+      activeTypingTask = {
+        timer,
+        bubbleEl,
+        text,
+        onDone,
+        role
+      };
+    }
+
+    
+    function completeAssistantResponse(outgoing, instantTyping = false) {
+      clearPendingResponseTimer();
+      hideTypingIndicator();
+
+      const responseText = findPresetResponse(outgoing);
+      const botMessage = createMessage('bot', '');
+
+      const finishResponse = () => {
+        queueAnnouncement('GenAI response complete.', 120);
+        queueAnnouncement('Conversation transcript main landmark list with latest messages.', 120);
+
+        promptsLocked = false;
+        setRespondingState(false);
+        queueAnnouncement('Input enabled.', 120);
+        setSkipTypingButtonEnabled(false);
+      };
+
+      if (instantTyping || shouldReduceMotion()) {
+        botMessage.messageText.textContent = responseText;
+        finishResponse();
+        return;
+      }
+
+      typeIntoBubble(botMessage.messageText, responseText, 8, finishResponse, 'assistant');
+    }
+
+    function skipTypingAnimations() {
+      clearPendingAutoSend();
+
+      if (activeTypingTask) {
+        const { bubbleEl, text, onDone } = activeTypingTask;
+        clearActiveTypingTask();
+        bubbleEl.textContent = text;
+        if (typeof onDone === 'function') {
+          onDone();
+        }
+        return;
+      }
+
+      if (pendingResponseTimer !== null && pendingResponseOutgoing) {
+        completeAssistantResponse(pendingResponseOutgoing, true);
+      }
     }
 
     function findPresetResponse(text) {
@@ -635,6 +770,7 @@
       messageInput.readOnly = nextState;
       updatePromptVisibility();
       updateSendState();
+      setSkipTypingButtonEnabled(nextState || Boolean(pendingAutoSend) || Boolean(activeTypingTask) || pendingResponseTimer !== null);
     }
 
     function updatePromptVisibility() {
@@ -663,6 +799,7 @@
       pendingAutoSend = null;
       messageInput.classList.remove('text-fade-in');
       sendButton.classList.remove('bulge');
+      setSkipTypingButtonEnabled(isResponding || Boolean(activeTypingTask) || pendingResponseTimer !== null);
     }
 
     function cancelPendingAutoSend() {
@@ -681,6 +818,8 @@
       }
 
       clearPendingAutoSend();
+      clearPendingResponseTimer();
+      clearActiveTypingTask();
 
       promptsLocked = true;
       setRespondingState(true);
@@ -708,21 +847,44 @@
       revealUserMessage(() => {
         showTypingIndicator();
         const typingDelay = shouldReduceMotion() ? 0 : (instantUserMessage ? 1000 : 1500);
-        window.setTimeout(() => {
-          hideTypingIndicator();
-          const responseText = findPresetResponse(outgoing);
-          createMessage('bot', responseText);
-
-          queueAnnouncement('GenAI response complete.', 120);
-          queueAnnouncement('Conversation transcript main landmark list with latest messages.', 120);
-
-          promptsLocked = false;
-          setRespondingState(false);
-          queueAnnouncement('Input enabled.', 120);
+        pendingResponseOutgoing = outgoing;
+        pendingResponseTimer = window.setTimeout(() => {
+          completeAssistantResponse(outgoing);
         }, typingDelay);
       });
     }
 
+
+
+    function resetExperience() {
+      clearPendingAutoSend();
+      clearPendingResponseTimer();
+      clearActiveTypingTask();
+      hideTypingIndicator();
+
+      transcript.innerHTML = initialTranscriptMarkup;
+      prompts.innerHTML = initialPromptsMarkup;
+      promptButtons = Array.from(prompts.querySelectorAll('.prompt-btn'));
+
+      announcementQueue = [];
+      announcementActive = false;
+      statusAnnouncer.textContent = '';
+
+      isResponding = false;
+      promptsLocked = false;
+      messageInput.readOnly = false;
+      messageInput.value = '';
+      messageInput.style.height = 'auto';
+      sendButton.disabled = true;
+      sendButton.classList.remove('bulge');
+      setAttachmentPreview(null);
+
+      prompts.hidden = false;
+      updatePromptVisibility();
+      updateTextareaHeight();
+      updateSendState();
+      setSkipTypingButtonEnabled(false);
+    }
 
     function getStatusPrefixFromText(text) {
       const normalized = text.trim().toLowerCase();
@@ -745,6 +907,7 @@
       }
       updateTextareaHeight();
       updateSendState();
+      setSkipTypingButtonEnabled(isResponding || Boolean(pendingAutoSend) || Boolean(activeTypingTask) || pendingResponseTimer !== null);
     });
 
     messageInput.addEventListener('keydown', (event) => {
@@ -809,6 +972,15 @@
         }, shouldReduceMotion() ? 0 : 1400),
         sendTimer: null
       };
+      setSkipTypingButtonEnabled(true);
+    });
+
+    skipTypingButton.addEventListener('click', () => {
+      skipTypingAnimations();
+    });
+
+    resetButton.addEventListener('click', () => {
+      resetExperience();
     });
 
     chatMain.addEventListener('scroll', updateAutoScrollState);
@@ -819,6 +991,7 @@
     updateAutoScrollState();
     updateTextareaHeight();
     updateSendState();
+    setSkipTypingButtonEnabled(false);
   </script>
 </body>
 </html>
