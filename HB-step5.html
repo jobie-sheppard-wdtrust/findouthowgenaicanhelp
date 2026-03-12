@@ -24,12 +24,22 @@
 
     * { box-sizing: border-box; }
 
+    html,
+    body {
+      overflow-x: hidden;
+    }
+
     body {
       margin: 0;
       min-height: 100vh;
       background: var(--background);
       color: var(--foreground);
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    body.is-embedded {
+      min-height: auto;
+      overflow-y: hidden;
     }
 
     :focus-visible {
@@ -62,6 +72,10 @@
       display: grid;
       grid-template-columns: 1fr 1fr;
       background: var(--background);
+    }
+
+    body.is-embedded .layout {
+      min-height: 0;
     }
 
     .panel {
@@ -608,6 +622,10 @@
         min-height: calc(100vh - 3.5rem);
       }
 
+      body.is-embedded .layout {
+        min-height: 0;
+      }
+
       .layout > .panel-right {
         order: 1;
         border-left: 0;
@@ -863,6 +881,9 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
     const pageTitle = document.getElementById('page-title');
     const DEFAULT_PAGE_TITLE = 'Being a HITL - defend against hallucination and bias';
     const FEEDBACK_PAGE_TITLE = 'Review your feedback';
+    const EMBED_RESIZE_EVENT = 'hb-step5:resize';
+    const EMBED_CONTEXT_ID = 'hb-step5';
+    const isEmbedded = window.self !== window.top;
 
     let activeTrigger = null;
     let activeSection = null;
@@ -870,11 +891,60 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
     let isMenuBusy = false;
     let isModalOpen = false;
     let pendingModalAction = null;
+    let resizeFrame = null;
+    let resizeSettleTimer = null;
+    let lastPublishedHeight = 0;
     const completedSections = new Set();
     const sectionEmailState = new Map();
     const completedByAction = new Map();
     const feedbackAssociations = new Map();
     let announceQueue = Promise.resolve();
+
+    function getDocumentHeight() {
+      const root = document.documentElement;
+      const body = document.body;
+      return Math.ceil(Math.max(
+        root.scrollHeight,
+        root.offsetHeight,
+        body.scrollHeight,
+        body.offsetHeight,
+        root.clientHeight
+      ));
+    }
+
+    function publishEmbedHeight({ force = false } = {}) {
+      if (!isEmbedded) return;
+      const nextHeight = getDocumentHeight();
+      if (!force && Math.abs(nextHeight - lastPublishedHeight) < 2) return;
+
+      lastPublishedHeight = nextHeight;
+      window.parent.postMessage(
+        {
+          type: EMBED_RESIZE_EVENT,
+          context: EMBED_CONTEXT_ID,
+          height: nextHeight
+        },
+        '*'
+      );
+    }
+
+    function scheduleEmbedHeightPublish({ force = false } = {}) {
+      if (!isEmbedded) return;
+      if (resizeFrame !== null) return;
+
+      resizeFrame = window.requestAnimationFrame(() => {
+        resizeFrame = null;
+        publishEmbedHeight({ force });
+      });
+    }
+
+    function settleEmbedHeightPublish() {
+      if (!isEmbedded) return;
+      window.clearTimeout(resizeSettleTimer);
+      resizeSettleTimer = window.setTimeout(() => {
+        publishEmbedHeight({ force: true });
+      }, 90);
+    }
 
     function announce(message, delay = 0) {
       announceQueue = announceQueue
@@ -1805,6 +1875,44 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
       announce('Reset. Draft and email cleared.');
     }
 
+
+    if (isEmbedded) {
+      document.body.classList.add('is-embedded');
+
+      if (typeof ResizeObserver === 'function') {
+        const resizeObserver = new ResizeObserver(() => {
+          scheduleEmbedHeightPublish();
+          settleEmbedHeightPublish();
+        });
+
+        resizeObserver.observe(document.documentElement);
+        resizeObserver.observe(document.body);
+      }
+
+      const mutationObserver = new MutationObserver(() => {
+        scheduleEmbedHeightPublish();
+        settleEmbedHeightPublish();
+      });
+
+      mutationObserver.observe(document.body, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        characterData: true
+      });
+
+      window.addEventListener('load', () => {
+        publishEmbedHeight({ force: true });
+      });
+
+      window.addEventListener('resize', () => {
+        scheduleEmbedHeightPublish({ force: true });
+        settleEmbedHeightPublish();
+      });
+
+      scheduleEmbedHeightPublish({ force: true });
+      settleEmbedHeightPublish();
+    }
 
     renderDraftList();
 
