@@ -241,7 +241,7 @@
     <header>
       <div class="inner">
         <h1>GenAI Chatbot</h1>
-        <p class="subtitle">See some examples of the help it can provide</p>
+        <p id="message-instruction" class="subtitle">Click one of the prompts to see examples of how GenAI can help</p>
       </div>
     </header>
 
