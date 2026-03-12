@@ -302,8 +302,9 @@
       </div>
     </header>
 
-    <main id="chat-main" aria-label="Conversation transcript">
-      <ul id="transcript" class="transcript" role="log" aria-live="polite" aria-relevant="additions" aria-atomic="false">
+    <main id="chat-main" aria-labelledby="transcript-heading">
+      <h2 id="transcript-heading" class="visually-hidden">Conversation transcript</h2>
+      <ul id="transcript" class="transcript" role="log" aria-live="off" aria-relevant="additions" aria-atomic="false">
         <li class="message-item"><article class="message">
           <div class="avatar" aria-hidden="true">
             <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
@@ -330,6 +331,8 @@
           <button type="button" class="prompt-btn" data-index="1">Draft a response to a patient complaint</button>
           <button type="button" class="prompt-btn" data-index="2">What are arguments for and against my colleague's discharge plan?</button>
         </div>
+
+        <button id="jump-latest-btn" type="button" class="prompt-btn" hidden aria-controls="chat-main">Jump to latest assistant response</button>
 
         <div class="input-wrapper">
           <label for="message-input" class="visually-hidden">Message</label>
@@ -369,6 +372,7 @@
     const messageInput = document.getElementById('message-input');
     const sendButton = document.getElementById('send-btn');
     const prompts = document.getElementById('prompts');
+    const jumpLatestButton = document.getElementById('jump-latest-btn');
     const statusAnnouncer = document.getElementById('status-announcer');
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
@@ -376,6 +380,8 @@
     let autoScrollEnabled = true;
     let announcementQueue = [];
     let announcementActive = false;
+    let latestAssistantMessageId = null;
+    let latestMessageNumber = 1;
 
     function queueAnnouncement(message, delay = 0) {
       announcementQueue.push({ message, delay });
@@ -424,11 +430,16 @@
       });
     }
 
-    function createMessage(role, text) {
+    function createMessage(role, text, options = {}) {
+      const { id } = options;
       const listItem = document.createElement('li');
       listItem.className = 'message-item';
       const article = document.createElement('article');
       article.className = `message ${role}`.trim();
+      article.tabIndex = -1;
+      if (id) {
+        article.id = id;
+      }
       const bubble = document.createElement('div');
       bubble.className = 'bubble';
 
@@ -453,6 +464,28 @@
       transcript.appendChild(listItem);
       scrollToBottom();
       return { messageText, listItem };
+    }
+
+    function setLatestAssistantMessage(id) {
+      latestAssistantMessageId = id;
+      jumpLatestButton.hidden = false;
+    }
+
+    function jumpToLatestAssistantMessage() {
+      if (!latestAssistantMessageId) {
+        return;
+      }
+
+      const latestMessage = document.getElementById(latestAssistantMessageId);
+      if (!latestMessage) {
+        return;
+      }
+
+      latestMessage.scrollIntoView({
+        block: 'nearest',
+        behavior: shouldReduceMotion() ? 'auto' : 'smooth'
+      });
+      latestMessage.focus();
     }
 
     function showTypingIndicator() {
@@ -531,7 +564,8 @@
       }
 
       setRespondingState(true);
-      queueAnnouncement(`${statusPrefix} sent. GenAI is typing.`, 0);
+      queueAnnouncement(`${statusPrefix} sent.`, 0);
+      queueAnnouncement('GenAI is typing.', 120);
 
       const userMessage = createMessage('user', '');
       messageInput.value = '';
@@ -544,16 +578,20 @@
         window.setTimeout(() => {
           hideTypingIndicator();
           const awayFromBottom = getDistanceFromBottom() >= 10;
-          const botMessage = createMessage('bot', '');
           const responseText = findPresetResponse(outgoing);
-          typeIntoBubble(botMessage.messageText, responseText, 5, () => {
-            if (awayFromBottom) {
-              queueAnnouncement('New message received. Scroll down to view.', 120);
-            }
-            queueAnnouncement('Response finished.', 160);
-            setRespondingState(false);
-            messageInput.focus();
-          });
+          const assistantMessageId = `assistant-message-${latestMessageNumber}`;
+          latestMessageNumber += 1;
+          createMessage('bot', responseText, { id: assistantMessageId });
+          setLatestAssistantMessage(assistantMessageId);
+
+          if (awayFromBottom) {
+            queueAnnouncement('Assistant response added. Use Jump to latest assistant response button or browse to the conversation transcript landmark.', 120);
+          } else {
+            queueAnnouncement('Assistant response added. Use Jump to latest assistant response button to review.', 120);
+          }
+
+          setRespondingState(false);
+          messageInput.focus();
         }, typingDelay);
       });
     }
@@ -590,6 +628,8 @@
       sendMessage(messageInput.value, { statusPrefix: getStatusPrefixFromText(messageInput.value) });
     });
 
+    jumpLatestButton.addEventListener('click', jumpToLatestAssistantMessage);
+
     prompts.addEventListener('click', (event) => {
       const promptButton = event.target.closest('.prompt-btn');
       if (!promptButton || isResponding) {
@@ -602,7 +642,6 @@
         return;
       }
 
-      queueAnnouncement('Prompt added.', 0);
       messageInput.value = selectedPrompt.prompt;
       updateTextareaHeight();
       updateSendState();
