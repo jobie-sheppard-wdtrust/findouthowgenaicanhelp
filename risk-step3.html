@@ -832,15 +832,30 @@
 
     function setClickedRiskState(key) {
       if (!key) {
-        return;
+        return [];
       }
 
       if (key === 'escalation' || key === 'monitor') {
         clickedRiskKeys.add('escalation');
         clickedRiskKeys.add('monitor');
-      } else {
-        clickedRiskKeys.add(key);
+        return ['escalation', 'monitor'];
       }
+
+      clickedRiskKeys.add(key);
+      return [key];
+    }
+
+    function applyClickedStateStylesInDom(riskKeys = []) {
+      if (!Array.isArray(riskKeys) || riskKeys.length === 0) {
+        return;
+      }
+
+      riskKeys.forEach((riskKey) => {
+        const matchingHighlights = messagesList.querySelectorAll(`.risk-highlight[data-risk-key="${riskKey}"]`);
+        matchingHighlights.forEach((node) => {
+          node.classList.add('risk-highlight-clicked');
+        });
+      });
     }
 
     function trapDialogFocus(event) {
@@ -1234,11 +1249,8 @@
       }
 
       const key = highlight.getAttribute('data-risk-key');
-      setClickedRiskState(key);
-      const assistantBubble = highlight.closest('.bubble');
-      if (assistantBubble) {
-        renderResponseHighlights(assistantBubble);
-      }
+      const clickedRiskGroup = setClickedRiskState(key);
+      applyClickedStateStylesInDom(clickedRiskGroup);
       openRiskDialog(key, highlight);
     }
 
