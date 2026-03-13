@@ -903,6 +903,8 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
     const DEFAULT_PAGE_TITLE = 'Being a HITL - defend against hallucination and bias';
     const FEEDBACK_PAGE_TITLE = 'Review your feedback';
     const EMBED_RESIZE_EVENT = 'hb-step5:resize';
+    const EMBED_ENSURE_VISIBLE_EVENT = 'hb-step5:ensure-visible';
+    const EMBED_ENSURE_VISIBLE_ACK_EVENT = 'hb-step5:ensure-visible:ack';
     const EMBED_CONTEXT_ID = 'hb-step5';
     const EMBED_QUERY_PARAMS = ['embed', 'embedded', 'hbEmbed', 'hb_embed'];
 
@@ -946,6 +948,9 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
     let resizeSettleTimer = null;
     let lastPublishedHeight = 0;
     let embedRuntimeInitialized = false;
+    let ensureVisibleRequestCounter = 0;
+    let menuOpenSequence = 0;
+    const ensureVisiblePending = new Map();
     const completedSections = new Set();
     const sectionEmailState = new Map();
     const completedByAction = new Map();
@@ -992,6 +997,136 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
         resizeFrame = null;
         publishEmbedHeight({ force });
       });
+    }
+
+    function getParentFrameForSameOrigin() {
+      if (!isEmbedded || window.parent === window) return null;
+
+      try {
+        const parentFrames = [...window.parent.document.querySelectorAll('iframe')];
+        return parentFrames.find((frame) => frame.contentWindow === window) || null;
+      } catch (error) {
+        return null;
+      }
+    }
+
+    function isRectInsideViewport(rect, viewportWidth, viewportHeight) {
+      return rect.top >= 0
+        && rect.left >= 0
+        && rect.bottom <= viewportHeight
+        && rect.right <= viewportWidth;
+    }
+
+    function getParentViewportVisibilityState(target) {
+      if (!isEmbedded || !target?.isConnected || window.parent === window) {
+        return { canMeasure: false, isVisible: true };
+      }
+
+      try {
+        const frame = getParentFrameForSameOrigin();
+        if (!frame) return { canMeasure: false, isVisible: false };
+
+        const frameRect = frame.getBoundingClientRect();
+        const targetRect = target.getBoundingClientRect();
+        const projectedRect = {
+          top: frameRect.top + targetRect.top,
+          left: frameRect.left + targetRect.left,
+          bottom: frameRect.top + targetRect.bottom,
+          right: frameRect.left + targetRect.right
+        };
+
+        return {
+          canMeasure: true,
+          isVisible: isRectInsideViewport(projectedRect, window.parent.innerWidth, window.parent.innerHeight),
+          frameRect
+        };
+      } catch (error) {
+        return { canMeasure: false, isVisible: false };
+      }
+    }
+
+    function requestParentEnsureVisible(button, menuItem) {
+      if (!isEmbedded || window.parent === window || !button || !menuItem) {
+        return Promise.resolve(true);
+      }
+
+      const visibility = getParentViewportVisibilityState(menuItem);
+      if (visibility.canMeasure && visibility.isVisible) {
+        return Promise.resolve(true);
+      }
+
+      ensureVisibleRequestCounter += 1;
+      const requestId = `${EMBED_CONTEXT_ID}-${Date.now()}-${ensureVisibleRequestCounter}`;
+      const triggerRect = button.getBoundingClientRect();
+      const menuRect = menuItem.getBoundingClientRect();
+      const payload = {
+        type: EMBED_ENSURE_VISIBLE_EVENT,
+        context: EMBED_CONTEXT_ID,
+        requestId,
+        triggerRect: {
+          top: triggerRect.top,
+          left: triggerRect.left,
+          bottom: triggerRect.bottom,
+          right: triggerRect.right,
+          width: triggerRect.width,
+          height: triggerRect.height
+        },
+        menuRect: {
+          top: menuRect.top,
+          left: menuRect.left,
+          bottom: menuRect.bottom,
+          right: menuRect.right,
+          width: menuRect.width,
+          height: menuRect.height
+        }
+      };
+
+      return new Promise((resolve) => {
+        const timeoutId = window.setTimeout(() => {
+          ensureVisiblePending.delete(requestId);
+          resolve(false);
+        }, 260);
+
+        ensureVisiblePending.set(requestId, {
+          resolve: () => {
+            window.clearTimeout(timeoutId);
+            ensureVisiblePending.delete(requestId);
+            resolve(true);
+          }
+        });
+
+        window.parent.postMessage(payload, '*');
+      });
+    }
+
+    async function focusMenuWhenVisible({ button, section, openToken }) {
+      const firstMenuItem = menuItems[0];
+      if (!firstMenuItem || !button) return;
+
+      let canFocusMenu = true;
+      if (isEmbedded) {
+        const requestAccepted = await requestParentEnsureVisible(button, firstMenuItem);
+
+        if (openToken !== menuOpenSequence || menu.hidden || activeTrigger !== button) {
+          return;
+        }
+
+        const visibilityAfterRequest = getParentViewportVisibilityState(firstMenuItem);
+        if (visibilityAfterRequest.canMeasure) {
+          canFocusMenu = visibilityAfterRequest.isVisible;
+        } else {
+          canFocusMenu = requestAccepted;
+        }
+      }
+
+      if (canFocusMenu) {
+        firstMenuItem.focus();
+        announce(`Context menu opened for ${section.sectionName}.`);
+        return;
+      }
+
+      button.focus();
+      announce(`Menu opened for ${section.sectionName}. If you cannot hear menu options, scroll the host page to this section and try again.`);
     }
 
     function settleEmbedHeightPublish() {
@@ -1140,8 +1275,9 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
       setExpanded(button);
       document.getElementById('action-copy').setAttribute('aria-label', `Copy-paste for ${section.sectionName}`);
       document.getElementById('action-check').setAttribute('aria-label', `Check content for ${section.sectionName}`);
-      menuItems[0].focus();
-      announce(`Context menu opened for ${section.sectionName}.`);
+      menuOpenSequence += 1;
+      const openToken = menuOpenSequence;
+      focusMenuWhenVisible({ button, section, openToken });
     }
 
     function setAnimating(nextState) {
@@ -1985,6 +2121,12 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
     window.addEventListener('message', (event) => {
       const data = event?.data;
       if (!data || typeof data !== 'object') return;
+      if (data.type === EMBED_ENSURE_VISIBLE_ACK_EVENT) {
+        const pendingRequest = ensureVisiblePending.get(data.requestId);
+        pendingRequest?.resolve();
+        return;
+      }
+
       if (data.type !== 'hb-step5:enable-embed') return;
 
       const shouldEnable = data.enabled !== false;
