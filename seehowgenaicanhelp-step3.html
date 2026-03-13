@@ -49,6 +49,18 @@
       backdrop-filter: blur(8px);
     }
 
+    .header-inner {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .title-wrap {
+      min-width: 0;
+      flex: 1 1 auto;
+    }
+
     .inner {
       max-width: 48rem;
       margin: 0 auto;
@@ -65,6 +77,39 @@
       margin: 0.2rem 0 0;
       font-size: 0.875rem;
       color: var(--muted-foreground);
+      max-width: 36ch;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .header-btn {
+      border: 1px solid var(--primary);
+      background: var(--primary);
+      color: var(--primary-foreground);
+      border-radius: 0.75rem;
+      padding: 0.5rem 0.8rem;
+      font-size: 0.85rem;
+      white-space: nowrap;
+      cursor: pointer;
+      line-height: 1.2;
+    }
+
+    .header-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    #skipTypingButton:disabled {
+      background: hsl(220 10% 72%);
+      border-color: hsl(220 10% 72%);
+      color: hsl(220 20% 100%);
+      opacity: 1;
     }
 
     main {
@@ -382,14 +427,41 @@
         scroll-behavior: auto;
       }
     }
+
+    @media (max-width: 680px) {
+      .subtitle {
+        max-width: 30ch;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .header-inner {
+        gap: 0.75rem;
+      }
+
+      .subtitle {
+        max-width: 28ch;
+      }
+
+      .header-actions {
+        flex-direction: column;
+        align-items: stretch;
+      }
+    }
   </style>
 </head>
 <body>
   <div class="app">
     <header>
-      <div class="inner">
-        <h1>GenAI Chatbot</h1>
-        <p id="message-instruction" class="subtitle">Click one of the prompts to see examples of how GenAI can help</p>
+      <div class="inner header-inner">
+        <div class="title-wrap">
+          <h1>GenAI Chatbot</h1>
+          <p id="message-instruction" class="subtitle">Click one of the prompts to see examples of how GenAI can help</p>
+        </div>
+        <div class="header-actions">
+          <button class="header-btn" id="skipTypingButton" type="button" disabled aria-disabled="true">Skip typing</button>
+          <button class="header-btn" id="resetButton" type="button">↺ Reset</button>
+        </div>
       </div>
     </header>
 
@@ -511,9 +583,12 @@ If you like, I could turn this into a suitability checklist or adapt it to a spe
     const prompts = document.getElementById('prompts');
     const statusAnnouncer = document.getElementById('status-announcer');
     const attachmentPreview = document.getElementById('attachment-preview');
+    const skipTypingButton = document.getElementById('skipTypingButton');
+    const resetButton = document.getElementById('resetButton');
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
     const fileIconSVG = '<svg viewBox="0 0 24 24" focusable="false" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>';
     const promptButtons = Array.from(prompts.querySelectorAll('.prompt-btn'));
+    const initialTranscriptMarkup = transcript.innerHTML;
 
     let isResponding = false;
     let promptsLocked = false;
@@ -521,6 +596,16 @@ If you like, I could turn this into a suitability checklist or adapt it to a spe
     let announcementQueue = [];
     let announcementActive = false;
     let pendingAutoSend = null;
+    let pendingResponseTimer = null;
+    let typingIntervalId = null;
+    let typingState = null;
+    let flowStage = 'idle';
+    let pendingResponseText = '';
+
+    function setSkipTypingButtonEnabled(enabled) {
+      skipTypingButton.disabled = !enabled;
+      skipTypingButton.setAttribute('aria-disabled', String(!enabled));
+    }
 
     function queueAnnouncement(message, delay = 0, onAnnounced = null) {
       announcementQueue.push({ message, delay, onAnnounced });
@@ -654,6 +739,21 @@ If you like, I could turn this into a suitability checklist or adapt it to a spe
       }
     }
 
+    function escapeHtml(text) {
+      const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+      return text.replace(/[&<>"']/g, (char) => map[char]);
+    }
+
+    function renderBoldMarkdown(text) {
+      const safeText = escapeHtml(text);
+      return safeText.replace(/\*\*([\s\S]+?)\*\*/g, '<strong>$1</strong>');
+    }
+
+    function getTypingDurationMs(message) {
+      const words = message.trim().split(/\s+/).filter(Boolean).length;
+      return Math.max(1, Math.round((words / 48) * 1000));
+    }
+
     function typeIntoBubble(bubbleEl, text, speed, onDone) {
       if (shouldReduceMotion()) {
         bubbleEl.textContent = text;
@@ -663,11 +763,12 @@ If you like, I could turn this into a suitability checklist or adapt it to a spe
 
       let idx = 0;
       bubbleEl.textContent = '';
-      const timer = window.setInterval(() => {
+      clearTypingInterval();
+      typingIntervalId = window.setInterval(() => {
         idx += 1;
         bubbleEl.textContent = text.slice(0, idx);
         if (idx >= text.length) {
-          window.clearInterval(timer);
+          clearTypingInterval();
           onDone();
         }
       }, speed);
@@ -714,6 +815,20 @@ If you like, I could turn this into a suitability checklist or adapt it to a spe
       sendButton.classList.remove('bulge');
     }
 
+    function clearPendingResponseTimer() {
+      if (pendingResponseTimer !== null) {
+        window.clearTimeout(pendingResponseTimer);
+        pendingResponseTimer = null;
+      }
+    }
+
+    function clearTypingInterval() {
+      if (typingIntervalId !== null) {
+        window.clearInterval(typingIntervalId);
+        typingIntervalId = null;
+      }
+    }
+
     function cancelPendingAutoSend() {
       if (!pendingAutoSend) {
         return;
@@ -730,6 +845,10 @@ If you like, I could turn this into a suitability checklist or adapt it to a spe
       }
 
       clearPendingAutoSend();
+      clearPendingResponseTimer();
+      clearTypingInterval();
+      flowStage = 'sending';
+      setSkipTypingButtonEnabled(true);
 
       promptsLocked = true;
       setRespondingState(true);
@@ -755,21 +874,129 @@ If you like, I could turn this into a suitability checklist or adapt it to a spe
         };
 
       revealUserMessage(() => {
+        flowStage = 'thinking';
+        pendingResponseText = findPresetResponse(outgoing);
         showTypingIndicator();
         const typingDelay = shouldReduceMotion() ? 0 : (instantUserMessage ? 1000 : 1500);
-        window.setTimeout(() => {
+        pendingResponseTimer = window.setTimeout(() => {
+          pendingResponseTimer = null;
           hideTypingIndicator();
-          const responseText = findPresetResponse(outgoing);
-          createMessage('bot', responseText);
+          flowStage = 'typing';
+          const responseText = pendingResponseText;
+          const botMessage = createMessage('bot', '');
+          const responseTypingSpeed = Math.max(1, Math.floor(getTypingDurationMs(responseText) / Math.max(1, responseText.length)));
+          typingState = {
+            bubble: botMessage.messageText,
+            fullMessage: responseText,
+            onDone: () => {
+              botMessage.messageText.innerHTML = renderBoldMarkdown(responseText);
 
-          queueAnnouncement('GenAI response complete.', 120);
-          queueAnnouncement('Conversation transcript main landmark list with latest messages.', 120);
+              queueAnnouncement('GenAI response complete.', 120);
+              queueAnnouncement('Conversation transcript main landmark list with latest messages.', 120);
 
-          promptsLocked = false;
-          setRespondingState(false);
-          queueAnnouncement('Input enabled.', 120);
+              promptsLocked = false;
+              setRespondingState(false);
+              queueAnnouncement('Input enabled.', 120);
+              flowStage = 'complete';
+              setSkipTypingButtonEnabled(false);
+              typingState = null;
+              pendingResponseText = '';
+            }
+          };
+          typeIntoBubble(botMessage.messageText, responseText, responseTypingSpeed, () => {
+            if (typingState && typeof typingState.onDone === 'function') {
+              typingState.onDone();
+            }
+          });
         }, typingDelay);
       });
+    }
+
+    function flushTypingNow() {
+      if (!typingState) {
+        return;
+      }
+
+      clearTypingInterval();
+      typingState.bubble.textContent = typingState.fullMessage;
+      if (typeof typingState.onDone === 'function') {
+        typingState.onDone();
+      }
+    }
+
+    function skipPromptFlowAnimations() {
+      if (flowStage === 'idle' || flowStage === 'complete') {
+        return;
+      }
+
+      clearPendingAutoSend();
+
+      if (flowStage === 'sending') {
+        return;
+      }
+
+      if (flowStage === 'thinking') {
+        clearPendingResponseTimer();
+        hideTypingIndicator();
+        flowStage = 'typing';
+        const responseText = pendingResponseText;
+        const botMessage = createMessage('bot', '');
+        typingState = {
+          bubble: botMessage.messageText,
+          fullMessage: responseText,
+          onDone: () => {
+            botMessage.messageText.innerHTML = renderBoldMarkdown(responseText);
+            queueAnnouncement('GenAI response complete.', 120);
+            queueAnnouncement('Conversation transcript main landmark list with latest messages.', 120);
+            promptsLocked = false;
+            setRespondingState(false);
+            queueAnnouncement('Input enabled.', 120);
+            flowStage = 'complete';
+            setSkipTypingButtonEnabled(false);
+            typingState = null;
+            pendingResponseText = '';
+          }
+        };
+        flushTypingNow();
+        return;
+      }
+
+      if (flowStage === 'typing') {
+        flushTypingNow();
+      }
+    }
+
+    function resetExperience() {
+      clearPendingAutoSend();
+      clearPendingResponseTimer();
+      clearTypingInterval();
+      typingState = null;
+      flowStage = 'idle';
+      pendingResponseText = '';
+      isResponding = false;
+      promptsLocked = false;
+      setSkipTypingButtonEnabled(false);
+
+      hideTypingIndicator();
+      transcript.innerHTML = initialTranscriptMarkup;
+      promptButtons.forEach((button) => {
+        button.hidden = false;
+      });
+      prompts.hidden = false;
+
+      messageInput.classList.remove('text-fade-in');
+      messageInput.value = '';
+      messageInput.style.height = 'auto';
+      setAttachmentPreview(null);
+
+      announcementQueue = [];
+      announcementActive = false;
+      statusAnnouncer.textContent = '';
+
+      updateAutoScrollState();
+      updateTextareaHeight();
+      updateSendState();
+      scrollToBottom(true);
     }
 
 
@@ -810,6 +1037,14 @@ If you like, I could turn this into a suitability checklist or adapt it to a spe
 
     sendButton.addEventListener('click', () => {
       sendMessage(messageInput.value, { statusPrefix: getStatusPrefixFromText(messageInput.value) });
+    });
+
+    skipTypingButton.addEventListener('click', () => {
+      skipPromptFlowAnimations();
+    });
+
+    resetButton.addEventListener('click', () => {
+      resetExperience();
     });
 
 
