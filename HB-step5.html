@@ -367,6 +367,17 @@
       cursor: not-allowed;
     }
 
+    .icon-btn svg {
+      width: 1rem;
+      height: 1rem;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      vertical-align: middle;
+    }
+
     .context-menu {
       position: fixed;
       min-width: 190px;
@@ -744,7 +755,11 @@
 
         <div class="card email-footer">
           <div class="icon-group" aria-label="Email toolbar">
-            <button class="icon-btn" type="button" disabled aria-label="Attach file">📎</button>
+            <button class="icon-btn" type="button" disabled aria-label="Attach file">
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M21.44 11.05 12 20.5a6 6 0 1 1-8.49-8.48l9.54-9.55a4 4 0 0 1 5.66 5.66L8.46 18.39a2 2 0 1 1-2.83-2.83l8.84-8.84"/>
+              </svg>
+            </button>
             <button class="icon-btn" type="button" disabled aria-label="Formatting">✎</button>
           </div>
           <button class="send-btn" id="send-btn" type="button" disabled aria-label="Send message">Send</button>
