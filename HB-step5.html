@@ -823,8 +823,10 @@ NHS Number: 485 772 9163`,
         sectionName: 'Medical details',
         rawText: `Reason for referral
 Urgent cardiology assessment for longstanding atrial fibrillation and recent episodes of chest pain on exertion.
+
 Relevant history
 History of hypertension, type 2 diabetes, asthma, and previous myocardial infarction in 2018 (per patient report). Family history of sudden cardiac death. Non-smoker.
+
 Current management
 Metformin 1 g twice daily.
 Ramipril 10 mg once daily.
@@ -834,8 +836,10 @@ Recent ECG showed atrial fibrillation with controlled ventricular rate.
 Echocardiogram performed last month demonstrated normal left ventricular function with moderate aortic stenosis.`,
         correctedText: `Reason for referral
 Urgent cardiology assessment for longstanding atrial fibrillation and recent episodes of chest pain on exertion.
+
 Relevant history
 History of hypertension, type 2 diabetes, and previous myocardial infarction in 2018 (per patient report). Family history of sudden cardiac death. Non-smoker.
+
 Current management
 Metformin 1 g twice daily.
 Ramipril 10 mg once daily.
@@ -848,8 +852,8 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
         id: 'additional',
         title: '4. Additional info',
         sectionName: 'Additional info',
-        rawText: 'Additional information\nPatient is keen to be seen as soon as possible. I believe cardiology input is required to confirm diagnosis and advise on management.',
-        correctedText: 'Additional information\nPatient is keen to be seen as soon as possible. I believe cardiology input is required to confirm diagnosis and advise on management.'
+        rawText: 'Additional information\nSymptoms of exertional chest pain have developed over the past three weeks and appear to be gradually worsening.',
+        correctedText: 'Additional information\nSymptoms of exertional chest pain have developed over the past three weeks and appear to be gradually worsening.'
       },
       {
         id: 'sign-off',
@@ -1788,8 +1792,8 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
           id: 'additional',
           sectionName: 'Additional info',
           success: getAction('additional') === 'copy' || getAction('additional') === 'check',
-          successText: 'Good - you included this important context section. While it didn\'t contain errors, you always need to check as the Human In The Loop',
-          failureText: "You didn't include this important context for the specialist"
+          successText: 'Good - you included this important context for the cardiologist. While it didn\'t contain errors, you always need to check as the Human In The Loop',
+          failureText: "You didn't include this important context for the cardiologist"
         },
         {
           id: 'sign-off',
