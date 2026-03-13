@@ -116,7 +116,7 @@
       padding: 1rem;
       display: grid;
       grid-template-columns: 1fr 1fr;
-      grid-template-areas: "chat data";
+      grid-template-areas: "data chat";
       gap: 1rem;
       align-items: stretch;
       min-height: calc(100vh - 5.5rem);
@@ -476,7 +476,7 @@
       z-index: 100;
       display: flex;
       justify-content: center;
-      align-items: flex-start;
+      align-items: center;
       overflow-y: auto;
       overflow-x: hidden;
       padding: 1rem;
@@ -552,8 +552,8 @@
       .main {
         grid-template-columns: 1fr;
         grid-template-areas:
-          "chat"
-          "data";
+          "data"
+          "chat";
       }
       .panel { min-height: auto; }
       .patient-item { grid-template-columns: 2.5rem minmax(0, 1fr); }
@@ -569,9 +569,6 @@
         padding: 0.6rem 0.7rem;
       }
 
-      .feedback-modal {
-        align-items: center;
-      }
 
       .feedback-card {
         margin-block: 0;
