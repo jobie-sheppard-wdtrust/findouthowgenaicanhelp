@@ -1131,17 +1131,18 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
     function openMenu(button) {
       if (isUnavailable(button) || isMenuBusy || isModalOpen) return;
       const section = sections.find((item) => item.id === button.dataset.id);
-      const rect = button.getBoundingClientRect();
-      menu.style.top = `${Math.min(window.innerHeight - 120, rect.bottom + 6)}px`;
-      menu.style.left = `${Math.min(window.innerWidth - 230, rect.left)}px`;
-      menu.hidden = false;
+      positionMenuForTrigger(button);
       activeTrigger = button;
       activeSection = section;
       setExpanded(button);
       document.getElementById('action-copy').setAttribute('aria-label', `Copy-paste for ${section.sectionName}`);
       document.getElementById('action-check').setAttribute('aria-label', `Check content for ${section.sectionName}`);
-      menuItems[0].focus();
-      announce(`Context menu opened for ${section.sectionName}.`);
+      ensureMenuItemVisibilityAndFocus({
+        triggerButton: button,
+        menuItem: menuItems[0],
+        sectionName: section.sectionName,
+        announceOnSuccess: true
+      });
     }
 
     function setAnimating(nextState) {
@@ -1209,13 +1210,15 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
 
         // Silently re-open the context menu so focus can park outside
         // all landmarks during the announcement flow (mirrors step 3 pattern).
-        const rect = pending.trigger.getBoundingClientRect();
-        menu.style.top = `${Math.min(window.innerHeight - 120, rect.bottom + 6)}px`;
-        menu.style.left = `${Math.min(window.innerWidth - 230, rect.left)}px`;
-        menu.hidden = false;
+        positionMenuForTrigger(pending.trigger);
         setExpanded(pending.trigger);
         setMenuBusy(true);
-        menuItems[1].focus();
+        ensureMenuItemVisibilityAndFocus({
+          triggerButton: pending.trigger,
+          menuItem: menuItems[1],
+          sectionName: pending.section.sectionName,
+          announceOnSuccess: false
+        });
 
         modalOverlay.hidden = true;
         setBackgroundInert(false);
@@ -1246,6 +1249,92 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
         current = current.parentElement;
       }
       return document.scrollingElement || document.documentElement;
+    }
+
+    function getViewportRectForContainer(scrollContainer) {
+      if (!scrollContainer || scrollContainer === document.documentElement || scrollContainer === document.body) {
+        return { top: 0, bottom: window.innerHeight, left: 0, right: window.innerWidth };
+      }
+      return scrollContainer.getBoundingClientRect();
+    }
+
+    function isElementWithinViewportRect(elementRect, viewportRect, padding = 4) {
+      return elementRect.top >= viewportRect.top + padding
+        && elementRect.bottom <= viewportRect.bottom - padding
+        && elementRect.left >= viewportRect.left + padding
+        && elementRect.right <= viewportRect.right - padding;
+    }
+
+    function positionMenuForTrigger(trigger) {
+      const anchorRect = trigger.getBoundingClientRect();
+      const scrollContainer = getNearestScrollableContainer(trigger);
+      const viewportRect = getViewportRectForContainer(scrollContainer);
+      const edgePadding = 8;
+      const gap = 6;
+
+      menu.hidden = false;
+      const previousVisibility = menu.style.visibility;
+      menu.style.visibility = 'hidden';
+
+      const measuredRect = menu.getBoundingClientRect();
+      const menuWidth = measuredRect.width || 230;
+      const menuHeight = measuredRect.height || 120;
+
+      let top = anchorRect.bottom + gap;
+      if (top + menuHeight > viewportRect.bottom - edgePadding) {
+        top = anchorRect.top - gap - menuHeight;
+      }
+
+      let left = anchorRect.left;
+      const maxTop = Math.max(viewportRect.top + edgePadding, viewportRect.bottom - edgePadding - menuHeight);
+      const maxLeft = Math.max(viewportRect.left + edgePadding, viewportRect.right - edgePadding - menuWidth);
+      top = Math.min(Math.max(top, viewportRect.top + edgePadding), maxTop);
+      left = Math.min(Math.max(left, viewportRect.left + edgePadding), maxLeft);
+
+      menu.style.top = `${top}px`;
+      menu.style.left = `${left}px`;
+      menu.style.visibility = previousVisibility;
+      return { scrollContainer, viewportRect };
+    }
+
+    function ensureMenuItemVisibilityAndFocus({
+      triggerButton,
+      menuItem,
+      sectionName,
+      announceOnSuccess = true
+    }) {
+      if (!menuItem) return;
+
+      window.requestAnimationFrame(() => {
+        if (menu.hidden) return;
+        const scrollContainer = getNearestScrollableContainer(menuItem);
+        const viewportRect = getViewportRectForContainer(scrollContainer);
+        let itemRect = menuItem.getBoundingClientRect();
+
+        if (!isElementWithinViewportRect(itemRect, viewportRect)) {
+          menuItem.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+        }
+
+        window.requestAnimationFrame(() => {
+          if (menu.hidden) return;
+          itemRect = menuItem.getBoundingClientRect();
+          const updatedViewportRect = getViewportRectForContainer(scrollContainer);
+          const itemIsVisible = isElementWithinViewportRect(itemRect, updatedViewportRect);
+
+          if (itemIsVisible) {
+            menuItem.focus();
+            if (announceOnSuccess) {
+              announce(`Context menu opened for ${sectionName}.`);
+            }
+            return;
+          }
+
+          if (triggerButton && triggerButton.isConnected) {
+            triggerButton.focus();
+          }
+          announce(`Context menu opened for ${sectionName}, but the menu options were not fully visible. Focus returned to the section button.`);
+        });
+      });
     }
 
     function keepFocusedControlInView(target) {
