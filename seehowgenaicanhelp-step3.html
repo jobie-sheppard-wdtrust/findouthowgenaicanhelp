@@ -654,6 +654,21 @@ If you like, I could turn this into a suitability checklist or adapt it to a spe
       }
     }
 
+    function escapeHtml(text) {
+      const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+      return text.replace(/[&<>"']/g, (char) => map[char]);
+    }
+
+    function renderBoldMarkdown(text) {
+      const safeText = escapeHtml(text);
+      return safeText.replace(/\*\*([\s\S]+?)\*\*/g, '<strong>$1</strong>');
+    }
+
+    function getTypingDurationMs(message) {
+      const words = message.trim().split(/\s+/).filter(Boolean).length;
+      return Math.max(1, Math.round((words / 48) * 1000));
+    }
+
     function typeIntoBubble(bubbleEl, text, speed, onDone) {
       if (shouldReduceMotion()) {
         bubbleEl.textContent = text;
@@ -760,14 +775,18 @@ If you like, I could turn this into a suitability checklist or adapt it to a spe
         window.setTimeout(() => {
           hideTypingIndicator();
           const responseText = findPresetResponse(outgoing);
-          createMessage('bot', responseText);
+          const botMessage = createMessage('bot', '');
+          const responseTypingSpeed = Math.max(1, Math.floor(getTypingDurationMs(responseText) / Math.max(1, responseText.length)));
+          typeIntoBubble(botMessage.messageText, responseText, responseTypingSpeed, () => {
+            botMessage.messageText.innerHTML = renderBoldMarkdown(responseText);
 
-          queueAnnouncement('GenAI response complete.', 120);
-          queueAnnouncement('Conversation transcript main landmark list with latest messages.', 120);
+            queueAnnouncement('GenAI response complete.', 120);
+            queueAnnouncement('Conversation transcript main landmark list with latest messages.', 120);
 
-          promptsLocked = false;
-          setRespondingState(false);
-          queueAnnouncement('Input enabled.', 120);
+            promptsLocked = false;
+            setRespondingState(false);
+            queueAnnouncement('Input enabled.', 120);
+          });
         }, typingDelay);
       });
     }
