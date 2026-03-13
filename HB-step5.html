@@ -1135,12 +1135,14 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
       menu.style.top = `${Math.min(window.innerHeight - 120, rect.bottom + 6)}px`;
       menu.style.left = `${Math.min(window.innerWidth - 230, rect.left)}px`;
       menu.hidden = false;
+      forceScrollToContextMenuIfOffscreen();
       activeTrigger = button;
       activeSection = section;
       setExpanded(button);
       document.getElementById('action-copy').setAttribute('aria-label', `Copy-paste for ${section.sectionName}`);
       document.getElementById('action-check').setAttribute('aria-label', `Check content for ${section.sectionName}`);
       menuItems[0].focus();
+      forceScrollToContextMenuIfOffscreen();
       announce(`Context menu opened for ${section.sectionName}.`);
     }
 
@@ -1164,6 +1166,20 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
       if (nextAvailable) return nextAvailable;
       if (!sendBtn.disabled) return sendBtn;
       return interactionState;
+    }
+
+    function forceScrollToContextMenuIfOffscreen() {
+      if (menu.hidden) return;
+      const rect = menu.getBoundingClientRect();
+      const isOffscreen =
+        rect.top < 0
+        || rect.bottom > window.innerHeight
+        || rect.left < 0
+        || rect.right > window.innerWidth;
+
+      if (isOffscreen) {
+        menu.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      }
     }
 
     function setBackgroundInert(isInert) {
@@ -1213,9 +1229,11 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
         menu.style.top = `${Math.min(window.innerHeight - 120, rect.bottom + 6)}px`;
         menu.style.left = `${Math.min(window.innerWidth - 230, rect.left)}px`;
         menu.hidden = false;
+        forceScrollToContextMenuIfOffscreen();
         setExpanded(pending.trigger);
         setMenuBusy(true);
         menuItems[1].focus();
+        forceScrollToContextMenuIfOffscreen();
 
         modalOverlay.hidden = true;
         setBackgroundInert(false);
