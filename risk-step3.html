@@ -199,6 +199,10 @@
       -webkit-box-decoration-break: clone;
     }
 
+    .risk-highlight.risk-highlight-clicked {
+      background: hsl(220 15% 92%);
+    }
+
     :root.inter-variable-ready .risk-highlight {
       font-weight: 450;
       font-variation-settings: "wght" 450;
@@ -583,6 +587,7 @@
     let announcementActive = false;
     let presetsLocked = false;
     let activeHighlightKeys = [];
+    const clickedRiskKeys = new Set();
     let lastFocusedHighlight = null;
     let activeRiskTrigger = null;
     let previousBodyOverflow = '';
@@ -815,13 +820,27 @@
         }
         const risk = riskDefinitions[key];
         const safeLabel = escapeHtml(risk.label);
-        const highlightedClass = 'risk-highlight';
+        const isClicked = clickedRiskKeys.has(key);
+        const highlightedClass = isClicked ? 'risk-highlight risk-highlight-clicked' : 'risk-highlight';
         const safeAccessibleName = escapeHtml(getRiskTriggerAccessibleName(risk.label));
         const replacement = `<span class="${highlightedClass}" data-risk-key="${key}" role="button" tabindex="0" aria-label="${safeAccessibleName}" aria-controls="riskDialog" aria-expanded="false">${safeLabel}</span>`;
         html = html.replace(safeLabel, replacement);
       });
 
       bubble.innerHTML = html;
+    }
+
+    function setClickedRiskState(key) {
+      if (!key) {
+        return;
+      }
+
+      if (key === 'escalation' || key === 'monitor') {
+        clickedRiskKeys.add('escalation');
+        clickedRiskKeys.add('monitor');
+      } else {
+        clickedRiskKeys.add(key);
+      }
     }
 
     function trapDialogFocus(event) {
@@ -1016,6 +1035,7 @@
       }
 
       activeHighlightKeys = [];
+      clickedRiskKeys.clear();
       renderResponseHighlights(bubble, []);
 
       const phaseGap = reducedMotion ? 0 : 900;
@@ -1176,6 +1196,7 @@
       promptSentStatusAnnounced = false;
       responseStartedStatusAnnounced = false;
       activeHighlightKeys = [];
+      clickedRiskKeys.clear();
       lastFocusedHighlight = null;
       activeRiskTrigger = null;
 
@@ -1213,6 +1234,11 @@
       }
 
       const key = highlight.getAttribute('data-risk-key');
+      setClickedRiskState(key);
+      const assistantBubble = highlight.closest('.bubble');
+      if (assistantBubble) {
+        renderResponseHighlights(assistantBubble);
+      }
       openRiskDialog(key, highlight);
     }
 
