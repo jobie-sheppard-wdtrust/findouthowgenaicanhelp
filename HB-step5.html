@@ -408,7 +408,7 @@
       background: hsl(222 47% 11% / 0.6);
       display: flex;
       justify-content: center;
-      align-items: flex-start;
+      align-items: center;
       overflow-y: auto;
       overflow-x: hidden;
       padding: 1rem;
@@ -626,10 +626,6 @@
 
 
     @media (max-width: 800px) {
-      .modal-overlay {
-        align-items: center;
-      }
-
       .modal-card {
         margin-block: 0;
       }
@@ -734,7 +730,7 @@
     <section class="panel panel-right" aria-labelledby="email-heading" role="region">
       <div class="email-shell">
         <div class="card email-header">
-          <h2 id="email-heading">New Message</h2>
+          <h2 id="email-heading">Email</h2>
           <div class="meta-row"><span class="meta-key">To:</span><span>cardiology.referrals@nhs.net</span></div>
           <div class="meta-row"><span class="meta-key">Subject:</span><span>eRS Referral - Cardiology</span></div>
         </div>
@@ -787,10 +783,10 @@
       correctionPreHighlight: 700,
       correctionDeleteHighlight: 650,
       correctionPreDelete: 200,
-      correctionPostDelete: 500,
+      correctionPostDelete: 300,
       typingMsPerChar: 70,
-      typingWhitespacePause: 200,
-      correctionBetweenChunks: 750,
+      typingWhitespacePause: 150,
+      correctionBetweenChunks: 300,
       emailFadeIn: 300
     };
 
@@ -806,18 +802,20 @@
         id: 'patient-info',
         title: '2. Patient info',
         sectionName: 'Patient info',
-        rawText: `Referral: Routine Cardiology Outpatient Appointment (eRS)
-Patient details: [to be added]
+        rawText: `Dear Cardiology Team,
+Thank you for seeing this patient who I am referring for cardiology assessment.
+Referral: Routine Cardiology Outpatient Appointment (eRS)
 Name:
 Age:
 Address:
 NHS Number:`,
-        correctedText: `Referral: Routine Cardiology Outpatient Appointment (eRS)
-Patient details: [to be added]
-Name:
-Age:
-Address:
-NHS Number:`
+        correctedText: `Dear Cardiology Team,
+Thank you for seeing this patient who I am referring for cardiology assessment.
+Referral: Routine Cardiology Outpatient Appointment (eRS)
+Name: Romesh Turner
+Age: 68
+Address: 24 Hawthorn Close, Reading, RG6 3PL
+NHS Number: 485 772 9163`,
       },
       {
         id: 'medical',
@@ -825,8 +823,10 @@ NHS Number:`
         sectionName: 'Medical details',
         rawText: `Reason for referral
 Urgent cardiology assessment for longstanding atrial fibrillation and recent episodes of chest pain on exertion.
+
 Relevant history
 History of hypertension, type 2 diabetes, asthma, and previous myocardial infarction in 2018 (per patient report). Family history of sudden cardiac death. Non-smoker.
+
 Current management
 Metformin 1 g twice daily.
 Ramipril 10 mg once daily.
@@ -836,8 +836,10 @@ Recent ECG showed atrial fibrillation with controlled ventricular rate.
 Echocardiogram performed last month demonstrated normal left ventricular function with moderate aortic stenosis.`,
         correctedText: `Reason for referral
 Urgent cardiology assessment for longstanding atrial fibrillation and recent episodes of chest pain on exertion.
+
 Relevant history
 History of hypertension, type 2 diabetes, and previous myocardial infarction in 2018 (per patient report). Family history of sudden cardiac death. Non-smoker.
+
 Current management
 Metformin 1 g twice daily.
 Ramipril 10 mg once daily.
@@ -850,8 +852,8 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
         id: 'additional',
         title: '4. Additional info',
         sectionName: 'Additional info',
-        rawText: 'Additional information\nPatient is keen to be seen as soon as possible. I believe cardiology input is required to confirm diagnosis and advise on management.',
-        correctedText: 'Additional information\nPatient is keen to be seen as soon as possible. I believe cardiology input is required to confirm diagnosis and advise on management.'
+        rawText: 'Additional information\nSymptoms of exertional chest pain have developed over the past three weeks and appear to be gradually worsening.',
+        correctedText: 'Additional information\nSymptoms of exertional chest pain have developed over the past three weeks and appear to be gradually worsening.'
       },
       {
         id: 'sign-off',
@@ -1790,8 +1792,8 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
           id: 'additional',
           sectionName: 'Additional info',
           success: getAction('additional') === 'copy' || getAction('additional') === 'check',
-          successText: 'Good - you included this important context section. While it didn\'t contain errors, you always need to check as the Human In The Loop',
-          failureText: "You didn't include this important context for the specialist"
+          successText: 'Good - you included this important context for the cardiologist. While it didn\'t contain errors, you always need to check as the Human In The Loop',
+          failureText: "You didn't include this important context for the cardiologist"
         },
         {
           id: 'sign-off',
