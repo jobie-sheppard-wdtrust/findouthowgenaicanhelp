@@ -24,12 +24,38 @@
 
     * { box-sizing: border-box; }
 
+    html,
+    body {
+      overflow-x: hidden;
+    }
+
+    html.is-embedded,
+    body.is-embedded {
+      height: auto;
+      min-height: 0;
+    }
+
     body {
       margin: 0;
       min-height: 100vh;
       background: var(--background);
       color: var(--foreground);
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    body.is-embedded {
+      min-height: auto;
+      overflow: hidden;
+    }
+
+    body.is-embedded .top-header {
+      position: static;
+      inset: auto;
+    }
+
+    html.is-embedded .layout,
+    body.is-embedded .layout {
+      margin-top: 0;
     }
 
     :focus-visible {
@@ -62,6 +88,13 @@
       display: grid;
       grid-template-columns: 1fr 1fr;
       background: var(--background);
+    }
+
+    html.is-embedded .layout,
+    body.is-embedded .layout {
+      height: auto;
+      min-height: 0;
+      overflow: visible;
     }
 
     .panel {
@@ -593,6 +626,14 @@
 
 
     @media (max-width: 800px) {
+      .modal-overlay {
+        align-items: center;
+      }
+
+      .modal-card {
+        margin-block: 0;
+      }
+
       /* normal desktop/mobile */
       .layout {
         grid-template-columns: 1fr;
@@ -600,14 +641,20 @@
         min-height: calc(100vh - 3.5rem);
       }
 
+      html.is-embedded .layout,
+      body.is-embedded .layout {
+        height: auto;
+        min-height: 0;
+      }
+
       .layout > .panel-right {
-        order: 1;
+        order: 2;
         border-left: 0;
         border-top: 1px solid var(--border);
       }
 
       .layout > .panel-left {
-        order: 2;
+        order: 1;
       }
 
       .panel {
@@ -855,6 +902,39 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
     const pageTitle = document.getElementById('page-title');
     const DEFAULT_PAGE_TITLE = 'Being a HITL - defend against hallucination and bias';
     const FEEDBACK_PAGE_TITLE = 'Review your feedback';
+    const EMBED_RESIZE_EVENT = 'hb-step5:resize';
+    const EMBED_CONTEXT_ID = 'hb-step5';
+    const EMBED_QUERY_PARAMS = ['embed', 'embedded', 'hbEmbed', 'hb_embed'];
+
+    function hasEmbedQueryFlag() {
+      const params = new URLSearchParams(window.location.search);
+      return EMBED_QUERY_PARAMS.some((key) => {
+        const value = params.get(key);
+        return value !== null && /^(1|true|yes|on)$/i.test(value.trim());
+      });
+    }
+
+    function hasEmbedAttributeSignal() {
+      const html = document.documentElement;
+      const body = document.body;
+      const attrValues = [
+        html?.dataset?.embed,
+        html?.getAttribute('data-embedded'),
+        body?.dataset?.embed,
+        body?.getAttribute('data-embedded')
+      ];
+
+      return attrValues.some((value) => value && /^(1|true|yes|on)$/i.test(String(value).trim()))
+        || html?.classList.contains('is-embedded')
+        || body?.classList.contains('is-embedded');
+    }
+
+    function detectEmbeddedMode() {
+      // Some custom-code hosts do not use an iframe, so we support explicit embed signals as well.
+      return window.self !== window.top || hasEmbedQueryFlag() || hasEmbedAttributeSignal();
+    }
+
+    let isEmbedded = detectEmbeddedMode();
 
     let activeTrigger = null;
     let activeSection = null;
@@ -862,11 +942,65 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
     let isMenuBusy = false;
     let isModalOpen = false;
     let pendingModalAction = null;
+    let resizeFrame = null;
+    let resizeSettleTimer = null;
+    let lastPublishedHeight = 0;
+    let embedRuntimeInitialized = false;
     const completedSections = new Set();
     const sectionEmailState = new Map();
     const completedByAction = new Map();
     const feedbackAssociations = new Map();
     let announceQueue = Promise.resolve();
+
+    function getDocumentHeight() {
+      const root = document.documentElement;
+      const body = document.body;
+      const bodyRect = body.getBoundingClientRect();
+      const maxHeight = Math.max(
+        root.scrollHeight,
+        root.offsetHeight,
+        body.scrollHeight,
+        body.offsetHeight,
+        Math.ceil(bodyRect.height)
+      );
+
+      // Add a tiny buffer to avoid fractional-pixel clipping that can leave a thin scrollbar.
+      return Math.ceil(maxHeight + 2);
+    }
+
+    function publishEmbedHeight({ force = false } = {}) {
+      if (!isEmbedded) return;
+      const nextHeight = getDocumentHeight();
+      if (!force && Math.abs(nextHeight - lastPublishedHeight) < 2) return;
+
+      lastPublishedHeight = nextHeight;
+      window.parent.postMessage(
+        {
+          type: EMBED_RESIZE_EVENT,
+          context: EMBED_CONTEXT_ID,
+          height: nextHeight
+        },
+        '*'
+      );
+    }
+
+    function scheduleEmbedHeightPublish({ force = false } = {}) {
+      if (!isEmbedded) return;
+      if (resizeFrame !== null) return;
+
+      resizeFrame = window.requestAnimationFrame(() => {
+        resizeFrame = null;
+        publishEmbedHeight({ force });
+      });
+    }
+
+    function settleEmbedHeightPublish() {
+      if (!isEmbedded) return;
+      window.clearTimeout(resizeSettleTimer);
+      resizeSettleTimer = window.setTimeout(() => {
+        publishEmbedHeight({ force: true });
+      }, 90);
+    }
 
     function announce(message, delay = 0) {
       announceQueue = announceQueue
@@ -1798,6 +1932,71 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
     }
 
 
+    function enableEmbeddedMode() {
+      isEmbedded = true;
+      document.documentElement.classList.add('is-embedded');
+      document.body.classList.add('is-embedded');
+    }
+
+    function initializeEmbeddedRuntime() {
+      if (!isEmbedded || embedRuntimeInitialized) return;
+      embedRuntimeInitialized = true;
+
+      if (typeof ResizeObserver === 'function') {
+        const resizeObserver = new ResizeObserver(() => {
+          scheduleEmbedHeightPublish();
+          settleEmbedHeightPublish();
+        });
+
+        resizeObserver.observe(document.documentElement);
+        resizeObserver.observe(document.body);
+      }
+
+      const mutationObserver = new MutationObserver(() => {
+        scheduleEmbedHeightPublish();
+        settleEmbedHeightPublish();
+      });
+
+      mutationObserver.observe(document.body, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        characterData: true
+      });
+
+      window.addEventListener('load', () => {
+        publishEmbedHeight({ force: true });
+      });
+
+      window.addEventListener('resize', () => {
+        scheduleEmbedHeightPublish({ force: true });
+        settleEmbedHeightPublish();
+      });
+
+      scheduleEmbedHeightPublish({ force: true });
+      settleEmbedHeightPublish();
+    }
+
+    if (isEmbedded) {
+      enableEmbeddedMode();
+      initializeEmbeddedRuntime();
+    }
+
+    window.addEventListener('message', (event) => {
+      const data = event?.data;
+      if (!data || typeof data !== 'object') return;
+      if (data.type !== 'hb-step5:enable-embed') return;
+
+      const shouldEnable = data.enabled !== false;
+      if (!shouldEnable) return;
+
+      const wasEmbedded = isEmbedded;
+      enableEmbeddedMode();
+      if (!wasEmbedded && isEmbedded) {
+        initializeEmbeddedRuntime();
+      }
+    });
+
     renderDraftList();
 
     document.getElementById('action-copy').addEventListener('click', () => runAction('copy'));
@@ -1863,9 +2062,6 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
 
     document.addEventListener('pointerdown', (event) => {
       if (isModalOpen) {
-        if (event.target === modalOverlay) {
-          closeFeedbackModal({ processCheckAction: false });
-        }
         return;
       }
       if (menu.hidden || isMenuBusy) return;

@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>GenAI Chatbot</title>
   <style>
+    @import url("https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap");
+
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     :root {
@@ -181,13 +183,13 @@
     .bubble-response { white-space: pre-wrap; }
 
     .risk-highlight {
-      background: rgba(248, 113, 113, 0.2);
-      color: inherit;
+      background: rgba(248, 113, 113, 0.24);
+      color: color-mix(in srgb, currentColor 92%, white);
       font: inherit;
+      font-weight: 500;
       line-height: inherit;
-      text-decoration: underline;
-      text-decoration-thickness: 1px;
-      text-underline-offset: 2px;
+      font-synthesis: none;
+      text-decoration: none;
       border-radius: 0.25rem;
       cursor: pointer;
       padding: 0;
@@ -197,9 +199,12 @@
       -webkit-box-decoration-break: clone;
     }
 
-    .risk-highlight.phase-pulse {
-      animation: pulseHighlight 1.8s ease-in-out infinite alternate;
+    :root.inter-variable-ready .risk-highlight {
+      font-weight: 450;
+      font-variation-settings: "wght" 450;
     }
+
+
 
     .message-row.user-message { justify-content: flex-end; }
 
@@ -296,6 +301,7 @@
     textarea {
       width: 100%;
       resize: none;
+      overflow-y: hidden;
       background: transparent;
       border: none;
       padding: 1rem 1.25rem;
@@ -361,7 +367,7 @@
     }
 
     #riskDialog {
-      position: relative;
+      position: fixed;
       width: min(22rem, 90vw);
       max-height: calc(100vh - 2rem);
       max-height: calc(100dvh - 2rem);
@@ -438,10 +444,6 @@
       40% { transform: scale(1); opacity: 0.95; }
     }
 
-    @keyframes pulseHighlight {
-      0% { background: rgba(248, 113, 113, 0.18); }
-      100% { background: rgba(248, 113, 113, 0.35); }
-    }
 
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after {
@@ -582,6 +584,8 @@
     let presetsLocked = false;
     let activeHighlightKeys = [];
     let lastFocusedHighlight = null;
+    let activeRiskTrigger = null;
+    let previousBodyOverflow = '';
     let promptSentStatusAnnounced = false;
     let responseStartedStatusAnnounced = false;
     let flowStage = 'idle';
@@ -591,6 +595,32 @@
     let skipRequested = false;
     const initialMessagesMarkup = messagesList.innerHTML;
     const initialPromptsMarkup = prompts.innerHTML;
+
+    function enableVariableRiskHighlightWeight() {
+      const root = document.documentElement;
+
+      if (!('fonts' in document) || typeof document.fonts.check !== 'function') {
+        return;
+      }
+
+      if (!CSS.supports('font-variation-settings', 'normal')) {
+        return;
+      }
+
+      const interVariationReady = document.fonts.check('450 1em "Inter"');
+      if (interVariationReady) {
+        root.classList.add('inter-variable-ready');
+        return;
+      }
+
+      document.fonts.ready.then(() => {
+        if (document.fonts.check('450 1em "Inter"')) {
+          root.classList.add('inter-variable-ready');
+        }
+      });
+    }
+
+    enableVariableRiskHighlightWeight();
 
     function queueAnnouncement(message, delay = 0) {
       announcementQueue.push({ message, delay });
@@ -785,7 +815,7 @@
         }
         const risk = riskDefinitions[key];
         const safeLabel = escapeHtml(risk.label);
-        const highlightedClass = phaseKeys.includes(key) ? 'risk-highlight phase-pulse' : 'risk-highlight';
+        const highlightedClass = 'risk-highlight';
         const safeAccessibleName = escapeHtml(getRiskTriggerAccessibleName(risk.label));
         const replacement = `<span class="${highlightedClass}" data-risk-key="${key}" role="button" tabindex="0" aria-label="${safeAccessibleName}" aria-controls="riskDialog" aria-expanded="false">${safeLabel}</span>`;
         html = html.replace(safeLabel, replacement);
@@ -880,6 +910,37 @@
       return true;
     }
 
+    function positionRiskDialog(triggerEl) {
+      if (!triggerEl || riskDialogBackdrop.hidden) {
+        return;
+      }
+
+      const viewportPadding = 12;
+      const popupGap = 8;
+      const triggerRect = triggerEl.getBoundingClientRect();
+      const dialogRect = riskDialog.getBoundingClientRect();
+
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      const availableBelow = viewportHeight - triggerRect.bottom - viewportPadding;
+      const availableAbove = triggerRect.top - viewportPadding;
+      const preferBelow = availableBelow >= dialogRect.height + popupGap || availableBelow >= availableAbove;
+
+      let top = preferBelow
+        ? triggerRect.bottom + popupGap
+        : triggerRect.top - dialogRect.height - popupGap;
+
+      const maxTop = viewportHeight - dialogRect.height - viewportPadding;
+      top = Math.max(viewportPadding, Math.min(top, maxTop));
+
+      let left = triggerRect.left;
+      const maxLeft = viewportWidth - dialogRect.width - viewportPadding;
+      left = Math.max(viewportPadding, Math.min(left, maxLeft));
+
+      riskDialog.style.top = `${top}px`;
+      riskDialog.style.left = `${left}px`;
+    }
+
     function openRiskDialog(key, triggerEl) {
       const risk = riskDefinitions[key];
       if (!risk) {
@@ -887,6 +948,7 @@
       }
 
       lastFocusedHighlight = triggerEl;
+      activeRiskTrigger = triggerEl;
       riskDialogTitle.textContent = risk.title;
       riskDialogBody.textContent = risk.body;
       riskDialogScrollRegion.scrollTop = 0;
@@ -897,6 +959,8 @@
       previousBodyOverflow = document.body.style.overflow;
       document.body.style.overflow = 'hidden';
       setRiskTriggerExpandedState(triggerEl);
+      positionRiskDialog(triggerEl);
+      window.requestAnimationFrame(() => positionRiskDialog(triggerEl));
 
       riskDialogClose.focus();
       queueAnnouncement(`Risk details opened. ${risk.title}.`, 180);
@@ -930,6 +994,7 @@
       appRoot.inert = false;
       document.body.style.overflow = previousBodyOverflow;
       setRiskTriggerExpandedState(null);
+      activeRiskTrigger = null;
 
       if (returnTarget) {
         returnTarget.focus();
@@ -1112,6 +1177,7 @@
       responseStartedStatusAnnounced = false;
       activeHighlightKeys = [];
       lastFocusedHighlight = null;
+      activeRiskTrigger = null;
 
       announcementQueue = [];
       announcementActive = false;
@@ -1205,6 +1271,18 @@
 
     window.addEventListener('keydown', routeRiskDialogCaptureKeys, true);
     document.addEventListener('keydown', routeRiskDialogCaptureKeys, true);
+
+    window.addEventListener('resize', () => {
+      if (!riskDialogBackdrop.hidden && activeRiskTrigger) {
+        positionRiskDialog(activeRiskTrigger);
+      }
+    });
+
+    messagesScroll.addEventListener('scroll', () => {
+      if (!riskDialogBackdrop.hidden && activeRiskTrigger) {
+        positionRiskDialog(activeRiskTrigger);
+      }
+    });
 
     messageInput.addEventListener('beforeinput', (event) => {
       if (event.inputType.startsWith('insert') || event.inputType.startsWith('delete')) {

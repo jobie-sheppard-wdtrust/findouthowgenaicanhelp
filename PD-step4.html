@@ -116,6 +116,7 @@
       padding: 1rem;
       display: grid;
       grid-template-columns: 1fr 1fr;
+      grid-template-areas: "chat data";
       gap: 1rem;
       align-items: stretch;
       min-height: calc(100vh - 5.5rem);
@@ -132,10 +133,15 @@
     }
 
     .chat-panel {
+      grid-area: chat;
       display: flex;
       flex-direction: column;
       padding: 1rem;
       gap: 1rem;
+    }
+
+    .panel-right {
+      grid-area: data;
     }
 
     .chat-header h2 {
@@ -543,7 +549,12 @@
     }
 
     @media (max-width: 56rem) {
-      .main { grid-template-columns: 1fr; }
+      .main {
+        grid-template-columns: 1fr;
+        grid-template-areas:
+          "chat"
+          "data";
+      }
       .panel { min-height: auto; }
       .patient-item { grid-template-columns: 2.5rem minmax(0, 1fr); }
       .copy-btn {
@@ -556,6 +567,14 @@
         grid-template-columns: max-content minmax(0, 1fr);
         row-gap: 0.2rem;
         padding: 0.6rem 0.7rem;
+      }
+
+      .feedback-modal {
+        align-items: center;
+      }
+
+      .feedback-card {
+        margin-block: 0;
       }
     }
   </style>
@@ -679,7 +698,7 @@
     </main>
 
     <div id="feedback-modal" class="feedback-modal" hidden>
-      <div class="feedback-overlay" data-feedback-close="overlay"></div>
+      <div class="feedback-overlay"></div>
       <section class="feedback-card" role="dialog" aria-modal="true" aria-labelledby="feedback-title" aria-describedby="feedback-body feedback-note" tabindex="-1">
         <h2 id="feedback-title" class="feedback-title" tabindex="-1"></h2>
         <p id="feedback-body" class="feedback-body"></p>
@@ -1150,11 +1169,6 @@
       closeFeedbackBtn.addEventListener('click', closeFeedbackModal);
 
       feedbackModal.addEventListener('keydown', onModalKeydown);
-      feedbackModal.addEventListener('click', (event) => {
-        if (event.target && event.target.dataset.feedbackClose === 'overlay') {
-          closeFeedbackModal();
-        }
-      });
 
       document.addEventListener('focusin', (event) => {
         if (!modalOpen) return;
