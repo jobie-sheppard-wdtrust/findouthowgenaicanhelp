@@ -1200,11 +1200,16 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
     }
 
     function openFeedbackModal(section, trigger) {
+      const modalTitles = {
+        medical: 'You spotted the hallucinations',
+        'sign-off': 'You spotted the bias'
+      };
       const messages = {
         medical: `That's what being a HITL is all about!\nGenAI made several mistakes here: Type 1 diabetes patients don't take Metformin (that's for Type 2), the ECG findings are contradictory (AF with ST elevation is unusual), and 'normal LV function with severe aortic stenosis' is clinically inconsistent.\nClinical details are absolutely essential to check.`,
         'sign-off': `That's what being a HITL is all about! This sign-off contains subtle bias: 'Merry Christmas' makes assumptions about the recipient's religious beliefs.`
       };
 
+      modalTitle.textContent = modalTitles[section.id] || 'Feedback';
       modalMessage.textContent = messages[section.id] || '';
       pendingModalAction = { section, trigger };
       isModalOpen = true;
