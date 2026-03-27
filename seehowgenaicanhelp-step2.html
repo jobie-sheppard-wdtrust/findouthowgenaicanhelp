@@ -467,7 +467,9 @@
       listItem.appendChild(article);
       transcript.appendChild(listItem);
       scrollToBottom();
-      return { article, messageText, listItem };
+
+      const focusTarget = role === 'user' ? article : null;
+      return { article, messageText, listItem, focusTarget };
     }
 
     function showTypingIndicator() {
@@ -560,10 +562,12 @@
         window.setTimeout(() => {
           hideTypingIndicator();
           const responseText = findPresetResponse(outgoing);
-          const botMessage = createMessage('bot', responseText);
+          createMessage('bot', responseText);
 
           queueAnnouncement('Assistant response added.', 120, () => {
-            botMessage.article.focus();
+            if (userMessage.focusTarget) {
+              userMessage.focusTarget.focus();
+            }
           });
 
           setRespondingState(false);
