@@ -199,6 +199,10 @@
       -webkit-box-decoration-break: clone;
     }
 
+    .risk-highlight.risk-highlight-clicked {
+      background: hsl(220 15% 92%);
+    }
+
     :root.inter-variable-ready .risk-highlight {
       font-weight: 450;
       font-variation-settings: "wght" 450;
@@ -525,8 +529,8 @@
   <div id="statusAnnouncer" class="sr-only-live" aria-live="assertive" aria-atomic="true"></div>
 
   <script>
-    const presetText = `Can you help me draft a short clinic letter summarising a recent GP review?\nIt is for the patient record and onward sharing with community services, so it should be clear and neutral in tone. Here are my rough notes from the review:\nSamuel Dannam, 83\n– Elderly patient with CVD and CKD\n– Walked to surgery (5 mins)\n– BP normal today\n– Routine long-term condition review\n– No changes made\n– Follow-up planned`;
-    const botResponse = `Sure — here's a short, neutral clinic letter based on your notes\n\nClinic Letter\nThis letter summarises a recent GP review of an elderly patient, Samuel Dannam, 83, with multiple long-term conditions, including cardiovascular disease and chronic kidney disease. Overall, the notes suggest that the patient remains relatively mobile, as they could walk the few minutes to the appointment. Notes identify that their blood pressure has been stable, and that regular follow-ups appointments would be appropriate for the patient.\n\nGiven their age, the patient may benefit from additional community support to help manage day-to-day activities. No changes were made at this review, pending ongoing monitoring. If helpful, I can suggest whether escalation might be needed or I could highlight which factors may be most relevant to monitor closely?`;
+    const presetText = `Can you help me draft a short clinic letter summarising a recent GP review?\nIt is for the patient record and onward sharing with community services, so it should be clear and neutral in tone. Here are my rough notes from the review:\n[patient name], [age]\n– Elderly patient with CVD and CKD\n– Walked to surgery (5 mins)\n– BP normal today\n– Routine long-term condition review\n– No changes made\n– Follow-up planned`;
+    const botResponse = `Sure — here's a short, neutral clinic letter based on your notes\n\nClinic Letter\nThis letter summarises a recent GP review of an elderly patient, with multiple long-term conditions, including cardiovascular disease and chronic kidney disease. Overall, the notes suggest that the patient remains relatively mobile, as they could walk the few minutes to the appointment. Notes identify that their blood pressure has been stable, and that regular follow-ups appointments would be appropriate for the patient.\n\nGiven their age, the patient may benefit from additional community support to help manage day-to-day activities. No changes were made at this review, pending ongoing monitoring. If helpful, I can suggest whether escalation might be needed or I could highlight which factors may be most relevant to monitor closely?`;
 
     const riskDefinitions = {
       bpStable: {
@@ -544,13 +548,13 @@
       escalation: {
         label: 'suggest whether escalation might be needed',
         title: 'Inappropriate Volunteering',
-        body: 'Both of these tasks go beyond simple drafting and summarising, they involve some clinical reasoning. This has risk to the patient if it goes wrong, and so such use cases of consumer GenAI are often illegal, but GenAI did not warn you about this! This is why you need to carefully stop and think about what tasks are appropriate to use GenAI for. We will give you tools to support you with this, later in the module.',
+        body: 'Both of these tasks go beyond simple drafting and summarising – they would affect the care delivered to a patient. This has high risk if it goes wrong, and so such use cases of consumer GenAI are often illegal. However, the GenAI tool did not warn you about this! This is why you need to carefully stop and think about what tasks are appropriate to use GenAI for. We will give you tools to support you with this later in the module.',
         group: 'inappropriate-volunteering'
       },
       monitor: {
         label: 'highlight which factors may be most relevant to monitor closely?',
         title: 'Inappropriate Volunteering',
-        body: 'Both of these tasks go beyond simple drafting and summarising, they involve some clinical reasoning. This has risk to the patient if it goes wrong, and so such use cases of consumer GenAI are often illegal, but GenAI did not warn you about this! This is why you need to carefully stop and think about what tasks are appropriate to use GenAI for. We will give you tools to support you with this, later in the module.',
+        body: 'Both of these tasks go beyond simple drafting and summarising – they would affect the care delivered to a patient. This has high risk if it goes wrong, and so such use cases of consumer GenAI are often illegal. However, the GenAI tool did not warn you about this! This is why you need to carefully stop and think about what tasks are appropriate to use GenAI for. We will give you tools to support you with this later in the module.',
         group: 'inappropriate-volunteering'
       }
     };
@@ -583,6 +587,7 @@
     let announcementActive = false;
     let presetsLocked = false;
     let activeHighlightKeys = [];
+    const clickedRiskKeys = new Set();
     let lastFocusedHighlight = null;
     let activeRiskTrigger = null;
     let previousBodyOverflow = '';
@@ -815,13 +820,42 @@
         }
         const risk = riskDefinitions[key];
         const safeLabel = escapeHtml(risk.label);
-        const highlightedClass = 'risk-highlight';
+        const isClicked = clickedRiskKeys.has(key);
+        const highlightedClass = isClicked ? 'risk-highlight risk-highlight-clicked' : 'risk-highlight';
         const safeAccessibleName = escapeHtml(getRiskTriggerAccessibleName(risk.label));
         const replacement = `<span class="${highlightedClass}" data-risk-key="${key}" role="button" tabindex="0" aria-label="${safeAccessibleName}" aria-controls="riskDialog" aria-expanded="false">${safeLabel}</span>`;
         html = html.replace(safeLabel, replacement);
       });
 
       bubble.innerHTML = html;
+    }
+
+    function setClickedRiskState(key) {
+      if (!key) {
+        return [];
+      }
+
+      if (key === 'escalation' || key === 'monitor') {
+        clickedRiskKeys.add('escalation');
+        clickedRiskKeys.add('monitor');
+        return ['escalation', 'monitor'];
+      }
+
+      clickedRiskKeys.add(key);
+      return [key];
+    }
+
+    function applyClickedStateStylesInDom(riskKeys = []) {
+      if (!Array.isArray(riskKeys) || riskKeys.length === 0) {
+        return;
+      }
+
+      riskKeys.forEach((riskKey) => {
+        const matchingHighlights = messagesList.querySelectorAll(`.risk-highlight[data-risk-key="${riskKey}"]`);
+        matchingHighlights.forEach((node) => {
+          node.classList.add('risk-highlight-clicked');
+        });
+      });
     }
 
     function trapDialogFocus(event) {
@@ -1016,6 +1050,7 @@
       }
 
       activeHighlightKeys = [];
+      clickedRiskKeys.clear();
       renderResponseHighlights(bubble, []);
 
       const phaseGap = reducedMotion ? 0 : 900;
@@ -1176,6 +1211,7 @@
       promptSentStatusAnnounced = false;
       responseStartedStatusAnnounced = false;
       activeHighlightKeys = [];
+      clickedRiskKeys.clear();
       lastFocusedHighlight = null;
       activeRiskTrigger = null;
 
@@ -1213,6 +1249,8 @@
       }
 
       const key = highlight.getAttribute('data-risk-key');
+      const clickedRiskGroup = setClickedRiskState(key);
+      applyClickedStateStylesInDom(clickedRiskGroup);
       openRiskDialog(key, highlight);
     }
 

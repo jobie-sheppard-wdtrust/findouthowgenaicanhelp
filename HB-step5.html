@@ -367,6 +367,17 @@
       cursor: not-allowed;
     }
 
+    .icon-btn svg {
+      width: 1rem;
+      height: 1rem;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      vertical-align: middle;
+    }
+
     .context-menu {
       position: fixed;
       min-width: 190px;
@@ -744,7 +755,11 @@
 
         <div class="card email-footer">
           <div class="icon-group" aria-label="Email toolbar">
-            <button class="icon-btn" type="button" disabled aria-label="Attach file">📎</button>
+            <button class="icon-btn" type="button" disabled aria-label="Attach file">
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M21.44 11.05 12 20.5a6 6 0 1 1-8.49-8.48l9.54-9.55a4 4 0 0 1 5.66 5.66L8.46 18.39a2 2 0 1 1-2.83-2.83l8.84-8.84"/>
+              </svg>
+            </button>
             <button class="icon-btn" type="button" disabled aria-label="Formatting">✎</button>
           </div>
           <button class="send-btn" id="send-btn" type="button" disabled aria-label="Send message">Send</button>
@@ -769,7 +784,7 @@
     >
       <h2 id="feedback-modal-title" class="modal-title" tabindex="0">Feedback</h2>
       <p id="feedback-modal-message" class="modal-body"></p>
-      <p id="feedback-modal-helper" class="modal-helper">The section will be corrected when you continue</p>
+      <p id="feedback-modal-helper" class="modal-helper">The section will be corrected when you continue.</p>
       <div class="modal-actions">
         <button id="feedback-modal-cancel" class="modal-cancel" type="button">Cancel</button>
         <button id="feedback-modal-continue" class="modal-continue" type="button">Continue</button>
@@ -1185,11 +1200,16 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
     }
 
     function openFeedbackModal(section, trigger) {
+      const modalTitles = {
+        medical: 'You spotted the hallucinations',
+        'sign-off': 'You spotted the bias'
+      };
       const messages = {
         medical: `That's what being a HITL is all about!\nGenAI made several mistakes here: Type 1 diabetes patients don't take Metformin (that's for Type 2), the ECG findings are contradictory (AF with ST elevation is unusual), and 'normal LV function with severe aortic stenosis' is clinically inconsistent.\nClinical details are absolutely essential to check.`,
-        'sign-off': `That's what being a HITL is all about! This sign-off contains subtle bias: 'Merry Christmas' makes assumptions about the recipient's religious beliefs`
+        'sign-off': `That's what being a HITL is all about! This sign-off contains subtle bias: 'Merry Christmas' makes assumptions about the recipient's religious beliefs.`
       };
 
+      modalTitle.textContent = modalTitles[section.id] || 'Feedback';
       modalMessage.textContent = messages[section.id] || '';
       pendingModalAction = { section, trigger };
       isModalOpen = true;
@@ -1756,8 +1776,8 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
 
 
     const FEEDBACK_COPY = {
-      successSubheading: 'Well done! You succeeded in your role as the Human In The Loop, ensuring the output was appropriate and accurate. Explore the risks you avoided below',
-      failureSubheading: "Not quite – you've missed a few details here. Being the Human In The Loop means you need to check the output, ensuring it's as good as what you would write yourself. Check below to see how you can improve"
+      successSubheading: 'Well done! You succeeded in your role as the Human in the Loop, ensuring the output was appropriate and accurate. Explore the risks you avoided below.',
+      failureSubheading: "Not quite – you've missed a few details here. Being the Human in the Loop means you need to check the output, ensuring it's as good as what you would write yourself. Check below to see how you can improve."
     };
 
     function evaluateOutcomes() {
@@ -1767,49 +1787,49 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
           id: 'preamble',
           sectionName: 'GenAI preamble',
           success: getAction('preamble') !== 'copy',
-          successText: "Good - you didn't include this preamble. Including this would erode trust with colleagues or patients",
+          successText: "Good - you didn't include this preamble. Including this would erode trust with colleagues or patients.",
           failureText: "This preamble shouldn’t be included. It's a GenAI artifact that erodes trust when left in professional communications."
         },
         {
           id: 'patient-info',
           sectionName: 'Patient info',
           success: getAction('patient-info') === 'check',
-          successText: 'Good - you remembered to fill in the patient information in your email. Pasting in empty patient details would look unprofessional and delay the urgent patient referral. This is why you need to check as the Human In The Loop.',
+          successText: 'Good - you remembered to fill in the patient information in your email. Pasting in empty patient details would look unprofessional and delay the urgent patient referral. This is why you need to check as the Human in the Loop.',
           failureText: getAction('patient-info') === 'copy'
             ? "You included this header, but forgot to fill it in with patient details. This not only looks unprofessional to the recipient, but could delay the urgent patient referral."
-            : "You didn't include this essential referral header in your email"
+            : "You didn't include this essential referral header in your email."
         },
         {
           id: 'medical',
           sectionName: 'Medical details',
           success: getAction('medical') === 'check',
-          successText: 'Perfect! You corrected the hallucinations in this section - changing type 1 to type 2 diabetes, removing asthma, adding the missing beta-blocker, and correcting the ECG and echo findings. This is exactly what being a Human In The Loop involves.',
+          successText: 'Perfect! You corrected the hallucinations in this section - changing type 1 to type 2 diabetes, removing asthma, adding the missing beta-blocker, and correcting the ECG and echo findings. This is exactly what being a Human in the Loop involves.',
           failureText: getAction('medical') === 'copy'
-            ? "You included this section but didn't check it for errors. The AI hallucinated several critical details: wrong diabetes type, non-existent asthma, missing medication, and incorrect test results. As the Human In The Loop, it's your responsibility to check all factual details."
-            : "You didn't include this crucial section of the email, even though it also needed hallucinated details correcting"
+            ? "You included this section but didn't check it for errors. The AI hallucinated several critical details: wrong diabetes type, non-existent asthma, missing medication, and incorrect test results. As the Human in the Loop, it's your responsibility to check all factual details."
+            : "You didn't include this crucial section of the email, even though it also needed hallucinated details correcting."
         },
         {
           id: 'additional',
           sectionName: 'Additional info',
           success: getAction('additional') === 'copy' || getAction('additional') === 'check',
-          successText: 'Good - you included this important context for the cardiologist. While it didn\'t contain errors, you always need to check as the Human In The Loop',
-          failureText: "You didn't include this important context for the cardiologist"
+          successText: 'Good - you included this important context for the cardiologist. While it didn\'t contain errors, you always need to check as the Human in the Loop.',
+          failureText: "You didn't include this important context for the cardiologist."
         },
         {
           id: 'sign-off',
           sectionName: 'Email sign-off',
           success: getAction('sign-off') === 'check',
-          successText: 'Great work! You corrected the inappropriate Christmas greeting. This is subtle bias, because it makes religious assumptions',
+          successText: 'Great work! You corrected the inappropriate Christmas greeting. This is subtle bias, because it makes religious assumptions.',
           failureText: getAction('sign-off') === 'copy'
-            ? "You included this section without checking it. 'Merry Christmas' is subtle bias: it makes religious assumptions about the recipient. As the Human In The Loop, it's your responsibility to check for bias as well."
-            : 'You missed this closing section of the email, even though it also needed correction (removing the Christmas greeting).'
+            ? "You included this section without checking it. 'Merry Christmas' is subtle bias: it makes religious assumptions about the recipient. As the Human in the Loop, it's your responsibility to check for bias as well."
+            : 'You missed this closing section of the email, though if you had included it you would have needed to correct the bias (i.e. remove the Christmas greeting)'
         },
         {
           id: 'follow-up',
           sectionName: 'GenAI follow-up',
           success: getAction('follow-up') !== 'copy',
-          successText: "Good - You didn't include this GenAI follow-up. Including this would erode trust with colleagues or patients",
-          failureText: 'This GenAI follow-up should not have been included. It erodes trust when left in professional communications'
+          successText: "Good - You didn't include this GenAI follow-up. Including this would erode trust with colleagues or patients.",
+          failureText: 'This GenAI follow-up should not have been included. It erodes trust when left in professional communications.'
         }
       ];
 
