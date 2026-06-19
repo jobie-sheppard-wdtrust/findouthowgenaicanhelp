@@ -747,7 +747,7 @@
         </div>
 
         <div class="card email-body" aria-describedby="email-helper interaction-state">
-          <p id="email-helper" class="helper-text">Choose "Copy-paste" or "Check content" from the draft to fill this email.</p>
+          <p id="email-helper" class="helper-text">Choose "Copy-paste", "Check content", or "Don't include" from the draft.</p>
           <p id="interaction-state" class="status-text" tabindex="-1">No draft section selected yet.</p>
           <div id="email-content" class="email-content" aria-live="off"></div>
           <div id="status-log" class="sr-only" role="status" aria-live="polite" aria-atomic="true" tabindex="-1"></div>
@@ -771,6 +771,7 @@
   <div id="context-menu" class="context-menu" role="menu" aria-label="Draft actions" hidden>
     <button type="button" role="menuitem" id="action-copy">Copy-paste</button>
     <button type="button" role="menuitem" id="action-check">Check content</button>
+    <button type="button" role="menuitem" id="action-dont-include">Don't include</button>
   </div>
 
   <div id="feedback-modal-overlay" class="modal-overlay" hidden>
@@ -864,22 +865,15 @@ Recent ECG showed atrial fibrillation with controlled ventricular rate.
 Echocardiogram performed last month demonstrated mildly reduced left ventricular function with moderate aortic stenosis.`
       },
       {
-        id: 'additional',
-        title: '4. Additional info',
-        sectionName: 'Additional info',
-        rawText: 'Additional information\nSymptoms of exertional chest pain have developed over the past three weeks and appear to be gradually worsening.',
-        correctedText: 'Additional information\nSymptoms of exertional chest pain have developed over the past three weeks and appear to be gradually worsening.'
-      },
-      {
         id: 'sign-off',
-        title: '5. Email sign-off',
+        title: '4. Email sign-off',
         sectionName: 'Email sign-off',
         rawText: 'Thanks so much for taking a look at this and helping out - Wishing you a very Merry Christmas!\nKindest regards,\nSam - GP\nGreenfield Surgery',
         correctedText: 'Thanks so much for taking a look at this and helping out.\nKindest regards,\nSam - GP\nGreenfield Surgery'
       },
       {
         id: 'follow-up',
-        title: '6. GenAI follow-up',
+        title: '5. GenAI follow-up',
         sectionName: 'GenAI follow-up',
         rawText: 'Would you like me to suggest some possible diagnoses based on these symptoms, or help you choose a medicine for the patient in the meantime?',
         correctedText: ''
@@ -1157,6 +1151,7 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
       setExpanded(button);
       document.getElementById('action-copy').setAttribute('aria-label', `Copy-paste for ${section.sectionName}`);
       document.getElementById('action-check').setAttribute('aria-label', `Check content for ${section.sectionName}`);
+      document.getElementById('action-dont-include').setAttribute('aria-label', `Don't include ${section.sectionName} in email`);
       menuItems[0].focus();
       announce(`Context menu opened for ${section.sectionName}.`);
     }
@@ -1693,11 +1688,19 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
       try {
         await runDraftHighlight(trigger);
         const isCheckAction = actionType === 'check';
-        const block = ensureEmailBlock(section, section.rawText, { announceSendState: false, persistState: false });
+        const isDontIncludeAction = actionType === 'dont-include';
+        let block = null;
+
+        if (!isDontIncludeAction) {
+          block = ensureEmailBlock(section, section.rawText, { announceSendState: false, persistState: false });
+        }
+
         const announceStepDelay = 260;
 
         if (actionType === 'copy') {
           announce(`${section.sectionName} copy-pasted into email`);
+        } else if (isDontIncludeAction) {
+          announce(`${section.sectionName} not included in email`);
         } else {
           if (!skipInitialStatus) {
             announce(`checking ${section.sectionName}`);
@@ -1717,7 +1720,7 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
             announce(`removing inappropriate ${section.sectionName} from email`, announceStepDelay);
           }
 
-          if (section.id === 'patient-info' || section.id === 'additional') {
+          if (section.id === 'patient-info') {
             announce(`${section.sectionName} added to email`, announceStepDelay);
           }
 
@@ -1734,6 +1737,7 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
         actionSucceeded = true;
       } finally {
         const isCheckAction = actionType === 'check';
+        const isDontIncludeAction = actionType === 'dont-include';
         const canonicalFinalText = isCheckAction
           ? normalizeSectionEmailText(correctionResult.finalText)
           : normalizeSectionEmailText(section.rawText);
@@ -1744,7 +1748,10 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
         }
 
         // Check may transiently render raw text; final send eligibility must reflect only persisted final text.
-        if (shouldRemove) {
+        if (isDontIncludeAction) {
+          removeEmailBlock(section, { announceSendState: false, persistState: false });
+          sectionEmailState.set(section.id, '');
+        } else if (shouldRemove) {
           removeEmailBlock(section, { announceSendState: false, persistState: false });
           sectionEmailState.set(section.id, '');
         } else {
@@ -1786,7 +1793,7 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
         {
           id: 'preamble',
           sectionName: 'GenAI preamble',
-          success: getAction('preamble') !== 'copy',
+          success: getAction('preamble') === 'check' || getAction('preamble') === 'dont-include',
           successText: "Good - you didn't include this preamble. Including this would erode trust with colleagues or patients.",
           failureText: "This preamble shouldn’t be included. It's a GenAI artifact that erodes trust when left in professional communications."
         },
@@ -1809,13 +1816,6 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
             : "You didn't include this crucial section of the email, even though it also needed hallucinated details correcting."
         },
         {
-          id: 'additional',
-          sectionName: 'Additional info',
-          success: getAction('additional') === 'copy' || getAction('additional') === 'check',
-          successText: 'Good - you included this important context for the cardiologist. While it didn\'t contain errors, you always need to check as the Human in the Loop.',
-          failureText: "You didn't include this important context for the cardiologist."
-        },
-        {
           id: 'sign-off',
           sectionName: 'Email sign-off',
           success: getAction('sign-off') === 'check',
@@ -1827,7 +1827,7 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
         {
           id: 'follow-up',
           sectionName: 'GenAI follow-up',
-          success: getAction('follow-up') !== 'copy',
+          success: getAction('follow-up') === 'check' || getAction('follow-up') === 'dont-include',
           successText: "Good - You didn't include this GenAI follow-up. Including this would erode trust with colleagues or patients.",
           failureText: 'This GenAI follow-up should not have been included. It erodes trust when left in professional communications.'
         }
@@ -2022,6 +2022,7 @@ Echocardiogram performed last month demonstrated mildly reduced left ventricular
     renderDraftList();
 
     document.getElementById('action-copy').addEventListener('click', () => runAction('copy'));
+    document.getElementById('action-dont-include').addEventListener('click', () => runAction('dont-include'));
     document.getElementById('action-check').addEventListener('click', () => {
       if (!activeSection || !activeTrigger) return;
       const needsModal = activeSection.id === 'medical' || activeSection.id === 'sign-off';
